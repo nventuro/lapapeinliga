@@ -17,11 +17,8 @@ export default function PlayerSelector({
 }: PlayerSelectorProps) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
         <h2 className="text-xl font-bold">¿Quiénes juegan?</h2>
-        <span className="text-sm text-muted">
-          {selectedIds.size} / {players.length} jugadores
-        </span>
       </div>
 
       <div className="flex gap-2 mb-4">

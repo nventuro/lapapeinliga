@@ -228,6 +228,16 @@ function App() {
               onDeselectAll={handleDeselectAll}
             />
             <div className="mt-6">
+              <div className="flex items-center justify-between mb-3 text-sm text-muted">
+                <span>
+                  {selectedIds.size} / {players.length} jugadores
+                </span>
+                <span>
+                  {selectedPlayers.filter((p) => p.gender === 'male').length}<span className="text-lg">♂</span>
+                  {' '}
+                  {selectedPlayers.filter((p) => p.gender === 'female').length}<span className="text-lg">♀</span>
+                </span>
+              </div>
               <button
                 onClick={() => setStep('configure')}
                 disabled={selectedIds.size < MIN_PLAYERS}
