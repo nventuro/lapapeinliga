@@ -95,7 +95,15 @@ export default function TeamDisplay({
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">Equipos armados</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Equipos armados</h2>
+        <button
+          onClick={onResort}
+          className="text-sm px-3 py-1 rounded-full border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
+        >
+          Volver a sortear
+        </button>
+      </div>
 
       {/* Score breakdown */}
       <div className="mb-4 border border-border rounded-lg p-4">
@@ -306,20 +314,12 @@ export default function TeamDisplay({
         )}
       </div>
 
-      <div className="flex gap-3">
-        <button
-          onClick={onResort}
-          className="flex-1 py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors"
-        >
-          Volver a sortear
-        </button>
-        <button
-          onClick={onReset}
-          className="flex-1 py-3 rounded-lg font-bold text-muted-strong bg-neutral hover:bg-neutral-hover transition-colors"
-        >
-          Volver al inicio
-        </button>
-      </div>
+      <button
+        onClick={onReset}
+        className="w-full py-3 rounded-lg font-bold text-muted-strong bg-neutral hover:bg-neutral-hover transition-colors"
+      >
+        Volver al inicio
+      </button>
     </div>
   );
 }
