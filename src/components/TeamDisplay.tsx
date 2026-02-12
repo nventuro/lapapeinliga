@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Player, Team } from '../types';
-import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM } from '../types';
+import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 
 interface TeamDisplayProps {
@@ -65,11 +65,33 @@ export default function TeamDisplay({
     setSelectedPlayerId(null);
     onTeamsChange(newTeams, newReserves);
   }
-  const maxTeamSize = Math.max(...teams.map((t) => t.players.length));
+  // Global warnings
+  const globalWarnings: string[] = [];
+
+  const teamSizes = teams.map((t) => t.players.length);
+  if (new Set(teamSizes).size > 1) {
+    globalWarnings.push('Los equipos no tienen la misma cantidad de jugadores');
+  }
+
+  const averageRatings = teams.map((t) => teamAverageRating(t));
+  const ratingSpread = Math.max(...averageRatings) - Math.min(...averageRatings);
+  if (ratingSpread >= MAX_RATING_SPREAD) {
+    globalWarnings.push(`Hay mucha diferencia de nivel entre los equipos (${ratingSpread.toFixed(1)} puntos)`);
+  }
 
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Equipos armados</h2>
+
+      {globalWarnings.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {globalWarnings.map((w) => (
+            <p key={w} className="text-sm text-warning border border-warning rounded-lg px-3 py-2">
+              {w}
+            </p>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {teams.map((team, teamIndex) => {
@@ -81,7 +103,6 @@ export default function TeamDisplay({
           const warnings: string[] = [];
           if (size < MIN_TEAM_SIZE) errors.push(`Menos de ${MIN_TEAM_SIZE} jugadores`);
           if (size > MAX_TEAM_SIZE) errors.push(`Más de ${MAX_TEAM_SIZE} jugadores`);
-          if (size < maxTeamSize) warnings.push('Equipo con menos jugadores');
           if (maleCount <= MIN_GENDER_PER_TEAM) warnings.push(`Solo ${maleCount} hombre${maleCount !== 1 ? 's' : ''} en el equipo`);
           if (femaleCount <= MIN_GENDER_PER_TEAM) warnings.push(`Solo ${femaleCount} mujer${femaleCount !== 1 ? 'es' : ''} en el equipo`);
 
@@ -182,7 +203,7 @@ export default function TeamDisplay({
                     : 'hover:bg-neutral'
                 }`}
               >
-                <span className="text-muted text-sm">
+                <span className="text-muted text-lg">
                   {player.gender === 'male' ? '♂' : '♀'}
                 </span>
                 <span>{player.name}</span>
