@@ -7,9 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:link": "set -a && . ./.env && supabase link --project-ref $SUPABASE_PROJECT_REF",
+    "db:push": "set -a && . ./.env && supabase db push",
+    "db:migration:new": "supabase migration new"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
     "@tailwindcss/vite": "^4.1.18",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -25,6 +29,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "supabase": "^2.76.8",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1"

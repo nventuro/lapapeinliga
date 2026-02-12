@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
-import { players } from './data/players';
-import type { Team } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import type { Player, Team } from './types';
+import { supabase } from './lib/supabase';
 import { sortTeams } from './utils/teamSorter';
 import PlayerSelector from './components/PlayerSelector';
 import TeamConfigurator from './components/TeamConfigurator';
@@ -9,10 +10,73 @@ import TeamDisplay from './components/TeamDisplay';
 type Step = 'select' | 'configure' | 'results';
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [teamCount, setTeamCount] = useState(2);
   const [teams, setTeams] = useState<Team[]>([]);
   const [step, setStep] = useState<Step>('select');
+
+  // Auth effect
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch players when authenticated
+  useEffect(() => {
+    if (!session) {
+      setPlayers([]);
+      return;
+    }
+
+    setDataLoading(true);
+    setDataError(null);
+
+    supabase
+      .from('players')
+      .select('*')
+      .order('name')
+      .then(({ data, error }) => {
+        if (error) {
+          setDataError(error.message);
+        } else {
+          setPlayers(data as Player[]);
+        }
+        setDataLoading(false);
+      });
+  }, [session]);
+
+  const handleSignIn = () => {
+    supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setPlayers([]);
+    setSelectedIds(new Set());
+    setTeams([]);
+    setStep('select');
+  };
 
   const handleToggle = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -28,7 +92,7 @@ function App() {
 
   const handleSelectAll = useCallback(() => {
     setSelectedIds(new Set(players.map((p) => p.id)));
-  }, []);
+  }, [players]);
 
   const handleDeselectAll = useCallback(() => {
     setSelectedIds(new Set());
@@ -38,17 +102,96 @@ function App() {
     const selected = players.filter((p) => selectedIds.has(p.id));
     setTeams(sortTeams(selected, teamCount));
     setStep('results');
-  }, [selectedIds, teamCount]);
+  }, [players, selectedIds, teamCount]);
 
   const handleReset = useCallback(() => {
     setTeams([]);
     setStep('select');
   }, []);
 
+  // Loading auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <p className="text-muted text-lg">Cargando...</p>
+      </div>
+    );
+  }
+
+  // Not signed in
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <div className="text-center px-4">
+          <h1 className="text-3xl font-bold mb-6">La Papeinliga ⚽</h1>
+          <p className="text-muted mb-8">Iniciá sesión para armar los equipos.</p>
+          <button
+            onClick={handleSignIn}
+            className="px-6 py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors"
+          >
+            Iniciar sesión con Google
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading players
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <p className="text-muted text-lg">Cargando jugadores...</p>
+      </div>
+    );
+  }
+
+  // Error fetching
+  if (dataError) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <div className="text-center px-4">
+          <p className="text-error mb-4">Error: {dataError}</p>
+          <button
+            onClick={handleSignOut}
+            className="text-muted hover:text-muted-strong underline"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No access (RLS returned empty)
+  if (players.length === 0) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <div className="text-center px-4">
+          <h1 className="text-3xl font-bold mb-4">La Papeinliga ⚽</h1>
+          <p className="text-muted mb-6">No tenés acceso a los jugadores.</p>
+          <button
+            onClick={handleSignOut}
+            className="text-muted hover:text-muted-strong underline"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface text-on-surface">
       <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col min-h-screen">
-        <h1 className="text-3xl font-bold text-center mb-8">La Papeinliga ⚽</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold">La Papeinliga ⚽</h1>
+          <button
+            onClick={handleSignOut}
+            className="text-sm text-muted hover:text-muted-strong transition-colors"
+          >
+            Cerrar sesión
+          </button>
+        </div>
 
         <div className="flex-1">
         {step === 'select' && (

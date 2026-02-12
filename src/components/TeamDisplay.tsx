@@ -7,10 +7,6 @@ interface TeamDisplayProps {
   onReset: () => void;
 }
 
-function ratingStars(rating: number): string {
-  return '★'.repeat(rating) + '☆'.repeat(5 - rating);
-}
-
 export default function TeamDisplay({ teams, onResort, onReset }: TeamDisplayProps) {
   return (
     <div>
@@ -31,10 +27,13 @@ export default function TeamDisplay({ teams, onResort, onReset }: TeamDisplayPro
 
             <ul className="space-y-1">
               {team.players.map((player) => (
-                <li key={player.id} className="flex items-center justify-between py-1">
+                <li key={player.id} className="flex items-center gap-2 py-1">
+                  <span className="text-muted text-sm">
+                    {player.gender === 'male' ? '♂' : '♀'}
+                  </span>
                   <span>{player.name}</span>
-                  <span className="text-rating text-sm">
-                    {ratingStars(player.rating)}
+                  <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral text-muted-strong">
+                    {player.rating}/10
                   </span>
                 </li>
               ))}

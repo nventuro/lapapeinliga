@@ -8,10 +8,6 @@ interface PlayerSelectorProps {
   onDeselectAll: () => void;
 }
 
-function ratingStars(rating: number): string {
-  return '★'.repeat(rating) + '☆'.repeat(5 - rating);
-}
-
 export default function PlayerSelector({
   players,
   selectedIds,
@@ -53,9 +49,12 @@ export default function PlayerSelector({
                 onChange={() => onToggle(player.id)}
                 className="w-5 h-5 accent-primary"
               />
+              <span className="text-muted text-sm">
+                {player.gender === 'male' ? '♂' : '♀'}
+              </span>
               <span className="font-medium">{player.name}</span>
-              <span className="text-rating text-sm ml-auto">
-                {ratingStars(player.rating)}
+              <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral text-muted-strong">
+                {player.rating}/10
               </span>
             </label>
           </li>

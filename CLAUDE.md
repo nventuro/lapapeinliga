@@ -6,7 +6,7 @@ Friendly soccer group team organizer — static site POC.
 
 - React + TypeScript + Vite
 - Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- No backend — player data lives in `src/data/players.ts`
+- Supabase (database + auth) — migrations in `supabase/migrations/`
 
 ## Conventions
 
@@ -23,3 +23,11 @@ Friendly soccer group team organizer — static site POC.
 - `npm run build` — production build
 - `npm run preview` — preview production build
 - `npm run lint` — run ESLint
+
+### Database
+
+Requires `.env` with `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD` (see `.env` template).
+
+- `npm run db:link` — link local project to remote Supabase (run once)
+- `npm run db:push` — push pending migrations to remote database
+- `npm run db:migration:new <name>` — create a new migration file

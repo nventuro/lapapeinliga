@@ -1,7 +1,8 @@
 export interface Player {
   id: number;
   name: string;
-  rating: number; // 1-5
+  gender: 'male' | 'female';
+  rating: number; // 1-10
 }
 
 export interface Team {
