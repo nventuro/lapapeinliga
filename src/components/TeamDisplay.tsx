@@ -3,6 +3,14 @@ import type { Player, Team } from '../types';
 import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 
+type HighlightLevel = 'error' | 'warning' | null;
+
+function highlightClasses(level: HighlightLevel): string {
+  if (level === 'error') return 'text-error font-semibold';
+  if (level === 'warning') return 'text-warning font-semibold';
+  return '';
+}
+
 interface TeamDisplayProps {
   teams: Team[];
   reserves: Player[];
@@ -69,13 +77,19 @@ export default function TeamDisplay({
   const globalWarnings: string[] = [];
 
   const teamSizes = teams.map((t) => t.players.length);
-  if (new Set(teamSizes).size > 1) {
+  const sizeImbalance = new Set(teamSizes).size > 1;
+  const minSize = Math.min(...teamSizes);
+  const maxSize = Math.max(...teamSizes);
+  if (sizeImbalance) {
     globalWarnings.push('Los equipos no tienen la misma cantidad de jugadores');
   }
 
   const averageRatings = teams.map((t) => teamAverageRating(t));
   const ratingSpread = Math.max(...averageRatings) - Math.min(...averageRatings);
-  if (ratingSpread >= MAX_RATING_SPREAD) {
+  const hasRatingSpreadWarning = ratingSpread >= MAX_RATING_SPREAD;
+  const minRating = Math.min(...averageRatings);
+  const maxRating = Math.max(...averageRatings);
+  if (hasRatingSpreadWarning) {
     globalWarnings.push(`Hay mucha diferencia de nivel entre los equipos (${ratingSpread.toFixed(1)} puntos)`);
   }
 
@@ -108,6 +122,24 @@ export default function TeamDisplay({
 
           const hasError = errors.length > 0;
           const hasWarning = warnings.length > 0;
+
+          // Highlight levels for specific values (error takes precedence over warning)
+          const countHighlight: HighlightLevel =
+            (size < MIN_TEAM_SIZE || size > MAX_TEAM_SIZE) ? 'error'
+            : (sizeImbalance && (size === minSize || size === maxSize)) ? 'warning'
+            : null;
+
+          const avgRating = averageRatings[teamIndex];
+          const ratingHighlight: HighlightLevel =
+            (hasRatingSpreadWarning && (avgRating === minRating || avgRating === maxRating)) ? 'warning'
+            : null;
+
+          const maleHighlight: HighlightLevel =
+            maleCount <= MIN_GENDER_PER_TEAM ? 'warning' : null;
+
+          const femaleHighlight: HighlightLevel =
+            femaleCount <= MIN_GENDER_PER_TEAM ? 'warning' : null;
+
           const showMoveButton = isPlayerSelected && selectedSourceTeamIndex !== teamIndex;
 
           return (
@@ -123,8 +155,8 @@ export default function TeamDisplay({
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-lg">{team.name}</h3>
-                <span className="text-sm text-muted">
-                  Promedio: {teamAverageRating(team).toFixed(1)}
+                <span className={`text-sm ${ratingHighlight ? highlightClasses(ratingHighlight) : 'text-muted'}`}>
+                  Promedio: {avgRating.toFixed(1)}
                 </span>
               </div>
 
@@ -151,7 +183,17 @@ export default function TeamDisplay({
               </ul>
 
               <div className="mt-3 pt-2 border-t border-border-subtle text-sm text-muted">
-                {size} jugador{size !== 1 ? 'es' : ''} · {maleCount}<span className="text-base">♂</span> {femaleCount}<span className="text-base">♀</span>
+                <span className={highlightClasses(countHighlight)}>
+                  {size} jugador{size !== 1 ? 'es' : ''}
+                </span>
+                {' · '}
+                <span className={highlightClasses(maleHighlight)}>
+                  {maleCount}<span className={`text-base ${maleHighlight ? '' : 'text-muted'}`}>♂</span>
+                </span>
+                {' '}
+                <span className={highlightClasses(femaleHighlight)}>
+                  {femaleCount}<span className={`text-base ${femaleHighlight ? '' : 'text-muted'}`}>♀</span>
+                </span>
               </div>
 
               {(hasError || hasWarning) && (
