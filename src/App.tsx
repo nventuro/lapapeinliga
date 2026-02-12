@@ -131,6 +131,14 @@ function App() {
           >
             Iniciar sesión con Google
           </button>
+          <div className="mt-8 flex gap-4 justify-center text-sm text-muted">
+            <a href="/privacy/" className="hover:text-muted-strong transition-colors underline">
+              Política de Privacidad
+            </a>
+            <a href="/terms/" className="hover:text-muted-strong transition-colors underline">
+              Términos de Servicio
+            </a>
+          </div>
         </div>
       </div>
     );
