@@ -6,12 +6,17 @@ export interface TeamOption {
   reserves: number;
 }
 
+/** Max players per team given a player count and team count, respecting MAX_TEAM_SIZE. */
+export function playersPerTeam(playerCount: number, teamCount: number): number {
+  return Math.min(Math.floor(playerCount / teamCount), MAX_TEAM_SIZE);
+}
+
 export function getValidTeamCounts(playerCount: number): TeamOption[] {
   const options: TeamOption[] = [];
 
   for (let t = MIN_TEAMS; t <= playerCount; t++) {
     // Cap team size to MAX_TEAM_SIZE — excess players become reserves
-    const perTeam = Math.min(Math.floor(playerCount / t), MAX_TEAM_SIZE);
+    const perTeam = playersPerTeam(playerCount, t);
     if (perTeam < MIN_TEAM_SIZE) continue;
 
     options.push({

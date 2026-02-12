@@ -1,6 +1,7 @@
 import type { Player, Team, PlayerPreference, ScoreBreakdown } from '../types';
-import { MIN_GENDER_PER_TEAM, HILL_CLIMB_STARTS } from '../types';
+import { MIN_GENDER_PER_TEAM, MAX_TEAM_SIZE, HILL_CLIMB_STARTS } from '../types';
 import { scoreAssignment, scoreTotal, buildPlayerTeamMap } from './scoring';
+import { playersPerTeam } from './teamCalculator';
 
 // Re-export for existing consumers
 export { teamAverageRating } from './scoring';
@@ -30,7 +31,7 @@ function generateInitialAssignment(
   teamCount: number,
   enforceGender: boolean,
 ): { teams: Team[]; reserves: Player[] } {
-  const perTeam = Math.floor(players.length / teamCount);
+  const perTeam = playersPerTeam(players.length, teamCount);
 
   const teams: Team[] = Array.from({ length: teamCount }, (_, i) => ({
     name: `Equipo ${String.fromCharCode(65 + i)}`,
@@ -92,6 +93,7 @@ function isValid(teams: Team[], enforceGender: boolean): boolean {
   const min = Math.min(...sizes);
   const max = Math.max(...sizes);
   if (max - min > 1) return false;
+  if (max > MAX_TEAM_SIZE) return false;
 
   if (enforceGender) {
     for (const team of teams) {
