@@ -211,9 +211,18 @@ function App() {
           <h1 className="text-3xl font-bold">La Papeinliga ⚽</h1>
           <button
             onClick={handleSignOut}
-            className="text-sm text-muted hover:text-muted-strong px-3 py-1 rounded-full border border-border hover:border-neutral-hover transition-colors"
+            className="text-sm text-muted hover:text-muted-strong pl-3 pr-1 py-1 rounded-full border border-border hover:border-neutral-hover transition-colors flex items-center gap-2"
           >
             Cerrar sesión
+            {session.user.user_metadata.avatar_url && (
+              <img
+                src={session.user.user_metadata.avatar_url}
+                alt=""
+                title={[session.user.user_metadata.full_name, session.user.email].filter(Boolean).join(' — ')}
+                className="w-6 h-6 rounded-full"
+                referrerPolicy="no-referrer"
+              />
+            )}
           </button>
         </div>
 
