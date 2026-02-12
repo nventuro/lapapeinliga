@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Player, Team } from './types';
+import { MIN_PLAYERS, MIN_TEAMS } from './types';
 import { supabase } from './lib/supabase';
 import { sortTeams } from './utils/teamSorter';
 import PlayerSelector from './components/PlayerSelector';
@@ -18,8 +19,8 @@ function App() {
   const [dataError, setDataError] = useState<string | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
-  const [teamCount, setTeamCount] = useState(2);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [result, setResult] = useState<{ teams: Team[]; reserves: Player[] } | null>(null);
+  const [lastTeamCount, setLastTeamCount] = useState(MIN_TEAMS);
   const [step, setStep] = useState<Step>('select');
 
   // Auth effect
@@ -74,7 +75,7 @@ function App() {
     setSession(null);
     setPlayers([]);
     setSelectedIds(new Set());
-    setTeams([]);
+    setResult(null);
     setStep('select');
   };
 
@@ -98,14 +99,30 @@ function App() {
     setSelectedIds(new Set());
   }, []);
 
-  const generateTeams = useCallback(() => {
+  const generateTeams = useCallback(
+    (teamCount: number) => {
+      const selected = players.filter((p) => selectedIds.has(p.id));
+      setResult(sortTeams(selected, teamCount));
+      setLastTeamCount(teamCount);
+      setStep('results');
+    },
+    [players, selectedIds],
+  );
+
+  const handleResort = useCallback(() => {
     const selected = players.filter((p) => selectedIds.has(p.id));
-    setTeams(sortTeams(selected, teamCount));
-    setStep('results');
-  }, [players, selectedIds, teamCount]);
+    setResult(sortTeams(selected, lastTeamCount));
+  }, [players, selectedIds, lastTeamCount]);
+
+  const handleTeamsChange = useCallback(
+    (teams: Team[], reserves: Player[]) => {
+      setResult({ teams, reserves });
+    },
+    [],
+  );
 
   const handleReset = useCallback(() => {
-    setTeams([]);
+    setResult(null);
     setStep('select');
   }, []);
 
@@ -214,14 +231,14 @@ function App() {
             <div className="mt-6">
               <button
                 onClick={() => setStep('configure')}
-                disabled={selectedIds.size < 2}
+                disabled={selectedIds.size < MIN_PLAYERS}
                 className="w-full py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
               >
                 Siguiente
               </button>
-              {selectedIds.size < 2 && (
+              {selectedIds.size < MIN_PLAYERS && (
                 <p className="text-sm text-error mt-2">
-                  Seleccioná al menos 2 jugadores para continuar.
+                  Seleccioná al menos {MIN_PLAYERS} jugadores para continuar.
                 </p>
               )}
             </div>
@@ -231,8 +248,6 @@ function App() {
         {step === 'configure' && (
           <>
             <TeamConfigurator
-              teamCount={teamCount}
-              onTeamCountChange={setTeamCount}
               selectedCount={selectedIds.size}
               onGenerate={generateTeams}
             />
@@ -245,10 +260,12 @@ function App() {
           </>
         )}
 
-        {step === 'results' && (
+        {step === 'results' && result && (
           <TeamDisplay
-            teams={teams}
-            onResort={generateTeams}
+            teams={result.teams}
+            reserves={result.reserves}
+            onTeamsChange={handleTeamsChange}
+            onResort={handleResort}
             onReset={handleReset}
           />
         )}

@@ -25,4 +25,7 @@
 
   /* Error */
   --color-error: #ef4444;
+
+  /* Warning */
+  --color-warning: #f59e0b;
 }

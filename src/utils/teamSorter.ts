@@ -1,27 +1,22 @@
 import type { Player, Team } from '../types';
 
-const TEAM_NAMES = [
-  'Equipo A',
-  'Equipo B',
-  'Equipo C',
-  'Equipo D',
-  'Equipo E',
-  'Equipo F',
-];
+export interface SortResult {
+  teams: Team[];
+  reserves: Player[];
+}
 
-export function sortTeams(players: Player[], teamCount: number): Team[] {
+export function sortTeams(players: Player[], teamCount: number): SortResult {
   const shuffled = [...players].sort(() => Math.random() - 0.5);
+  const perTeam = Math.floor(players.length / teamCount);
 
   const teams: Team[] = Array.from({ length: teamCount }, (_, i) => ({
-    name: TEAM_NAMES[i] ?? `Equipo ${i + 1}`,
-    players: [],
+    name: `Equipo ${String.fromCharCode(65 + i)}`,
+    players: shuffled.slice(i * perTeam, (i + 1) * perTeam),
   }));
 
-  shuffled.forEach((player, index) => {
-    teams[index % teamCount].players.push(player);
-  });
+  const reserves = shuffled.slice(teamCount * perTeam);
 
-  return teams;
+  return { teams, reserves };
 }
 
 export function teamAverageRating(team: Team): number {
