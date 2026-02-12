@@ -118,7 +118,7 @@ export default function TeamDisplay({
                         : 'hover:bg-neutral'
                     }`}
                   >
-                    <span className="text-muted text-sm">
+                    <span className="text-muted text-lg">
                       {player.gender === 'male' ? '♂' : '♀'}
                     </span>
                     <span>{player.name}</span>
@@ -130,7 +130,7 @@ export default function TeamDisplay({
               </ul>
 
               <div className="mt-3 pt-2 border-t border-border-subtle text-sm text-muted">
-                {size} jugador{size !== 1 ? 'es' : ''} · {maleCount}♂ {femaleCount}♀
+                {size} jugador{size !== 1 ? 'es' : ''} · {maleCount}<span className="text-base">♂</span> {femaleCount}<span className="text-base">♀</span>
               </div>
 
               {(hasError || hasWarning) && (

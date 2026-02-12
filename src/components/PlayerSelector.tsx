@@ -49,7 +49,7 @@ export default function PlayerSelector({
                 onChange={() => onToggle(player.id)}
                 className="w-5 h-5 accent-primary"
               />
-              <span className="text-muted text-sm">
+              <span className="text-muted text-lg">
                 {player.gender === 'male' ? '♂' : '♀'}
               </span>
               <span className="font-medium">{player.name}</span>
