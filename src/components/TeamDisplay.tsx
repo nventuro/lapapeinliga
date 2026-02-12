@@ -206,7 +206,7 @@ export default function TeamDisplay({
               </div>
 
               <ul className="space-y-1">
-                {team.players.map((player) => (
+                {[...team.players].sort((a, b) => b.rating - a.rating).map((player) => (
                   <li
                     key={player.id}
                     onClick={() => handlePlayerTap(player.id)}
