@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { Player, Team } from './types';
+import type { Player, PlayerPreference, Team } from './types';
 import { MIN_PLAYERS, MIN_TEAMS } from './types';
 import { supabase } from './lib/supabase';
 import { sortTeams } from './utils/teamSorter';
@@ -16,6 +16,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   const [players, setPlayers] = useState<Player[]>([]);
+  const [preferences, setPreferences] = useState<PlayerPreference[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
 
@@ -43,6 +44,7 @@ function App() {
         setDataError(null);
       } else {
         setPlayers([]);
+        setPreferences([]);
         setSelectedIds(new Set());
         setResult(null);
         setStep('select');
@@ -52,22 +54,24 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch players when authenticated
+  // Fetch players and preferences when authenticated
   useEffect(() => {
     if (!session) return;
 
-    supabase
-      .from('players')
-      .select('*')
-      .order('name')
-      .then(({ data, error }) => {
-        if (error) {
-          setDataError(error.message);
-        } else {
-          setPlayers(data as Player[]);
-        }
-        setDataLoading(false);
-      });
+    Promise.all([
+      supabase.from('players').select('*').order('name'),
+      supabase.from('player_preferences').select('*'),
+    ]).then(([playersResult, prefsResult]) => {
+      if (playersResult.error) {
+        setDataError(playersResult.error.message);
+      } else {
+        setPlayers(playersResult.data as Player[]);
+      }
+      if (!prefsResult.error) {
+        setPreferences(prefsResult.data as PlayerPreference[]);
+      }
+      setDataLoading(false);
+    });
   }, [session]);
 
   const handleSignIn = () => {
@@ -105,16 +109,16 @@ function App() {
 
   const generateTeams = useCallback(
     (teamCount: number) => {
-      setResult(sortTeams(selectedPlayers, teamCount));
+      setResult(sortTeams(selectedPlayers, teamCount, preferences));
       setLastTeamCount(teamCount);
       setStep('results');
     },
-    [selectedPlayers],
+    [selectedPlayers, preferences],
   );
 
   const handleResort = useCallback(() => {
-    setResult(sortTeams(selectedPlayers, lastTeamCount));
-  }, [selectedPlayers, lastTeamCount]);
+    setResult(sortTeams(selectedPlayers, lastTeamCount, preferences));
+  }, [selectedPlayers, lastTeamCount, preferences]);
 
   const handleTeamsChange = useCallback(
     (teams: Team[], reserves: Player[]) => {
@@ -259,6 +263,7 @@ function App() {
           <TeamDisplay
             teams={result.teams}
             reserves={result.reserves}
+            preferences={preferences}
             onTeamsChange={handleTeamsChange}
             onResort={handleResort}
             onReset={handleReset}

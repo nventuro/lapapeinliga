@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { Player, Team } from '../types';
+import type { Player, PlayerPreference, Team } from '../types';
 import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
+import { scoreAssignment } from '../utils/scoring';
 
 type HighlightLevel = 'error' | 'warning' | null;
 
@@ -14,6 +15,7 @@ function highlightClasses(level: HighlightLevel): string {
 interface TeamDisplayProps {
   teams: Team[];
   reserves: Player[];
+  preferences: PlayerPreference[];
   onTeamsChange: (teams: Team[], reserves: Player[]) => void;
   onResort: () => void;
   onReset: () => void;
@@ -22,6 +24,7 @@ interface TeamDisplayProps {
 export default function TeamDisplay({
   teams,
   reserves,
+  preferences,
   onTeamsChange,
   onResort,
   onReset,
@@ -73,39 +76,71 @@ export default function TeamDisplay({
     setSelectedPlayerId(null);
     onTeamsChange(newTeams, newReserves);
   }
-  // Global warnings
-  const globalWarnings: string[] = [];
+
+  // Score breakdown (recomputed on every render so it updates after manual moves)
+  const score = scoreAssignment(teams, preferences);
 
   const teamSizes = teams.map((t) => t.players.length);
   const sizeImbalance = new Set(teamSizes).size > 1;
   const minSize = Math.min(...teamSizes);
   const maxSize = Math.max(...teamSizes);
-  if (sizeImbalance) {
-    globalWarnings.push('Los equipos no tienen la misma cantidad de jugadores');
-  }
 
   const averageRatings = teams.map((t) => teamAverageRating(t));
   const ratingSpread = Math.max(...averageRatings) - Math.min(...averageRatings);
   const hasRatingSpreadWarning = ratingSpread >= MAX_RATING_SPREAD;
   const minRating = Math.min(...averageRatings);
   const maxRating = Math.max(...averageRatings);
-  if (hasRatingSpreadWarning) {
-    globalWarnings.push(`Hay mucha diferencia de nivel entre los equipos (${ratingSpread.toFixed(1)} puntos)`);
-  }
+
+  const hasViolations = score.strongPrefs.violations.length > 0 || score.softPrefs.violations.length > 0;
 
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Equipos armados</h2>
 
-      {globalWarnings.length > 0 && (
-        <div className="mb-4 space-y-2">
-          {globalWarnings.map((w) => (
-            <p key={w} className="text-sm text-warning border border-warning rounded-lg px-3 py-2">
-              {w}
-            </p>
-          ))}
+      {/* Score breakdown */}
+      <div className="mb-4 border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-bold text-sm">Puntaje del armado</h3>
+          <span className="text-sm font-semibold text-muted-strong">
+            {score.total.toFixed(1)}
+          </span>
         </div>
-      )}
+        <div className="space-y-1 text-sm text-muted">
+          <div className="flex justify-between">
+            <span>Nivel</span>
+            <span>{score.rating.weighted.toFixed(1)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Género</span>
+            <span>{score.gender.weighted.toFixed(1)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Preferencias fuertes</span>
+            <span>{score.strongPrefs.weighted.toFixed(1)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Preferencias suaves</span>
+            <span>{score.softPrefs.weighted.toFixed(1)}</span>
+          </div>
+        </div>
+
+        {hasViolations && (
+          <div className="mt-3 pt-3 border-t border-border-subtle space-y-1 text-sm">
+            {score.strongPrefs.violations.map((v, i) => (
+              <p key={`strong-${i}`} className="text-warning">
+                {v.playerA} y {v.playerB} <span className="font-semibold">realmente</span> prefieren estar en el mismo equipo pero están separados
+              </p>
+            ))}
+            {score.softPrefs.violations.map((v, i) => (
+              <p key={`soft-${i}`} className="text-muted">
+                {v.kind === 'split'
+                  ? `${v.playerA} y ${v.playerB} prefieren estar en el mismo equipo pero están separados`
+                  : `${v.playerA} y ${v.playerB} prefieren no estar en el mismo equipo pero están juntos`}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {teams.map((team, teamIndex) => {
@@ -117,8 +152,10 @@ export default function TeamDisplay({
           const warnings: string[] = [];
           if (size < MIN_TEAM_SIZE) errors.push(`Menos de ${MIN_TEAM_SIZE} jugadores`);
           if (size > MAX_TEAM_SIZE) errors.push(`Más de ${MAX_TEAM_SIZE} jugadores`);
-          if (maleCount <= MIN_GENDER_PER_TEAM) warnings.push(`Solo ${maleCount} hombre${maleCount !== 1 ? 's' : ''} en el equipo`);
-          if (femaleCount <= MIN_GENDER_PER_TEAM) warnings.push(`Solo ${femaleCount} mujer${femaleCount !== 1 ? 'es' : ''} en el equipo`);
+          if (maleCount === 0) warnings.push('No hay hombres en el equipo');
+          else if (maleCount <= MIN_GENDER_PER_TEAM) warnings.push(`Solo ${maleCount} hombre en el equipo`);
+          if (femaleCount === 0) warnings.push('No hay mujeres en el equipo');
+          else if (femaleCount <= MIN_GENDER_PER_TEAM) warnings.push(`Solo ${femaleCount} mujer en el equipo`);
 
           const hasError = errors.length > 0;
           const hasWarning = warnings.length > 0;
