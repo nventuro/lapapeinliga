@@ -208,7 +208,7 @@ export default function TeamDisplay({
                         : 'hover:bg-neutral'
                     }`}
                   >
-                    <span className="text-muted text-lg">
+                    <span className="text-muted text-xl">
                       {player.gender === 'male' ? '♂' : '♀'}
                     </span>
                     <span>{player.name}</span>
@@ -225,11 +225,11 @@ export default function TeamDisplay({
                 </span>
                 {' · '}
                 <span className={highlightClasses(maleHighlight)}>
-                  {maleCount}<span className={`text-base ${maleHighlight ? '' : 'text-muted'}`}>♂</span>
+                  {maleCount}<span className={`text-lg ${maleHighlight ? '' : 'text-muted'}`}>♂</span>
                 </span>
                 {' '}
                 <span className={highlightClasses(femaleHighlight)}>
-                  {femaleCount}<span className={`text-base ${femaleHighlight ? '' : 'text-muted'}`}>♀</span>
+                  {femaleCount}<span className={`text-lg ${femaleHighlight ? '' : 'text-muted'}`}>♀</span>
                 </span>
               </div>
 
@@ -282,7 +282,7 @@ export default function TeamDisplay({
                     : 'hover:bg-neutral'
                 }`}
               >
-                <span className="text-muted text-lg">
+                <span className="text-muted text-xl">
                   {player.gender === 'male' ? '♂' : '♀'}
                 </span>
                 <span>{player.name}</span>
