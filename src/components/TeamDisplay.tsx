@@ -4,6 +4,7 @@ import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, e
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
+import { LockedIcon, UnlockedIcon } from './icons';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
@@ -15,22 +16,6 @@ function highlightClasses(level: HighlightLevel): string {
   if (level === 'error') return 'text-error font-semibold';
   if (level === 'warning') return 'text-warning font-semibold';
   return '';
-}
-
-function LockedIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className ?? 'w-4 h-4'}>
-      <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function UnlockedIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className ?? 'w-4 h-4 opacity-30'}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75M3.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-    </svg>
-  );
 }
 
 interface PlayerRowProps {
