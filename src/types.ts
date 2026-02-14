@@ -34,6 +34,9 @@ export interface Team {
   players: Player[];
 }
 
+/** Maps player ID → team index (or 'reserves') for locked players. */
+export type PlayerLocks = Map<number, number | 'reserves'>;
+
 export interface ScoreBreakdown {
   rating: { raw: number; weighted: number };
   gender: { raw: number; weighted: number };

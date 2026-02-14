@@ -1,4 +1,4 @@
-import type { Player, Team, PlayerPreference, ScoreBreakdown } from '../types';
+import type { Player, Team, PlayerPreference, PlayerLocks, ScoreBreakdown } from '../types';
 import { MIN_GENDER_PER_TEAM, MAX_TEAM_SIZE, HILL_CLIMB_STARTS } from '../types';
 import { scoreAssignment, scoreTotal, buildPlayerTeamMap } from './scoring';
 import { playersPerTeam } from './teamCalculator';
@@ -23,13 +23,14 @@ function shuffle<T>(arr: T[]): T[] {
 
 /**
  * Generate one valid initial assignment.
- * If gender constraint is feasible (enough males & females for 1 per team),
- * distribute genders via round-robin first, then fill randomly.
+ * Pre-places locked players, then distributes free players via gender
+ * round-robin (when enforceGender) or simple shuffle.
  */
 function generateInitialAssignment(
   players: Player[],
   teamCount: number,
   enforceGender: boolean,
+  locks: PlayerLocks = new Map(),
 ): { teams: Team[]; reserves: Player[] } {
   const perTeam = playersPerTeam(players.length, teamCount);
 
@@ -37,45 +38,64 @@ function generateInitialAssignment(
     name: `Equipo ${String.fromCharCode(65 + i)}`,
     players: [],
   }));
+  const reserves: Player[] = [];
+
+  // Pre-place locked players
+  const lockedIds = new Set(locks.keys());
+  for (const player of players) {
+    if (!lockedIds.has(player.id)) continue;
+    const dest = locks.get(player.id)!;
+    if (dest === 'reserves') {
+      reserves.push(player);
+    } else {
+      teams[dest].players.push(player);
+    }
+  }
+
+  const freePlayers = players.filter((p) => !lockedIds.has(p.id));
 
   if (enforceGender) {
-    const males = shuffle(players.filter((p) => p.gender === 'male'));
-    const females = shuffle(players.filter((p) => p.gender === 'female'));
+    const females = shuffle(freePlayers.filter((p) => p.gender === 'female'));
+    const males = shuffle(freePlayers.filter((p) => p.gender === 'male'));
 
-    // Round-robin MIN_GENDER_PER_TEAM of each gender to each team
-    for (let g = 0; g < MIN_GENDER_PER_TEAM; g++) {
-      for (let t = 0; t < teamCount; t++) {
-        if (males.length > 0) teams[t].players.push(males.pop()!);
-        if (females.length > 0) teams[t].players.push(females.pop()!);
+    // Round-robin ALL free players of each gender across teams
+    for (const pool of [females, males]) {
+      let teamIdx = 0;
+      for (const player of pool) {
+        // Find next team that isn't full (wrap around)
+        let attempts = 0;
+        while (teams[teamIdx].players.length >= perTeam && attempts < teamCount) {
+          teamIdx = (teamIdx + 1) % teamCount;
+          attempts++;
+        }
+        if (attempts < teamCount) {
+          teams[teamIdx].players.push(player);
+          teamIdx = (teamIdx + 1) % teamCount;
+        }
+        // If all teams full, player stays unassigned (becomes reserve below)
       }
     }
 
-    // Remaining players to fill
-    const remaining = shuffle([...males, ...females]);
-    let teamIdx = 0;
-    for (const player of remaining) {
-      // Fill teams that haven't reached perTeam yet
-      while (teamIdx < teamCount && teams[teamIdx].players.length >= perTeam) {
-        teamIdx++;
-      }
-      if (teamIdx < teamCount) {
-        teams[teamIdx].players.push(player);
-      }
-      // If all teams full, remaining become reserves (handled below)
-    }
-
-    // Collect anyone not assigned
+    // Collect anyone not assigned as reserves
     const assigned = new Set(teams.flatMap((t) => t.players.map((p) => p.id)));
-    const reserves = players.filter((p) => !assigned.has(p.id));
+    for (const p of freePlayers) {
+      if (!assigned.has(p.id)) reserves.push(p);
+    }
     return { teams, reserves };
   }
 
-  // No gender constraint: simple shuffle and deal
-  const shuffled = shuffle(players);
-  for (let i = 0; i < teamCount; i++) {
-    teams[i].players = shuffled.slice(i * perTeam, (i + 1) * perTeam);
+  // No gender constraint: shuffle free players and deal
+  const shuffled = shuffle(freePlayers);
+  let idx = 0;
+  for (let t = 0; t < teamCount && idx < shuffled.length; t++) {
+    while (teams[t].players.length < perTeam && idx < shuffled.length) {
+      teams[t].players.push(shuffled[idx++]);
+    }
   }
-  const reserves = shuffled.slice(teamCount * perTeam);
+  // Remaining free players become reserves
+  while (idx < shuffled.length) {
+    reserves.push(shuffled[idx++]);
+  }
   return { teams, reserves };
 }
 
@@ -117,13 +137,16 @@ function cloneAssignment(teams: Team[], reserves: Player[]): { teams: Team[]; re
 
 /**
  * Run one hill-climbing pass: try all swaps/moves, pick the best improvement, repeat.
+ * Locked players are never moved.
  */
 function hillClimb(
   initialTeams: Team[],
   initialReserves: Player[],
   preferences: PlayerPreference[],
   enforceGender: boolean,
+  locks: PlayerLocks = new Map(),
 ): { teams: Team[]; reserves: Player[]; totalScore: number } {
+  const lockedIds = new Set(locks.keys());
   const { teams, reserves } = cloneAssignment(initialTeams, initialReserves);
   const playerTeam = buildPlayerTeamMap(teams);
   let currentScore = scoreTotal(teams, preferences, playerTeam);
@@ -139,9 +162,11 @@ function hillClimb(
       for (let tB = tA + 1; tB < teams.length; tB++) {
         for (let pA = 0; pA < teams[tA].players.length; pA++) {
           for (let pB = 0; pB < teams[tB].players.length; pB++) {
-            // Apply swap
             const playerA = teams[tA].players[pA];
             const playerB = teams[tB].players[pB];
+            if (lockedIds.has(playerA.id) || lockedIds.has(playerB.id)) continue;
+
+            // Apply swap
             teams[tA].players[pA] = playerB;
             teams[tB].players[pB] = playerA;
             playerTeam.set(playerA.id, tB);
@@ -181,6 +206,7 @@ function hillClimb(
         for (let rIdx = 0; rIdx < reserves.length; rIdx++) {
           const teamPlayer = teams[t].players[pIdx];
           const reservePlayer = reserves[rIdx];
+          if (lockedIds.has(teamPlayer.id) || lockedIds.has(reservePlayer.id)) continue;
 
           // Apply swap
           teams[t].players[pIdx] = reservePlayer;
@@ -230,6 +256,7 @@ export function sortTeams(
   players: Player[],
   teamCount: number,
   preferences: PlayerPreference[] = [],
+  locks: PlayerLocks = new Map(),
 ): SortResult {
   const enforceGender = canEnforceGender(players, teamCount);
 
@@ -238,8 +265,8 @@ export function sortTeams(
   let bestTotalScore = -Infinity;
 
   for (let start = 0; start < HILL_CLIMB_STARTS; start++) {
-    const initial = generateInitialAssignment(players, teamCount, enforceGender);
-    const result = hillClimb(initial.teams, initial.reserves, preferences, enforceGender);
+    const initial = generateInitialAssignment(players, teamCount, enforceGender, locks);
+    const result = hillClimb(initial.teams, initial.reserves, preferences, enforceGender, locks);
 
     if (result.totalScore > bestTotalScore) {
       bestTotalScore = result.totalScore;

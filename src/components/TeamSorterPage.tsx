@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Player, Team } from '../types';
+import type { Player, PlayerLocks, Team } from '../types';
 import { MIN_PLAYERS, MIN_TEAMS } from '../types';
 import { sortTeams } from '../utils/teamSorter';
 import { useAppContext } from '../context/appContext';
@@ -16,6 +16,7 @@ export default function TeamSorterPage() {
   const [result, setResult] = useState<{ teams: Team[]; reserves: Player[] } | null>(null);
   const [lastTeamCount, setLastTeamCount] = useState(MIN_TEAMS);
   const [step, setStep] = useState<Step>('select');
+  const [lockedIds, setLockedIds] = useState<Set<number>>(() => new Set());
 
   const handleToggle = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -37,6 +38,18 @@ export default function TeamSorterPage() {
     setSelectedIds(new Set());
   }, []);
 
+  const handleToggleLock = useCallback((id: number) => {
+    setLockedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id));
 
   const generateTeams = useCallback(
@@ -48,9 +61,23 @@ export default function TeamSorterPage() {
     [selectedPlayers, preferences],
   );
 
+  function buildLocksMap(teams: Team[], reserves: Player[], locked: Set<number>): PlayerLocks {
+    const locks: PlayerLocks = new Map();
+    for (let i = 0; i < teams.length; i++) {
+      for (const p of teams[i].players) {
+        if (locked.has(p.id)) locks.set(p.id, i);
+      }
+    }
+    for (const p of reserves) {
+      if (locked.has(p.id)) locks.set(p.id, 'reserves');
+    }
+    return locks;
+  }
+
   const handleResort = useCallback(() => {
-    setResult(sortTeams(selectedPlayers, lastTeamCount, preferences));
-  }, [selectedPlayers, lastTeamCount, preferences]);
+    const locks = result ? buildLocksMap(result.teams, result.reserves, lockedIds) : new Map();
+    setResult(sortTeams(selectedPlayers, lastTeamCount, preferences, locks));
+  }, [selectedPlayers, lastTeamCount, preferences, result, lockedIds]);
 
   const handleTeamsChange = useCallback(
     (teams: Team[], reserves: Player[]) => {
@@ -61,6 +88,7 @@ export default function TeamSorterPage() {
 
   const handleReset = useCallback(() => {
     setResult(null);
+    setLockedIds(new Set());
     setStep('select');
   }, []);
 
@@ -122,6 +150,8 @@ export default function TeamSorterPage() {
           teams={result.teams}
           reserves={result.reserves}
           preferences={preferences}
+          lockedIds={lockedIds}
+          onToggleLock={handleToggleLock}
           onTeamsChange={handleTeamsChange}
           onResort={handleResort}
           onReset={handleReset}

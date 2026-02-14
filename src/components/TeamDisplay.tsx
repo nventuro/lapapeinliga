@@ -3,6 +3,7 @@ import type { Player, PlayerPreference, Team } from '../types';
 import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
+import RatingBadge from './RatingBadge';
 
 type HighlightLevel = 'error' | 'warning' | null;
 
@@ -12,10 +13,64 @@ function highlightClasses(level: HighlightLevel): string {
   return '';
 }
 
+function LockedIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className ?? 'w-4 h-4'}>
+      <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function UnlockedIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className ?? 'w-4 h-4 opacity-30'}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75M3.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+    </svg>
+  );
+}
+
+interface PlayerRowProps {
+  player: Player;
+  isSelected: boolean;
+  isLocked: boolean;
+  onTap: (id: number) => void;
+  onToggleLock: (id: number) => void;
+}
+
+function PlayerRow({ player, isSelected, isLocked, onTap, onToggleLock }: PlayerRowProps) {
+  return (
+    <li
+      onClick={() => !isLocked && onTap(player.id)}
+      className={`flex items-center gap-2 py-1 px-2 rounded transition-colors ${
+        isLocked
+          ? 'cursor-default bg-neutral/50'
+          : isSelected
+            ? 'cursor-pointer bg-primary/20 ring-2 ring-primary'
+            : 'cursor-pointer hover:bg-neutral'
+      }`}
+    >
+      <span className="text-muted text-xl">
+        {player.gender === 'male' ? '♂' : '♀'}
+      </span>
+      <span>{player.name}</span>
+      <RatingBadge rating={player.rating} className="ml-auto" />
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleLock(player.id); }}
+        className="ml-1 p-1 rounded hover:bg-neutral-hover transition-colors"
+        title={isLocked ? 'Desbloquear jugador' : 'Bloquear jugador'}
+      >
+        {isLocked ? <LockedIcon /> : <UnlockedIcon />}
+      </button>
+    </li>
+  );
+}
+
 interface TeamDisplayProps {
   teams: Team[];
   reserves: Player[];
   preferences: PlayerPreference[];
+  lockedIds: Set<number>;
+  onToggleLock: (id: number) => void;
   onTeamsChange: (teams: Team[], reserves: Player[]) => void;
   onResort: () => void;
   onReset: () => void;
@@ -25,6 +80,8 @@ export default function TeamDisplay({
   teams,
   reserves,
   preferences,
+  lockedIds,
+  onToggleLock,
   onTeamsChange,
   onResort,
   onReset,
@@ -32,6 +89,7 @@ export default function TeamDisplay({
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
 
   function handlePlayerTap(playerId: number) {
+    if (lockedIds.has(playerId)) return;
     setSelectedPlayerId((prev) => (prev === playerId ? null : playerId));
   }
 
@@ -97,12 +155,20 @@ export default function TeamDisplay({
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Equipos armados</h2>
-        <button
-          onClick={onResort}
-          className="text-sm px-3 py-1 rounded-full border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
-        >
-          Volver a sortear
-        </button>
+        <div className="flex items-center gap-2">
+          {lockedIds.size > 0 && (
+            <span className="text-xs text-muted flex items-center gap-1">
+              <LockedIcon className="w-3 h-3" />
+              {lockedIds.size}
+            </span>
+          )}
+          <button
+            onClick={onResort}
+            className="text-sm px-3 py-1 rounded-full border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
+          >
+            Volver a sortear
+          </button>
+        </div>
       </div>
 
       {/* Score breakdown */}
@@ -136,7 +202,7 @@ export default function TeamDisplay({
           <div className="mt-3 pt-3 border-t border-border-subtle space-y-1 text-sm">
             {score.strongPrefs.violations.map((v, i) => (
               <p key={`strong-${i}`} className="text-warning">
-                {v.playerA} <span className="font-semibold">debe estar con</span> {v.playerB} pero están separados
+                {v.playerA} <span className="font-semibold">debe</span> estar con {v.playerB} pero están separados
               </p>
             ))}
             {score.softPrefs.violations.map((v, i) => (
@@ -207,23 +273,14 @@ export default function TeamDisplay({
 
               <ul className="space-y-1">
                 {[...team.players].sort((a, b) => b.rating - a.rating).map((player) => (
-                  <li
+                  <PlayerRow
                     key={player.id}
-                    onClick={() => handlePlayerTap(player.id)}
-                    className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer transition-colors ${
-                      selectedPlayerId === player.id
-                        ? 'bg-primary/20 ring-2 ring-primary'
-                        : 'hover:bg-neutral'
-                    }`}
-                  >
-                    <span className="text-muted text-xl">
-                      {player.gender === 'male' ? '♂' : '♀'}
-                    </span>
-                    <span>{player.name}</span>
-                    <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral text-muted-strong">
-                      {player.rating}/10
-                    </span>
-                  </li>
+                    player={player}
+                    isSelected={selectedPlayerId === player.id}
+                    isLocked={lockedIds.has(player.id)}
+                    onTap={handlePlayerTap}
+                    onToggleLock={onToggleLock}
+                  />
                 ))}
               </ul>
 
@@ -281,23 +338,14 @@ export default function TeamDisplay({
         {reserves.length > 0 ? (
           <ul className="space-y-1">
             {reserves.map((player) => (
-              <li
+              <PlayerRow
                 key={player.id}
-                onClick={() => handlePlayerTap(player.id)}
-                className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer transition-colors ${
-                  selectedPlayerId === player.id
-                    ? 'bg-primary/20 ring-2 ring-primary'
-                    : 'hover:bg-neutral'
-                }`}
-              >
-                <span className="text-muted text-xl">
-                  {player.gender === 'male' ? '♂' : '♀'}
-                </span>
-                <span>{player.name}</span>
-                <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral text-muted-strong">
-                  {player.rating}/10
-                </span>
-              </li>
+                player={player}
+                isSelected={selectedPlayerId === player.id}
+                isLocked={lockedIds.has(player.id)}
+                onTap={handlePlayerTap}
+                onToggleLock={onToggleLock}
+              />
             ))}
           </ul>
         ) : (

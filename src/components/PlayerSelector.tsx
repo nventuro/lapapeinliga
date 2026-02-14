@@ -1,4 +1,5 @@
 import type { Player } from '../types';
+import RatingBadge from './RatingBadge';
 
 interface PlayerSelectorProps {
   players: Player[];
@@ -50,9 +51,7 @@ export default function PlayerSelector({
                 {player.gender === 'male' ? '♂' : '♀'}
               </span>
               <span className="font-medium">{player.name}</span>
-              <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral text-muted-strong">
-                {player.rating}/10
-              </span>
+              <RatingBadge rating={player.rating} className="ml-auto" />
             </label>
           </li>
         ))}
