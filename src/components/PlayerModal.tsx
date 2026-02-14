@@ -33,8 +33,8 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
 
   const [name, setName] = useState(player?.name ?? '');
   const [gender, setGender] = useState<'male' | 'female'>(player?.gender ?? 'male');
-  const [isCore, setIsCore] = useState(player?.is_core ?? true);
-  const [rating, setRating] = useState<number | null>(player?.rating ?? 5);
+  const [isCore, setIsCore] = useState(player?.is_core ?? false);
+  const [rating, setRating] = useState<number | null>(player?.rating ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -257,9 +257,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                 onChange={(e) => {
                   const checked = e.target.checked;
                   setIsCore(checked);
-                  if (!checked && rating !== null) {
-                    // Keep existing rating when toggling to non-core
-                  } else if (checked && rating === null) {
+                  if (checked && rating === null) {
                     setRating(5);
                   }
                 }}
@@ -278,7 +276,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                 <input
                   type="checkbox"
                   checked={rating === null}
-                  onChange={(e) => setRating(e.target.checked ? null : 5)}
+                  onChange={(e) => setRating(e.target.checked ? null : DEFAULT_UNRATED_RATING)}
                   className="w-4 h-4 accent-primary"
                 />
                 <span className="text-sm text-muted">Sin rating (se usa {DEFAULT_UNRATED_RATING})</span>
