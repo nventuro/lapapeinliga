@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate } from '../utils/dateUtils';
 import { teamAverageRating } from '../utils/scoring';
+import { TrophyIcon, SoccerBallIcon, ShieldIcon, CrownIcon } from './icons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Confetti from './Confetti';
@@ -16,39 +17,6 @@ const AWARD_LABELS: Record<AwardType, string> = {
   best_defense: 'Mejor defensa',
   mvp: 'MVP',
 };
-
-function TrophyIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className ?? 'w-4 h-4'}>
-      <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 0 0-.584.859 6.753 6.753 0 0 0 6.138 5.6 6.73 6.73 0 0 0 2.743 1.346A6.707 6.707 0 0 1 9.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 0 0 0 1.5h12.17a.75.75 0 0 0 0-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 0 1-1.112-3.173 6.73 6.73 0 0 0 2.743-1.347 6.753 6.753 0 0 0 6.139-5.6.75.75 0 0 0-.585-.858 47.077 47.077 0 0 0-3.07-.543V2.62a.75.75 0 0 0-.658-.744 49.22 49.22 0 0 0-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 0 0-.657.744Zm0 2.629c0 1.196.312 2.32.857 3.294A5.266 5.266 0 0 1 3.16 5.337a45.6 45.6 0 0 1 2.006-.343v.256Zm13.668 0v-.256c.674.1 1.343.214 2.006.343a5.266 5.266 0 0 1-2.863 3.207 6.72 6.72 0 0 0 .857-3.294Z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function SoccerBallIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className ?? 'w-4 h-4'}>
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm1 2.07c1.95.3 3.64 1.33 4.76 2.81L16.2 8.4l-2.2-.6V4.07ZM11 4.07V7.8l-2.2.6-1.56-1.52A8.02 8.02 0 0 1 11 4.07ZM5.33 8.36l1.56 1.52-.6 2.2H3.55c.09-1.4.66-2.68 1.58-3.72h.2ZM3.55 13.92h2.74l.6 2.2-1.56 1.52c-.92-1.04-1.69-2.32-1.78-3.72Zm4.21 5.01 1.56-1.53 2.2.6v3.73a8.02 8.02 0 0 1-3.76-2.8Zm5.24 2.8V18l2.2-.6 1.56 1.53a8.02 8.02 0 0 1-3.76 2.8Zm5.67-5.01-1.56-1.52.6-2.2h2.74c-.09 1.4-.86 2.68-1.78 3.72Zm.78-5.56h-2.74l-.6-2.2 1.56-1.52a7.94 7.94 0 0 1 1.78 3.72ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className ?? 'w-4 h-4'}>
-      <path fillRule="evenodd" d="M12.516 2.17a.75.75 0 0 0-1.032 0 11.209 11.209 0 0 1-7.877 3.08.75.75 0 0 0-.722.515A12.74 12.74 0 0 0 2.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 0 0 .374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 0 0-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08Zm3.094 8.016a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function CrownIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className ?? 'w-4 h-4'}>
-      <path d="M2 17l2-11 4.5 5L12 4l3.5 7L20 6l2 11H2Z" />
-      <rect x="2" y="18.5" width="20" height="2.5" rx="1" />
-    </svg>
-  );
-}
 
 const AWARD_ICONS: Record<AwardType, typeof TrophyIcon> = {
   top_scorer: SoccerBallIcon,
