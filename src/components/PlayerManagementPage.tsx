@@ -37,7 +37,7 @@ export default function PlayerManagementPage() {
 
   return (
     <div>
-      <div className="flex justify-end mb-6">
+      <div className="flex justify-center mb-6">
         <button
           onClick={() => setModalPlayer(null)}
           className="px-4 py-2 rounded-lg font-medium text-sm text-on-primary bg-primary hover:bg-primary-hover transition-colors"
