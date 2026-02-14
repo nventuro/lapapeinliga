@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import type { Player } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
@@ -7,6 +6,7 @@ import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
+import NoAccess from './NoAccess';
 
 export default function PlayerManagementPage() {
   const { players, isAdmin, refetchData } = useAppContext();
@@ -14,14 +14,7 @@ export default function PlayerManagementPage() {
   // undefined = closed, null = creating, Player = editing
 
   if (!isAdmin) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted mb-4">No tenés acceso a esta sección.</p>
-        <Link to="/" className="text-primary hover:text-primary-hover underline">
-          Volver al inicio
-        </Link>
-      </div>
-    );
+    return <NoAccess />;
   }
 
   async function handleDelete(player: Player) {
@@ -44,8 +37,7 @@ export default function PlayerManagementPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">Jugadores</h2>
+      <div className="flex justify-end mb-6">
         <button
           onClick={() => setModalPlayer(null)}
           className="px-4 py-2 rounded-lg font-medium text-sm text-on-primary bg-primary hover:bg-primary-hover transition-colors"

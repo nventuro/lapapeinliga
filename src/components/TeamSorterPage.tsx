@@ -6,11 +6,12 @@ import { useAppContext } from '../context/appContext';
 import PlayerSelector from './PlayerSelector';
 import TeamConfigurator from './TeamConfigurator';
 import TeamDisplay from './TeamDisplay';
+import NoAccess from './NoAccess';
 
 type Step = 'select' | 'configure' | 'results';
 
 export default function TeamSorterPage() {
-  const { players, preferences } = useAppContext();
+  const { players, preferences, isAdmin } = useAppContext();
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [result, setResult] = useState<{ teams: Team[]; reserves: Player[] } | null>(null);
@@ -99,6 +100,10 @@ export default function TeamSorterPage() {
     setLockedIds(new Set());
     setStep('select');
   }, []);
+
+  if (!isAdmin) {
+    return <NoAccess />;
+  }
 
   return (
     <>

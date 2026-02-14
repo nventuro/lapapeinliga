@@ -52,8 +52,6 @@ export default function MatchdayListPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-6">Fechas</h2>
-
       <div className="space-y-3">
         {matchdays.map((matchday) => {
           const winnerTeam = matchday.winning_team_id

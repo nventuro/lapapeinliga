@@ -64,7 +64,7 @@ export function AppProvider({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+      <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
         <p className="text-muted text-lg">Cargando jugadores...</p>
       </div>
     );
@@ -72,7 +72,7 @@ export function AppProvider({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+      <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
         <div className="text-center px-4">
           <p className="text-error mb-4">Error: {error}</p>
           <button
@@ -88,7 +88,7 @@ export function AppProvider({
 
   if (players.length === 0 && !isAdmin) {
     return (
-      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+      <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
         <div className="text-center px-4">
           <h1 className="text-3xl font-bold mb-4">La Papeinliga</h1>
           <p className="text-muted mb-6">No tenés acceso a los jugadores.</p>
