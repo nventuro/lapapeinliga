@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { MatchdayWithDetails, Player, AwardType } from '../types';
-import { effectiveRating } from '../types';
+import { effectiveRating, isGuest } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate } from '../utils/dateUtils';
@@ -252,7 +252,7 @@ export default function MatchdayDetailPage() {
                     <li key={player.id} className="flex items-center gap-2 py-1 px-2">
                       <GenderIcon gender={player.gender} />
                       <span>{player.name}</span>
-                      {player.is_core === false && <InvBadge />}
+                      {isGuest(player) && <InvBadge />}
                       {awards?.map((award) => {
                         const Icon = AWARD_ICONS[award];
                         return (
@@ -287,7 +287,7 @@ export default function MatchdayDetailPage() {
               <li key={player.id} className="flex items-center gap-2 py-1 px-2">
                 <GenderIcon gender={player.gender} />
                 <span>{player.name}</span>
-                {player.is_core === false && <InvBadge />}
+                {isGuest(player) && <InvBadge />}
               </li>
             ))}
           </ul>

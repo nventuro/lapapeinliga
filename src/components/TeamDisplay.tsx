@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Player, PlayerPreference, Team } from '../types';
-import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, effectiveRating } from '../types';
+import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, effectiveRating, isGuest } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
@@ -55,7 +55,7 @@ function PlayerRow({ player, isSelected, isLocked, onTap, onToggleLock }: Player
     >
       <GenderIcon gender={player.gender} />
       <span>{player.name}</span>
-      {player.is_core === false && <InvBadge />}
+      {isGuest(player) && <InvBadge />}
       <RatingBadge rating={player.rating} className="ml-auto" />
       <button
         onClick={(e) => { e.stopPropagation(); onToggleLock(player.id); }}

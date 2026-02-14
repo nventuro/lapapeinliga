@@ -15,12 +15,38 @@ export const WEIGHT_STRONG_PREF = 3;
 export const WEIGHT_SOFT_PREF = 1;
 export const HILL_CLIMB_STARTS = 10;
 
+export type PlayerTier = 'core' | 'sporadic' | 'guest';
+
+export const PLAYER_TIERS: PlayerTier[] = ['core', 'sporadic', 'guest'];
+
+export const TIER_LABELS: Record<PlayerTier, string> = {
+  core: 'Fijo',
+  sporadic: 'Esporádico',
+  guest: 'Invitado',
+};
+
+export const TIER_GROUP_LABELS: Record<PlayerTier, string> = {
+  core: 'Fijos',
+  sporadic: 'Esporádicos',
+  guest: 'Invitados',
+};
+
+export const TIER_ORDER: Record<PlayerTier, number> = {
+  core: 0,
+  sporadic: 1,
+  guest: 2,
+};
+
 export interface Player {
   id: number;
   name: string;
   gender: 'male' | 'female';
-  rating: number | null; // 1-10, null for unrated non-core players
-  is_core: boolean;
+  rating: number | null; // 1-10, null for unrated guests
+  tier: PlayerTier;
+}
+
+export function isGuest(player: Player): boolean {
+  return player.tier === 'guest';
 }
 
 export function effectiveRating(player: Player): number {

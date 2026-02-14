@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Player } from '../types';
+import { TIER_ORDER, isGuest } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import PlayerModal from './PlayerModal';
@@ -47,7 +48,9 @@ export default function PlayerManagementPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {players.map((player) => (
+        {[...players]
+          .sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || a.name.localeCompare(b.name))
+          .map((player) => (
           <div
             key={player.id}
             className="border border-border rounded-xl p-4 flex items-center justify-between"
@@ -55,7 +58,7 @@ export default function PlayerManagementPage() {
             <div className="flex items-center gap-3 min-w-0">
               <GenderIcon gender={player.gender} />
               <span className="font-medium truncate">{player.name}</span>
-              {player.is_core === false && <InvBadge />}
+              {isGuest(player) && <InvBadge />}
               <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />
             </div>
             <div className="flex items-center gap-2 shrink-0">

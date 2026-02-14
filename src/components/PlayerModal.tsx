@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Player, PlayerPreference, PreferenceType } from '../types';
-import { MIN_RATING, MAX_RATING, DEFAULT_UNRATED_RATING } from '../types';
+import type { Player, PlayerPreference, PreferenceType, PlayerTier } from '../types';
+import { MIN_RATING, MAX_RATING, DEFAULT_UNRATED_RATING, PLAYER_TIERS, TIER_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { capitalizeName } from '../utils/nameUtils';
 import { useAppContext } from '../context/appContext';
@@ -33,7 +33,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
 
   const [name, setName] = useState(player?.name ?? '');
   const [gender, setGender] = useState<'male' | 'female'>(player?.gender ?? 'male');
-  const [isCore, setIsCore] = useState(player?.is_core ?? false);
+  const [tier, setTier] = useState<PlayerTier>(player?.tier ?? 'guest');
   const [rating, setRating] = useState<number | null>(player?.rating ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,9 +117,9 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
       return;
     }
 
-    // Core players must have a rating
-    if (isCore && rating === null) {
-      setError('Los jugadores fijos deben tener un rating.');
+    // Non-guest players must have a rating
+    if (tier !== 'guest' && rating === null) {
+      setError('Los jugadores fijos y esporádicos deben tener un rating.');
       setSaving(false);
       return;
     }
@@ -140,7 +140,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
       // Update player
       const { error: dbError } = await supabase
         .from('players')
-        .update({ name: trimmed, gender, rating, is_core: isCore })
+        .update({ name: trimmed, gender, rating, tier })
         .eq('id', player.id);
 
       if (dbError) {
@@ -194,7 +194,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
       // Create player
       const { error: dbError } = await supabase
         .from('players')
-        .insert({ name: trimmed, gender, rating, is_core: isCore });
+        .insert({ name: trimmed, gender, rating, tier });
 
       if (dbError) {
         if (dbError.code === '23505') {
@@ -250,28 +250,29 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
           </div>
 
           <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isCore}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setIsCore(checked);
-                  if (checked && rating === null) {
-                    setRating(5);
-                  }
-                }}
-                className="w-5 h-5 accent-primary"
-              />
-              <span className="text-sm font-medium">Jugador fijo</span>
-            </label>
+            <label className="block text-sm font-medium mb-1">Categoría</label>
+            <select
+              value={tier}
+              onChange={(e) => {
+                const newTier = e.target.value as PlayerTier;
+                setTier(newTier);
+                if (newTier !== 'guest' && rating === null) {
+                  setRating(5);
+                }
+              }}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {PLAYER_TIERS.map((t) => (
+                <option key={t} value={t}>{TIER_LABELS[t]}</option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">
               Rating ({MIN_RATING}–{MAX_RATING})
             </label>
-            {!isCore && (
+            {tier === 'guest' && (
               <label className="flex items-center gap-2 mb-2 cursor-pointer">
                 <input
                   type="checkbox"
