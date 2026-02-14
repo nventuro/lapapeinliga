@@ -37,6 +37,29 @@ export interface Team {
 /** Maps player ID → team index (or 'reserves') for locked players. */
 export type PlayerLocks = Map<number, number | 'reserves'>;
 
+export type Matchday = {
+  id: number;
+  played_at: string;
+  winning_team_id: number | null;
+  top_scorer_id: number | null;
+  best_defense_id: number | null;
+  mvp_id: number | null;
+};
+
+export type MatchdayTeam = {
+  id: number;
+  matchday_id: number;
+  name: string;
+  players: Player[];
+};
+
+export type MatchdayWithDetails = Matchday & {
+  teams: MatchdayTeam[];
+  reserves: Player[];
+};
+
+export type AwardType = 'top_scorer' | 'best_defense' | 'mvp';
+
 export interface ScoreBreakdown {
   rating: { raw: number; weighted: number };
   gender: { raw: number; weighted: number };

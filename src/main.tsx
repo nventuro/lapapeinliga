@@ -5,6 +5,8 @@ import './index.css'
 import App from './App.tsx'
 import TeamSorterPage from './components/TeamSorterPage.tsx'
 import PlayerManagementPage from './components/PlayerManagementPage.tsx'
+import MatchdayListPage from './components/MatchdayListPage.tsx'
+import MatchdayDetailPage from './components/MatchdayDetailPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -12,6 +14,8 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route element={<App />}>
           <Route index element={<TeamSorterPage />} />
+          <Route path="matchdays" element={<MatchdayListPage />} />
+          <Route path="matchdays/:id" element={<MatchdayDetailPage />} />
           <Route path="players" element={<PlayerManagementPage />} />
         </Route>
       </Routes>

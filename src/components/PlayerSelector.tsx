@@ -1,5 +1,6 @@
 import type { Player } from '../types';
 import RatingBadge from './RatingBadge';
+import GenderIcon from './GenderIcon';
 
 interface PlayerSelectorProps {
   players: Player[];
@@ -47,9 +48,7 @@ export default function PlayerSelector({
                 onChange={() => onToggle(player.id)}
                 className="w-5 h-5 accent-primary"
               />
-              <span className="text-muted text-xl">
-                {player.gender === 'male' ? '♂' : '♀'}
-              </span>
+              <GenderIcon gender={player.gender} />
               <span className="font-medium">{player.name}</span>
               <RatingBadge rating={player.rating} className="ml-auto" />
             </label>

@@ -3,7 +3,10 @@ import type { Player, PlayerPreference, Team } from '../types';
 import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
+import { useAppContext } from '../context/appContext';
 import RatingBadge from './RatingBadge';
+import GenderIcon from './GenderIcon';
+import SaveMatchdayDialog from './SaveMatchdayDialog';
 
 type HighlightLevel = 'error' | 'warning' | null;
 
@@ -49,9 +52,7 @@ function PlayerRow({ player, isSelected, isLocked, onTap, onToggleLock }: Player
             : 'cursor-pointer hover:bg-neutral'
       }`}
     >
-      <span className="text-muted text-xl">
-        {player.gender === 'male' ? '♂' : '♀'}
-      </span>
+      <GenderIcon gender={player.gender} />
       <span>{player.name}</span>
       <RatingBadge rating={player.rating} className="ml-auto" />
       <button
@@ -86,7 +87,9 @@ export default function TeamDisplay({
   onResort,
   onReset,
 }: TeamDisplayProps) {
+  const { isAdmin } = useAppContext();
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   function handlePlayerTap(playerId: number) {
     if (lockedIds.has(playerId)) return;
@@ -362,12 +365,30 @@ export default function TeamDisplay({
         )}
       </div>
 
-      <button
-        onClick={onReset}
-        className="w-full py-3 rounded-lg font-bold text-muted-strong bg-neutral hover:bg-neutral-hover transition-colors"
-      >
-        Volver al inicio
-      </button>
+      <div className="flex gap-3">
+        <button
+          onClick={onReset}
+          className="flex-1 py-3 rounded-lg font-bold text-muted-strong bg-neutral hover:bg-neutral-hover transition-colors"
+        >
+          Volver al inicio
+        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowSaveDialog(true)}
+            className="flex-1 py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors"
+          >
+            Guardar fecha
+          </button>
+        )}
+      </div>
+
+      {showSaveDialog && (
+        <SaveMatchdayDialog
+          teams={teams}
+          reserves={reserves}
+          onClose={() => setShowSaveDialog(false)}
+        />
+      )}
     </div>
   );
 }

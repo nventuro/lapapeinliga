@@ -30,6 +30,9 @@ Migrations live in `supabase/migrations/`.
 5. **Sort teams** — a hill-climbing optimizer distributes players into balanced teams, minimizing rating spread, gender imbalance, and preference violations
 6. **Adjust** — move players between teams and reserves, re-sort as needed. A score breakdown shows per-category penalties and specific preference violations. Per-team cards flag size errors and gender warnings.
 7. **Lock & reshuffle** — lock specific players into their current teams, then reshuffle. Locked players stay put while the optimizer redistributes everyone else.
+8. **Save as matchday** — admins can save the current team assignment as a matchday ("fecha"), picking a date and editing team names
+9. **Browse matchdays** — view past matchdays from the "Fechas" tab, with team rosters and reserves
+10. **Record results** — admins can set the winning team and individual awards (top scorer, best defense, MVP) on any matchday
 
 ## Team Sorting Algorithm
 

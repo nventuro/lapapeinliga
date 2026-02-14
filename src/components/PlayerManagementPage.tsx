@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
+import GenderIcon from './GenderIcon';
 
 export default function PlayerManagementPage() {
   const { players, isAdmin, refetchData } = useAppContext();
@@ -59,9 +60,7 @@ export default function PlayerManagementPage() {
             className="border border-border rounded-xl p-4 flex items-center justify-between"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className="text-lg" title={player.gender === 'male' ? 'Masculino' : 'Femenino'}>
-                {player.gender === 'male' ? '♂' : '♀'}
-              </span>
+              <GenderIcon gender={player.gender} />
               <span className="font-medium truncate">{player.name}</span>
               <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />
             </div>

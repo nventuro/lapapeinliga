@@ -99,6 +99,16 @@ function App() {
                 Armar equipos
               </Link>
               <Link
+                to="/matchdays"
+                className={`text-sm font-medium transition-colors ${
+                  location.pathname.startsWith('/matchdays')
+                    ? 'text-primary'
+                    : 'text-muted hover:text-muted-strong'
+                }`}
+              >
+                Fechas
+              </Link>
+              <Link
                 to="/players"
                 className={`text-sm font-medium transition-colors ${
                   location.pathname === '/players'

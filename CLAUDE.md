@@ -17,6 +17,7 @@ Friendly soccer group team organizer — static site POC.
 - **Components**: Functional components with hooks, one component per file in `src/components/`
 - **Types**: Shared types in `src/types.ts`
 - **No magic numbers**: Domain logic constants (team sizes, player limits, thresholds) must be named constants in `src/types.ts`, never hardcoded in components or utils. UI-facing text must interpolate these constants, not repeat literal values.
+- **Date format**: Always dd/mm order, never mm/dd/yyyy. Use `formatDate` (long locale) or `formatDateShort` (dd/mm/yyyy) from `src/utils/dateUtils.ts`.
 - **No duplicated logic**: If the same computation exists in two places, extract it. Check for existing logic before writing new code that searches/filters/computes the same thing.
 - **Zero lint errors**: Run `npm run lint` after changes and fix any errors before considering work done. Never introduce new lint violations.
 
