@@ -1,0 +1,106 @@
+import { useState, useEffect, useCallback } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import type { Player, PlayerPreference } from '../types';
+import { supabase } from '../lib/supabase';
+import { AppContext } from './appContext';
+
+export function AppProvider({
+  session,
+  children,
+}: {
+  session: Session;
+  children: React.ReactNode;
+}) {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [preferences, setPreferences] = useState<PlayerPreference[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    const [playersResult, prefsResult] = await Promise.all([
+      supabase.from('players').select('*').order('name'),
+      supabase.from('player_preferences').select('*'),
+    ]);
+
+    if (playersResult.error) {
+      setError(playersResult.error.message);
+      return;
+    }
+
+    setPlayers(playersResult.data as Player[]);
+    if (!prefsResult.error) {
+      setPreferences(prefsResult.data as PlayerPreference[]);
+    }
+    setError(null);
+  }, []);
+
+  // Initial data load + admin check
+  useEffect(() => {
+    async function init() {
+      setLoading(true);
+
+      const { data: adminResult } = await supabase.rpc('is_admin');
+      setIsAdmin(adminResult === true);
+
+      await fetchData();
+      setLoading(false);
+    }
+    init();
+  }, [fetchData]);
+
+  const refetchData = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
+  const handleSignOut = () => {
+    supabase.auth.signOut();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <p className="text-muted text-lg">Cargando jugadores...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <div className="text-center px-4">
+          <p className="text-error mb-4">Error: {error}</p>
+          <button
+            onClick={handleSignOut}
+            className="text-muted hover:text-muted-strong underline"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (players.length === 0 && !isAdmin) {
+    return (
+      <div className="min-h-screen bg-surface text-on-surface flex items-center justify-center">
+        <div className="text-center px-4">
+          <h1 className="text-3xl font-bold mb-4">La Papeinliga</h1>
+          <p className="text-muted mb-6">No tenés acceso a los jugadores.</p>
+          <button
+            onClick={handleSignOut}
+            className="text-muted hover:text-muted-strong underline"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <AppContext.Provider value={{ session, players, preferences, isAdmin, refetchData }}>
+      {children}
+    </AppContext.Provider>
+  );
+}

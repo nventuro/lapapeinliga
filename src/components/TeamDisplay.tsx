@@ -136,14 +136,14 @@ export default function TeamDisplay({
           <div className="mt-3 pt-3 border-t border-border-subtle space-y-1 text-sm">
             {score.strongPrefs.violations.map((v, i) => (
               <p key={`strong-${i}`} className="text-warning">
-                {v.playerA} y {v.playerB} <span className="font-semibold">realmente</span> prefieren estar en el mismo equipo pero están separados
+                {v.playerA} <span className="font-semibold">debe estar con</span> {v.playerB} pero están separados
               </p>
             ))}
             {score.softPrefs.violations.map((v, i) => (
               <p key={`soft-${i}`} className="text-muted">
                 {v.kind === 'split'
-                  ? `${v.playerA} y ${v.playerB} prefieren estar en el mismo equipo pero están separados`
-                  : `${v.playerA} y ${v.playerB} prefieren no estar en el mismo equipo pero están juntos`}
+                  ? `${v.playerA} prefiere estar con ${v.playerB} pero están separados`
+                  : `${v.playerA} prefiere no estar con ${v.playerB} pero están juntos`}
               </p>
             ))}
           </div>
