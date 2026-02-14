@@ -1,5 +1,4 @@
 import type { Player } from '../types';
-import { effectiveRating } from '../types';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
@@ -54,10 +53,10 @@ export default function PlayerSelector({
 }: PlayerSelectorProps) {
   const corePlayers = players
     .filter((p) => p.is_core !== false)
-    .sort((a, b) => effectiveRating(b) - effectiveRating(a));
+    .sort((a, b) => a.name.localeCompare(b.name));
   const nonCorePlayers = players
     .filter((p) => p.is_core === false)
-    .sort((a, b) => effectiveRating(b) - effectiveRating(a));
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div>
