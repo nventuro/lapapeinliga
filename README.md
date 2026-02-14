@@ -24,10 +24,12 @@ Migrations live in `supabase/migrations/`.
 ## How It Works
 
 1. **Sign in** — authenticate with Google
-2. **Select players** — check who's attending from the roster
-3. **Configure teams** — choose how many teams to create (valid splits shown based on team size limits)
-4. **Sort teams** — a hill-climbing optimizer distributes players into balanced teams, minimizing rating spread, gender imbalance, and preference violations
-5. **Adjust** — move players between teams and reserves, re-sort as needed. A score breakdown shows per-category penalties and specific preference violations. Per-team cards flag size errors and gender warnings.
+2. **Manage players** — admins can add, edit, and delete players from the roster via a dedicated management page
+3. **Select players** — check who's attending from the roster
+4. **Configure teams** — choose how many teams to create (valid splits shown based on team size limits)
+5. **Sort teams** — a hill-climbing optimizer distributes players into balanced teams, minimizing rating spread, gender imbalance, and preference violations
+6. **Adjust** — move players between teams and reserves, re-sort as needed. A score breakdown shows per-category penalties and specific preference violations. Per-team cards flag size errors and gender warnings.
+7. **Lock & reshuffle** — lock specific players into their current teams, then reshuffle. Locked players stay put while the optimizer redistributes everyone else.
 
 ## Team Sorting Algorithm
 
