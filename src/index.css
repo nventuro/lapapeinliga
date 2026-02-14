@@ -29,6 +29,9 @@
   /* Warning */
   --color-warning: #f59e0b;
 
+  /* Info (light blue badges/labels) */
+  --color-info: #38bdf8;
+
   /* Gold (winner/awards) */
   --color-gold: #d4a017;
   --color-gold-subtle: #fef3c7;
