@@ -6,6 +6,7 @@ export const MIN_PLAYERS = MIN_TEAM_SIZE * MIN_TEAMS;
 export const MIN_RATING = 1;
 export const MAX_RATING = 10;
 export const MAX_RATING_SPREAD = 0.75;
+export const DEFAULT_UNRATED_RATING = 4;
 
 // Scoring weights for team assignment optimization
 export const WEIGHT_RATING = 10;
@@ -18,7 +19,12 @@ export interface Player {
   id: number;
   name: string;
   gender: 'male' | 'female';
-  rating: number; // 1-10
+  rating: number | null; // 1-10, null for unrated non-core players
+  is_core: boolean;
+}
+
+export function effectiveRating(player: Player): number {
+  return player.rating ?? DEFAULT_UNRATED_RATING;
 }
 
 export type PreferenceType = 'prefer_with' | 'strongly_prefer_with' | 'prefer_not_with';

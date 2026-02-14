@@ -30,12 +30,20 @@ export default function TeamSorterPage() {
     });
   }, []);
 
-  const handleSelectAll = useCallback(() => {
-    setSelectedIds(new Set(players.map((p) => p.id)));
-  }, [players]);
+  const handleSelectMany = useCallback((ids: number[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.add(id);
+      return next;
+    });
+  }, []);
 
-  const handleDeselectAll = useCallback(() => {
-    setSelectedIds(new Set());
+  const handleDeselectMany = useCallback((ids: number[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
   }, []);
 
   const handleToggleLock = useCallback((id: number) => {
@@ -100,8 +108,8 @@ export default function TeamSorterPage() {
             players={players}
             selectedIds={selectedIds}
             onToggle={handleToggle}
-            onSelectAll={handleSelectAll}
-            onDeselectAll={handleDeselectAll}
+            onSelectMany={handleSelectMany}
+            onDeselectMany={handleDeselectMany}
           />
           <div className="mt-6">
             <div className="flex items-center justify-between mb-3 text-sm text-muted">

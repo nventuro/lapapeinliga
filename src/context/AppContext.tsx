@@ -17,11 +17,9 @@ export function AppProvider({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    const [playersResult, prefsResult] = await Promise.all([
-      supabase.from('players').select('*').order('name'),
-      supabase.from('player_preferences').select('*'),
-    ]);
+  const fetchData = useCallback(async (admin: boolean) => {
+    const table = admin ? 'players' : 'players_public';
+    const playersResult = await supabase.from(table).select('*').order('name');
 
     if (playersResult.error) {
       setError(playersResult.error.message);
@@ -29,9 +27,15 @@ export function AppProvider({
     }
 
     setPlayers(playersResult.data as Player[]);
-    if (!prefsResult.error) {
-      setPreferences(prefsResult.data as PlayerPreference[]);
+
+    // Preferences are admin-only (RLS restricted)
+    if (admin) {
+      const prefsResult = await supabase.from('player_preferences').select('*');
+      if (!prefsResult.error) {
+        setPreferences(prefsResult.data as PlayerPreference[]);
+      }
     }
+
     setError(null);
   }, []);
 
@@ -41,17 +45,18 @@ export function AppProvider({
       setLoading(true);
 
       const { data: adminResult } = await supabase.rpc('is_admin');
-      setIsAdmin(adminResult === true);
+      const admin = adminResult === true;
+      setIsAdmin(admin);
 
-      await fetchData();
+      await fetchData(admin);
       setLoading(false);
     }
     init();
   }, [fetchData]);
 
   const refetchData = useCallback(async () => {
-    await fetchData();
-  }, [fetchData]);
+    await fetchData(isAdmin);
+  }, [fetchData, isAdmin]);
 
   const handleSignOut = () => {
     supabase.auth.signOut();

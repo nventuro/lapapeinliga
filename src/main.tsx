@@ -13,9 +13,9 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route element={<App />}>
-          <Route index element={<TeamSorterPage />} />
-          <Route path="matchdays" element={<MatchdayListPage />} />
+          <Route index element={<MatchdayListPage />} />
           <Route path="matchdays/:id" element={<MatchdayDetailPage />} />
+          <Route path="sorter" element={<TeamSorterPage />} />
           <Route path="players" element={<PlayerManagementPage />} />
         </Route>
       </Routes>

@@ -91,22 +91,22 @@ function App() {
               <Link
                 to="/"
                 className={`text-sm font-medium transition-colors ${
-                  location.pathname === '/'
-                    ? 'text-primary'
-                    : 'text-muted hover:text-muted-strong'
-                }`}
-              >
-                Armar equipos
-              </Link>
-              <Link
-                to="/matchdays"
-                className={`text-sm font-medium transition-colors ${
-                  location.pathname.startsWith('/matchdays')
+                  location.pathname === '/' || location.pathname.startsWith('/matchdays')
                     ? 'text-primary'
                     : 'text-muted hover:text-muted-strong'
                 }`}
               >
                 Fechas
+              </Link>
+              <Link
+                to="/sorter"
+                className={`text-sm font-medium transition-colors ${
+                  location.pathname === '/sorter'
+                    ? 'text-primary'
+                    : 'text-muted hover:text-muted-strong'
+                }`}
+              >
+                Armar equipos
               </Link>
               <Link
                 to="/players"

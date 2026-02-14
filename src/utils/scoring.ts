@@ -4,11 +4,12 @@ import {
   WEIGHT_GENDER,
   WEIGHT_STRONG_PREF,
   WEIGHT_SOFT_PREF,
+  effectiveRating,
 } from '../types';
 
 export function teamAverageRating(team: Team): number {
   if (team.players.length === 0) return 0;
-  const sum = team.players.reduce((acc, p) => acc + p.rating, 0);
+  const sum = team.players.reduce((acc, p) => acc + effectiveRating(p), 0);
   return sum / team.players.length;
 }
 
@@ -45,7 +46,7 @@ export function scoreAssignment(
   const allPlayers = teams.flatMap((t) => t.players);
   const overallAvg =
     allPlayers.length > 0
-      ? allPlayers.reduce((sum, p) => sum + p.rating, 0) / allPlayers.length
+      ? allPlayers.reduce((sum, p) => sum + effectiveRating(p), 0) / allPlayers.length
       : 0;
 
   let ratingRaw = 0;
@@ -131,7 +132,7 @@ export function scoreTotal(
   const allPlayers = teams.flatMap((t) => t.players);
   const overallAvg =
     allPlayers.length > 0
-      ? allPlayers.reduce((sum, p) => sum + p.rating, 0) / allPlayers.length
+      ? allPlayers.reduce((sum, p) => sum + effectiveRating(p), 0) / allPlayers.length
       : 0;
 
   let ratingPenalty = 0;

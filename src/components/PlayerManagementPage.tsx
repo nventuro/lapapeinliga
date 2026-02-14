@@ -6,6 +6,7 @@ import { useAppContext } from '../context/appContext';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
+import InvBadge from './InvBadge';
 
 export default function PlayerManagementPage() {
   const { players, isAdmin, refetchData } = useAppContext();
@@ -62,6 +63,7 @@ export default function PlayerManagementPage() {
             <div className="flex items-center gap-3 min-w-0">
               <GenderIcon gender={player.gender} />
               <span className="font-medium truncate">{player.name}</span>
+              {player.is_core === false && <InvBadge />}
               <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />
             </div>
             <div className="flex items-center gap-2 shrink-0">

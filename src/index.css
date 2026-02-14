@@ -32,4 +32,22 @@
   /* Gold (winner/awards) */
   --color-gold: #d4a017;
   --color-gold-subtle: #fef3c7;
+
+  /* Confetti accent colors */
+  --color-confetti-pink: #ec4899;
+  --color-confetti-green: #22c55e;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-8px) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(500px) rotate(720deg);
+    opacity: 0;
+  }
 }

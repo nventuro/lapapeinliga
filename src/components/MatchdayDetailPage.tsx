@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { MatchdayWithDetails, Player, AwardType } from '../types';
+import { effectiveRating } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate } from '../utils/dateUtils';
 import { teamAverageRating } from '../utils/scoring';
-import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
+import InvBadge from './InvBadge';
+import Confetti from './Confetti';
 
 const AWARD_LABELS: Record<AwardType, string> = {
   top_scorer: 'Goleador',
@@ -179,7 +181,7 @@ export default function MatchdayDetailPage() {
       return;
     }
 
-    navigate('/matchdays');
+    navigate('/');
   }
 
   if (loading) {
@@ -227,10 +229,11 @@ export default function MatchdayDetailPage() {
           return (
             <div
               key={team.id}
-              className={`rounded-lg p-4 ${
+              className={`relative overflow-hidden rounded-lg p-4 ${
                 isWinner ? 'border-2 border-gold bg-gold-subtle' : 'border border-border'
               }`}
             >
+              {isWinner && <Confetti />}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {isWinner && <TrophyIcon className="w-5 h-5 text-gold" />}
@@ -243,12 +246,13 @@ export default function MatchdayDetailPage() {
                 )}
               </div>
               <ul className="space-y-1">
-                {[...team.players].sort((a, b) => b.rating - a.rating).map((player) => {
+                {[...team.players].sort((a, b) => effectiveRating(b) - effectiveRating(a)).map((player) => {
                   const awards = playerAwards.get(player.id);
                   return (
                     <li key={player.id} className="flex items-center gap-2 py-1 px-2">
                       <GenderIcon gender={player.gender} />
                       <span>{player.name}</span>
+                      {player.is_core === false && <InvBadge />}
                       {awards?.map((award) => {
                         const Icon = AWARD_ICONS[award];
                         return (
@@ -257,7 +261,6 @@ export default function MatchdayDetailPage() {
                           </span>
                         );
                       })}
-                      {isAdmin && <RatingBadge rating={player.rating} className="ml-auto" />}
                     </li>
                   );
                 })}
@@ -284,7 +287,7 @@ export default function MatchdayDetailPage() {
               <li key={player.id} className="flex items-center gap-2 py-1 px-2">
                 <GenderIcon gender={player.gender} />
                 <span>{player.name}</span>
-                {isAdmin && <RatingBadge rating={player.rating} className="ml-auto" />}
+                {player.is_core === false && <InvBadge />}
               </li>
             ))}
           </ul>

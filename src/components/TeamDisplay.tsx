@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import type { Player, PlayerPreference, Team } from '../types';
-import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD } from '../types';
+import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, effectiveRating } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
+import InvBadge from './InvBadge';
 import SaveMatchdayDialog from './SaveMatchdayDialog';
 
 type HighlightLevel = 'error' | 'warning' | null;
@@ -54,6 +55,7 @@ function PlayerRow({ player, isSelected, isLocked, onTap, onToggleLock }: Player
     >
       <GenderIcon gender={player.gender} />
       <span>{player.name}</span>
+      {player.is_core === false && <InvBadge />}
       <RatingBadge rating={player.rating} className="ml-auto" />
       <button
         onClick={(e) => { e.stopPropagation(); onToggleLock(player.id); }}
@@ -275,7 +277,7 @@ export default function TeamDisplay({
               </div>
 
               <ul className="space-y-1">
-                {[...team.players].sort((a, b) => b.rating - a.rating).map((player) => (
+                {[...team.players].sort((a, b) => effectiveRating(b) - effectiveRating(a)).map((player) => (
                   <PlayerRow
                     key={player.id}
                     player={player}
