@@ -7,6 +7,8 @@ export interface AppContextValue {
   players: Player[];
   preferences: PlayerPreference[];
   isAdmin: boolean;
+  showRatings: boolean;
+  setShowRatings: (show: boolean) => void;
   refetchData: () => Promise<void>;
 }
 

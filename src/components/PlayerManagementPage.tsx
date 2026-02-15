@@ -8,13 +8,11 @@ import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import NoAccess from './NoAccess';
-import RatingToggle from './RatingToggle';
 
 export default function PlayerManagementPage() {
-  const { players, isAdmin, refetchData } = useAppContext();
+  const { players, isAdmin, showRatings, refetchData } = useAppContext();
   const [modalPlayer, setModalPlayer] = useState<Player | null | undefined>(undefined);
   // undefined = closed, null = creating, Player = editing
-  const [showRatings, setShowRatings] = useState(false);
 
   if (!isAdmin) {
     return <NoAccess />;
@@ -40,8 +38,7 @@ export default function PlayerManagementPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <RatingToggle show={showRatings} onToggle={() => setShowRatings(!showRatings)} />
+      <div className="flex items-center justify-end mb-6">
         <button
           onClick={() => setModalPlayer(null)}
           className="px-4 py-2 rounded-lg font-medium text-sm border border-primary text-primary hover:bg-primary hover:text-on-primary transition-colors"

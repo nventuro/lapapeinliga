@@ -14,8 +14,16 @@ export function AppProvider({
   const [players, setPlayers] = useState<Player[]>([]);
   const [preferences, setPreferences] = useState<PlayerPreference[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showRatings, setShowRatingsState] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const SHOW_RATINGS_KEY = 'showRatings';
+
+  const setShowRatings = useCallback((show: boolean) => {
+    setShowRatingsState(show);
+    localStorage.setItem(SHOW_RATINGS_KEY, JSON.stringify(show));
+  }, []);
 
   const fetchData = useCallback(async (admin: boolean) => {
     const table = admin ? 'players' : 'players_public';
@@ -48,6 +56,11 @@ export function AppProvider({
       const admin = adminResult === true;
       setIsAdmin(admin);
 
+      if (admin) {
+        const stored = localStorage.getItem(SHOW_RATINGS_KEY);
+        if (stored === 'true') setShowRatingsState(true);
+      }
+
       await fetchData(admin);
       setLoading(false);
     }
@@ -59,6 +72,7 @@ export function AppProvider({
   }, [fetchData, isAdmin]);
 
   const handleSignOut = () => {
+    localStorage.removeItem(SHOW_RATINGS_KEY);
     supabase.auth.signOut();
   };
 
@@ -104,7 +118,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, isAdmin, refetchData }}>
+    <AppContext.Provider value={{ session, players, preferences, isAdmin, showRatings, setShowRatings, refetchData }}>
       {children}
     </AppContext.Provider>
   );

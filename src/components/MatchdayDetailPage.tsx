@@ -12,7 +12,6 @@ import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Confetti from './Confetti';
-import RatingToggle from './RatingToggle';
 
 async function fetchMatchdayData(
   id: string,
@@ -66,12 +65,11 @@ async function fetchMatchdayData(
 export default function MatchdayDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { players, isAdmin } = useAppContext();
+  const { players, isAdmin, showRatings } = useAppContext();
 
   const [matchday, setMatchday] = useState<MatchdayWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showRatings, setShowRatings] = useState(false);
 
   const allParticipants = matchday
     ? [
@@ -180,12 +178,6 @@ export default function MatchdayDetailPage() {
       <h2 className="text-xl font-bold">
         {formatDate(matchday.played_at)}
       </h2>
-
-      {isAdmin && (
-        <div className="mt-4">
-          <RatingToggle show={showRatings} onToggle={() => setShowRatings(!showRatings)} />
-        </div>
-      )}
 
       {/* Teams */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">

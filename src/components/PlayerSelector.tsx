@@ -1,12 +1,12 @@
 import type { Player } from '../types';
 import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
+import { useAppContext } from '../context/appContext';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 
 interface PlayerSelectorProps {
   players: Player[];
   selectedIds: Set<number>;
-  showRatings: boolean;
   onToggle: (id: number) => void;
   onSelectMany: (ids: number[]) => void;
   onDeselectMany: (ids: number[]) => void;
@@ -48,11 +48,11 @@ function GroupControls({ label, ids, selectedIds, onSelectMany, onDeselectMany }
 export default function PlayerSelector({
   players,
   selectedIds,
-  showRatings,
   onToggle,
   onSelectMany,
   onDeselectMany,
 }: PlayerSelectorProps) {
+  const { showRatings } = useAppContext();
   const tierGroups = PLAYER_TIERS.map((tier) => ({
     tier,
     players: players
