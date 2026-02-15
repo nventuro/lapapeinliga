@@ -109,3 +109,28 @@ export function TrashIcon({ className = 'w-4 h-4' }: IconProps) {
     </svg>
   );
 }
+
+export function ChartBarIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 0 1-1.875-1.875V8.625ZM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 0 1 3 19.875v-6.75Z" />
+    </svg>
+  );
+}
+
+export function SneakerIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M2 16.5V14l1-2.5c.5-1 1.5-2 3-2.5l2-1 1.5-3.5c.3-.7 1-1 1.7-.8l1.3.5c.5.2.8.7.8 1.3v2l4.5 1.5c1.5.5 2.7 1.8 3 3.3l.2 1.2v3H2ZM6 15h2v-2H6v2Zm4 0h2v-2h-2v2Zm4 0h2v-2h-2v2Z" />
+    </svg>
+  );
+}
+
+export function MedalIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M4.5 2L7 8h3.5L8 2H4.5ZM16 2l2.5 6H22L19.5 2H16Z" />
+      <path d="M12 9a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm-1.5 8.5L8.5 15l1.5-1 2 2 3.5-3.5 1 1.5-4.5 4Z" />
+    </svg>
+  );
+}

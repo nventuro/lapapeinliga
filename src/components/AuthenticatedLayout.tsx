@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { CalendarIcon, ClipboardIcon, UserGroupIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardIcon, UserGroupIcon } from './icons';
 import Footer from './Footer';
 
 export default function AuthenticatedLayout() {
@@ -47,6 +47,17 @@ export default function AuthenticatedLayout() {
             >
               <CalendarIcon className="w-3.5 h-3.5" />
               Fechas
+            </Link>
+            <Link
+              to="/stats"
+              className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                location.pathname === '/stats'
+                  ? 'text-primary'
+                  : 'text-muted hover:text-muted-strong'
+              }`}
+            >
+              <ChartBarIcon className="w-3.5 h-3.5" />
+              Estadísticas
             </Link>
             {isAdmin && (
               <>

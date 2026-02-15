@@ -94,6 +94,16 @@ export type MatchdayWithDetails = Matchday & {
 
 export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort';
 
+export const AWARD_TYPES: AwardType[] = ['top_scorer', 'best_defense', 'mvp', 'best_goalie', 'most_effort'];
+
+export const AWARD_LABELS: Record<AwardType, string> = {
+  top_scorer: 'Goleador',
+  best_defense: 'Mejor defensa',
+  mvp: 'Figura del partido',
+  best_goalie: 'Mejor arquero',
+  most_effort: 'Más huevo',
+};
+
 export interface ScoreBreakdown {
   rating: { raw: number; weighted: number };
   gender: { raw: number; weighted: number };
