@@ -70,7 +70,7 @@ export default function AuthenticatedLayout() {
                   }`}
                 >
                   <ClipboardIcon className="w-3.5 h-3.5" />
-                  Armar equipos
+                  Armado
                 </Link>
                 <Link
                   to="/players"
