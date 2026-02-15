@@ -61,18 +61,16 @@ export default function PlayerManagementPage() {
           <div key={tier}>
             {index > 0 && <div className="my-4 border-t border-border-subtle" />}
             <h3 className="text-sm font-semibold text-muted mb-2">{TIER_GROUP_LABELS[tier]}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ul className="space-y-1">
               {tierPlayers.map((player) => (
-                <div
+                <li
                   key={player.id}
-                  className="border border-border rounded-xl p-4 flex items-center justify-between"
+                  className="flex items-center gap-2 py-1 px-2 rounded hover:bg-border-subtle"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <GenderIcon gender={player.gender} />
-                    <span className="font-medium truncate">{player.name}</span>
-                    {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <GenderIcon gender={player.gender} />
+                  <span className="font-medium truncate">{player.name}</span>
+                  {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
+                  <div className="flex items-center gap-1 shrink-0 ml-auto">
                     <button
                       onClick={() => setModalPlayer(player)}
                       className="text-muted hover:text-primary transition-colors p-1"
@@ -88,9 +86,9 @@ export default function PlayerManagementPage() {
                       <TrashIcon />
                     </button>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         );
       })}

@@ -77,10 +77,10 @@ export default function PlayerSelector({
               onSelectMany={onSelectMany}
               onDeselectMany={onDeselectMany}
             />
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {tierPlayers.map((player) => (
                 <li key={player.id}>
-                  <label className="flex items-center gap-3 p-2 rounded hover:bg-border-subtle cursor-pointer">
+                  <label className="flex items-center gap-2 py-1 px-2 rounded hover:bg-border-subtle cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(player.id)}
