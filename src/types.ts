@@ -94,7 +94,7 @@ export type MatchdayWithDetails = Matchday & {
 
 export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort';
 
-export const AWARD_TYPES: AwardType[] = ['top_scorer', 'best_defense', 'mvp', 'best_goalie', 'most_effort'];
+export const AWARD_TYPES: AwardType[] = ['mvp', 'most_effort', 'top_scorer', 'best_defense', 'best_goalie'];
 
 export const AWARD_LABELS: Record<AwardType, string> = {
   top_scorer: 'Goleador',
