@@ -220,7 +220,9 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
         if (e.target === dialogRef.current) onClose();
       }}
     >
-      <form onSubmit={handleSave} className="p-6">
+      {/* autoFocus on the form prevents showModal() from focusing the first
+           input, which would trigger the mobile keyboard */}
+      <form onSubmit={handleSave} className="p-6" tabIndex={-1} autoFocus>
         <h2 className="text-xl font-bold mb-4">
           {player ? 'Editar jugador' : 'Nuevo jugador'}
         </h2>
