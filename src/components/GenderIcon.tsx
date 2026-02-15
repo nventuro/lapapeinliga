@@ -1,7 +1,9 @@
+import { GenderMaleIcon, GenderFemaleIcon } from './icons';
+
 export default function GenderIcon({ gender }: { gender: 'male' | 'female' }) {
-  return (
-    <span className="text-muted text-xl" title={gender === 'male' ? 'Masculino' : 'Femenino'}>
-      {gender === 'male' ? '♂' : '♀'}
-    </span>
+  return gender === 'male' ? (
+    <GenderMaleIcon className="w-5 h-5 text-muted" />
+  ) : (
+    <GenderFemaleIcon className="w-5 h-5 text-muted" />
   );
 }

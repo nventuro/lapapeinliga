@@ -4,7 +4,7 @@ import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, e
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
-import { LockedIcon, UnlockedIcon } from './icons';
+import { LockedIcon, UnlockedIcon, GenderMaleIcon, GenderFemaleIcon } from './icons';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
@@ -280,11 +280,11 @@ export default function TeamDisplay({
                 </span>
                 {' · '}
                 <span className={highlightClasses(maleHighlight)}>
-                  {maleCount}<span className={`text-lg ${maleHighlight ? '' : 'text-muted'}`}>♂</span>
+                  {maleCount}<GenderMaleIcon className={`w-4 h-4 inline ${maleHighlight ? '' : 'text-muted'}`} />
                 </span>
                 {' '}
                 <span className={highlightClasses(femaleHighlight)}>
-                  {femaleCount}<span className={`text-lg ${femaleHighlight ? '' : 'text-muted'}`}>♀</span>
+                  {femaleCount}<GenderFemaleIcon className={`w-4 h-4 inline ${femaleHighlight ? '' : 'text-muted'}`} />
                 </span>
               </div>
 

@@ -7,6 +7,7 @@ import PlayerSelector from './PlayerSelector';
 import TeamConfigurator from './TeamConfigurator';
 import TeamDisplay from './TeamDisplay';
 import NoAccess from './NoAccess';
+import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 
 type Step = 'select' | 'configure' | 'results';
 
@@ -122,9 +123,9 @@ export default function TeamSorterPage() {
                 {selectedIds.size} / {players.length} jugadores
               </span>
               <span>
-                {selectedPlayers.filter((p) => p.gender === 'male').length}<span className="text-lg">♂</span>
+                {selectedPlayers.filter((p) => p.gender === 'male').length}<GenderMaleIcon className="w-4 h-4 inline" />
                 {' '}
-                {selectedPlayers.filter((p) => p.gender === 'female').length}<span className="text-lg">♀</span>
+                {selectedPlayers.filter((p) => p.gender === 'female').length}<GenderFemaleIcon className="w-4 h-4 inline" />
               </span>
             </div>
             <button
