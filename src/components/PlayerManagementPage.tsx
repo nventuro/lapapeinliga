@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import type { Player } from '../types';
-import { TIER_ORDER, isGuest } from '../types';
+import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { EditIcon, TrashIcon } from './icons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
-import InvBadge from './InvBadge';
 import NoAccess from './NoAccess';
 
 export default function PlayerManagementPage() {
@@ -48,39 +47,50 @@ export default function PlayerManagementPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[...players]
-          .sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || a.name.localeCompare(b.name))
-          .map((player) => (
-          <div
-            key={player.id}
-            className="border border-border rounded-xl p-4 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <GenderIcon gender={player.gender} />
-              <span className="font-medium truncate">{player.name}</span>
-              {isGuest(player) && <InvBadge />}
-              <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setModalPlayer(player)}
-                className="text-muted hover:text-primary transition-colors p-1"
-                title="Editar jugador"
-              >
-                <EditIcon />
-              </button>
-              <button
-                onClick={() => handleDelete(player)}
-                className="text-muted hover:text-error transition-colors p-1"
-                title="Eliminar jugador"
-              >
-                <TrashIcon />
-              </button>
+      {PLAYER_TIERS.map((tier, index) => {
+        const tierPlayers = players
+          .filter((p) => p.tier === tier)
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        if (tierPlayers.length === 0) return null;
+
+        return (
+          <div key={tier}>
+            {index > 0 && <div className="my-4 border-t border-border-subtle" />}
+            <h3 className="text-sm font-semibold text-muted mb-2">{TIER_GROUP_LABELS[tier]}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {tierPlayers.map((player) => (
+                <div
+                  key={player.id}
+                  className="border border-border rounded-xl p-4 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <GenderIcon gender={player.gender} />
+                    <span className="font-medium truncate">{player.name}</span>
+                    <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setModalPlayer(player)}
+                      className="text-muted hover:text-primary transition-colors p-1"
+                      title="Editar jugador"
+                    >
+                      <EditIcon />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(player)}
+                      className="text-muted hover:text-error transition-colors p-1"
+                      title="Eliminar jugador"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
 
       {players.length === 0 && (
         <p className="text-center text-muted py-8">

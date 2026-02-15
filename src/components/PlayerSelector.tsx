@@ -1,8 +1,7 @@
 import type { Player } from '../types';
-import { PLAYER_TIERS, TIER_GROUP_LABELS, isGuest } from '../types';
+import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
-import InvBadge from './InvBadge';
 
 interface PlayerSelectorProps {
   players: Player[];
@@ -88,12 +87,6 @@ export default function PlayerSelector({
                     />
                     <GenderIcon gender={player.gender} />
                     <span className="font-medium">{player.name}</span>
-                    {player.tier === 'sporadic' && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted/20 text-muted">
-                        ESP
-                      </span>
-                    )}
-                    {isGuest(player) && <InvBadge />}
                     <RatingBadge rating={player.rating} className="ml-auto" />
                   </label>
                 </li>
