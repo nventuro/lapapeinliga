@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate } from '../utils/dateUtils';
 import { teamAverageRating } from '../utils/scoring';
-import { TrophyIcon, SoccerBallIcon, ShieldIcon, CrownIcon } from './icons';
+import { TrophyIcon, SoccerBallIcon, ShieldIcon, CrownIcon, GloveIcon, EggIcon } from './icons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Confetti from './Confetti';
@@ -15,13 +15,17 @@ import Confetti from './Confetti';
 const AWARD_LABELS: Record<AwardType, string> = {
   top_scorer: 'Goleador',
   best_defense: 'Mejor defensa',
-  mvp: 'MVP',
+  mvp: 'Figura del partido',
+  best_goalie: 'Mejor arquero',
+  most_effort: 'Más huevo',
 };
 
 const AWARD_ICONS: Record<AwardType, typeof TrophyIcon> = {
   top_scorer: SoccerBallIcon,
   best_defense: ShieldIcon,
   mvp: CrownIcon,
+  best_goalie: GloveIcon,
+  most_effort: EggIcon,
 };
 
 async function fetchMatchdayData(
@@ -170,7 +174,7 @@ export default function MatchdayDetailPage() {
 
   // Build a map of player ID → list of awards they hold
   const playerAwards = new Map<number, AwardType[]>();
-  for (const award of ['top_scorer', 'best_defense', 'mvp'] as AwardType[]) {
+  for (const award of ['top_scorer', 'best_defense', 'mvp', 'best_goalie', 'most_effort'] as AwardType[]) {
     const pid = matchday[`${award}_id`];
     if (pid) {
       const existing = playerAwards.get(pid) ?? [];
@@ -292,7 +296,7 @@ export default function MatchdayDetailPage() {
             </div>
 
             {/* Award pickers */}
-            {(['top_scorer', 'best_defense', 'mvp'] as AwardType[]).map((award) => {
+            {(['top_scorer', 'best_defense', 'mvp', 'best_goalie', 'most_effort'] as AwardType[]).map((award) => {
               const Icon = AWARD_ICONS[award];
               return (
               <div key={award}>
@@ -330,7 +334,7 @@ export default function MatchdayDetailPage() {
                 {winnerTeam ? winnerTeam.name : 'Sin definir'}
               </span>
             </div>
-            {(['top_scorer', 'best_defense', 'mvp'] as AwardType[]).map((award) => {
+            {(['top_scorer', 'best_defense', 'mvp', 'best_goalie', 'most_effort'] as AwardType[]).map((award) => {
               const Icon = AWARD_ICONS[award];
               return (
                 <div key={award} className="flex items-center justify-between">

@@ -78,6 +78,22 @@ export function CrownIcon({ className = 'w-4 h-4' }: IconProps) {
   );
 }
 
+export function GloveIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M19.5 11.5V4a2 2 0 0 0-4 0v4h-1V3a2 2 0 0 0-4 0v5h-1V4a2 2 0 0 0-4 0v8.5c0 .17.01.34.03.5H5l-2.5-3a2 2 0 0 0-2.83 2.83L4 17.17V17c0 3.87 3.13 7 7 7h2c3.87 0 7-3.13 7-7v-5.5h-.5Z" />
+    </svg>
+  );
+}
+
+export function EggIcon({ className = 'w-4 h-4' }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2C8.22 2 5 8.27 5 14a7 7 0 0 0 14 0c0-5.73-3.22-12-7-12Z" />
+    </svg>
+  );
+}
+
 export function EditIcon({ className = 'w-4 h-4' }: IconProps) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>

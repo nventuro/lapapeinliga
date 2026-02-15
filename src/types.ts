@@ -76,6 +76,8 @@ export type Matchday = {
   top_scorer_id: number | null;
   best_defense_id: number | null;
   mvp_id: number | null;
+  best_goalie_id: number | null;
+  most_effort_id: number | null;
 };
 
 export type MatchdayTeam = {
@@ -90,7 +92,7 @@ export type MatchdayWithDetails = Matchday & {
   reserves: Player[];
 };
 
-export type AwardType = 'top_scorer' | 'best_defense' | 'mvp';
+export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort';
 
 export interface ScoreBreakdown {
   rating: { raw: number; weighted: number };
