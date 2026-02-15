@@ -7,6 +7,7 @@ import PlayerSelector from './PlayerSelector';
 import TeamConfigurator from './TeamConfigurator';
 import TeamDisplay from './TeamDisplay';
 import NoAccess from './NoAccess';
+import RatingToggle from './RatingToggle';
 
 type Step = 'select' | 'configure' | 'results';
 
@@ -18,6 +19,7 @@ export default function TeamSorterPage() {
   const [lastTeamCount, setLastTeamCount] = useState(MIN_TEAMS);
   const [step, setStep] = useState<Step>('select');
   const [lockedIds, setLockedIds] = useState<Set<number>>(() => new Set());
+  const [showRatings, setShowRatings] = useState(false);
 
   const handleToggle = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -112,11 +114,15 @@ export default function TeamSorterPage() {
           <PlayerSelector
             players={players}
             selectedIds={selectedIds}
+            showRatings={showRatings}
             onToggle={handleToggle}
             onSelectMany={handleSelectMany}
             onDeselectMany={handleDeselectMany}
           />
           <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <RatingToggle show={showRatings} onToggle={() => setShowRatings(!showRatings)} />
+            </div>
             <div className="flex items-center justify-between mb-3 text-sm text-muted">
               <span>
                 {selectedIds.size} / {players.length} jugadores

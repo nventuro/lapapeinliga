@@ -2,6 +2,14 @@ export function capitalizeName(name: string): string {
   return name
     .trim()
     .split(/\s+/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => {
+      const letterIndex = word.search(/[a-záéíóúüñ]/i);
+      if (letterIndex === -1) return word;
+      return (
+        word.slice(0, letterIndex) +
+        word.charAt(letterIndex).toUpperCase() +
+        word.slice(letterIndex + 1).toLowerCase()
+      );
+    })
     .join(' ');
 }

@@ -6,6 +6,7 @@ import GenderIcon from './GenderIcon';
 interface PlayerSelectorProps {
   players: Player[];
   selectedIds: Set<number>;
+  showRatings: boolean;
   onToggle: (id: number) => void;
   onSelectMany: (ids: number[]) => void;
   onDeselectMany: (ids: number[]) => void;
@@ -47,6 +48,7 @@ function GroupControls({ label, ids, selectedIds, onSelectMany, onDeselectMany }
 export default function PlayerSelector({
   players,
   selectedIds,
+  showRatings,
   onToggle,
   onSelectMany,
   onDeselectMany,
@@ -87,7 +89,7 @@ export default function PlayerSelector({
                     />
                     <GenderIcon gender={player.gender} />
                     <span className="font-medium">{player.name}</span>
-                    <RatingBadge rating={player.rating} className="ml-auto" />
+                    {showRatings && <RatingBadge rating={player.rating} className="ml-auto" />}
                   </label>
                 </li>
               ))}

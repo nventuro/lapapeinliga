@@ -11,6 +11,7 @@ import { TrophyIcon, SoccerBallIcon, ShieldIcon, CrownIcon, GloveIcon, EggIcon }
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Confetti from './Confetti';
+import RatingToggle from './RatingToggle';
 
 const AWARD_LABELS: Record<AwardType, string> = {
   top_scorer: 'Goleador',
@@ -85,6 +86,7 @@ export default function MatchdayDetailPage() {
   const [matchday, setMatchday] = useState<MatchdayWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showRatings, setShowRatings] = useState(false);
 
   const allParticipants = matchday
     ? [
@@ -194,6 +196,12 @@ export default function MatchdayDetailPage() {
         {formatDate(matchday.played_at)}
       </h2>
 
+      {isAdmin && (
+        <div className="mt-4">
+          <RatingToggle show={showRatings} onToggle={() => setShowRatings(!showRatings)} />
+        </div>
+      )}
+
       {/* Teams */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
         {matchday.teams.map((team) => {
@@ -211,7 +219,7 @@ export default function MatchdayDetailPage() {
                   {isWinner && <TrophyIcon className="w-5 h-5 text-gold" />}
                   <h3 className="font-bold text-lg">{team.name}</h3>
                 </div>
-                {isAdmin && (
+                {isAdmin && showRatings && (
                   <span className="text-sm text-muted">
                     Promedio: {teamAverageRating(team).toFixed(1)}
                   </span>

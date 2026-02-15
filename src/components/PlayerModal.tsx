@@ -4,6 +4,7 @@ import { MIN_RATING, MAX_RATING, DEFAULT_UNRATED_RATING, PLAYER_TIERS, TIER_LABE
 import { supabase } from '../lib/supabase';
 import { capitalizeName } from '../utils/nameUtils';
 import { useAppContext } from '../context/appContext';
+import ToggleSwitch from './ToggleSwitch';
 
 const PREFERENCE_LABELS: Record<PreferenceType, string> = {
   prefer_with: 'Prefiere con',
@@ -119,7 +120,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
 
     // Non-guest players must have a rating
     if (tier !== 'guest' && rating === null) {
-      setError('Los jugadores fijos y esporádicos deben tener un rating.');
+      setError('Los jugadores fijos y esporádicos deben tener un puntaje.');
       setSaving(false);
       return;
     }
@@ -270,18 +271,16 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Rating ({MIN_RATING}–{MAX_RATING})
+              Puntaje ({MIN_RATING}–{MAX_RATING})
             </label>
             {tier === 'guest' && (
-              <label className="flex items-center gap-2 mb-2 cursor-pointer">
-                <input
-                  type="checkbox"
+              <div className="mb-2">
+                <ToggleSwitch
                   checked={rating === null}
-                  onChange={(e) => setRating(e.target.checked ? null : DEFAULT_UNRATED_RATING)}
-                  className="w-4 h-4 accent-primary"
+                  onChange={(checked) => setRating(checked ? null : DEFAULT_UNRATED_RATING)}
+                  label={`Sin puntaje (se usa ${DEFAULT_UNRATED_RATING})`}
                 />
-                <span className="text-sm text-muted">Sin rating (se usa {DEFAULT_UNRATED_RATING})</span>
-              </label>
+              </div>
             )}
             {rating !== null && (
               <input
