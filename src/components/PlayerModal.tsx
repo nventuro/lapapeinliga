@@ -91,11 +91,9 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
     return players.find((p) => p.id === otherId)?.name ?? 'Desconocido';
   }
 
-  function handleAddPreference() {
-    if (newPrefPlayerId === '') return;
-    setAddedPrefs((prev) => [...prev, { playerId: newPrefPlayerId, type: newPrefType }]);
+  function handleAddPreference(playerId: number) {
+    setAddedPrefs((prev) => [...prev, { playerId, type: newPrefType }]);
     setNewPrefPlayerId('');
-    setNewPrefType('prefer_with');
   }
 
   function handleDeleteExistingPref(pref: PlayerPreference) {
@@ -333,8 +331,9 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                 ))}
                 {addedPrefs.map((pref, index) => (
                   <li
-                    key={`added-${index}`}
+                    key={`added-${pref.playerId}`}
                     className="flex items-center justify-between text-sm bg-border-subtle rounded-lg px-3 py-2"
+                    style={{ animation: 'slide-down-in 250ms ease-out' }}
                   >
                     <span>
                       <span className="text-muted">{PREFERENCE_LABELS[pref.type]}</span>{' '}
@@ -355,13 +354,13 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
             )}
 
             {availablePlayers.length > 0 && (
-              <div className="flex gap-2 items-end">
+              <div className="flex gap-2">
                 <select
                   value={newPrefType}
                   onChange={(e) =>
                     setNewPrefType(e.target.value as PreferenceType)
                   }
-                  className="flex-1 px-2 py-1.5 rounded-lg border border-border bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-border bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   {PREFERENCE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -371,12 +370,13 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                 </select>
                 <select
                   value={newPrefPlayerId}
-                  onChange={(e) =>
-                    setNewPrefPlayerId(
-                      e.target.value === '' ? '' : Number(e.target.value),
-                    )
-                  }
-                  className="flex-1 px-2 py-1.5 rounded-lg border border-border bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value !== '') {
+                      handleAddPreference(Number(value));
+                    }
+                  }}
+                  className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-border bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Jugador...</option>
                   {availablePlayers.map((p) => (
@@ -385,14 +385,6 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={handleAddPreference}
-                  disabled={newPrefPlayerId === ''}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
-                >
-                  Agregar
-                </button>
               </div>
             )}
           </div>
