@@ -39,7 +39,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Batched preference changes (edit mode only)
+  // Batched preference changes
   const existingPrefs = player
     ? preferences.filter(
         (p) => p.player_a_id === player.id || p.player_b_id === player.id,
@@ -102,6 +102,30 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
 
   function handleDeleteAddedPref(index: number) {
     setAddedPrefs((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function saveAddedPreferences(playerId: number): Promise<boolean> {
+    for (const added of addedPrefs) {
+      const [aId, bId] =
+        playerId < added.playerId
+          ? [playerId, added.playerId]
+          : [added.playerId, playerId];
+
+      const { error: addError } = await supabase
+        .from('player_preferences')
+        .insert({
+          player_a_id: aId,
+          player_b_id: bId,
+          preference: added.type,
+        });
+
+      if (addError) {
+        setError(addError.message);
+        setSaving(false);
+        return false;
+      }
+    }
+    return true;
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -169,31 +193,14 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
       }
 
       // Apply batched preference additions
-      for (const added of addedPrefs) {
-        const [aId, bId] =
-          player.id < added.playerId
-            ? [player.id, added.playerId]
-            : [added.playerId, player.id];
-
-        const { error: addError } = await supabase
-          .from('player_preferences')
-          .insert({
-            player_a_id: aId,
-            player_b_id: bId,
-            preference: added.type,
-          });
-
-        if (addError) {
-          setError(addError.message);
-          setSaving(false);
-          return;
-        }
-      }
+      if (!(await saveAddedPreferences(player.id))) return;
     } else {
       // Create player
-      const { error: dbError } = await supabase
+      const { data: newPlayer, error: dbError } = await supabase
         .from('players')
-        .insert({ name: trimmed, gender, rating, tier });
+        .insert({ name: trimmed, gender, rating, tier })
+        .select('id')
+        .single();
 
       if (dbError) {
         if (dbError.code === '23505') {
@@ -204,6 +211,9 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
         setSaving(false);
         return;
       }
+
+      // Save preferences for new player
+      if (!(await saveAddedPreferences(newPlayer.id))) return;
     }
 
     await refetchData();
@@ -300,9 +310,8 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
           <p className="text-sm text-error mt-3">{error}</p>
         )}
 
-        {/* Preferences section — edit mode only */}
-        {player && (
-          <div className="mt-6 pt-4 border-t border-border">
+        {/* Preferences section */}
+        <div className="mt-6 pt-4 border-t border-border">
             <h3 className="text-sm font-bold mb-3">Preferencias</h3>
 
             {visibleExisting.length === 0 && addedPrefs.length === 0 && (
@@ -333,7 +342,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                   <li
                     key={`added-${pref.playerId}`}
                     className="flex items-center justify-between text-sm bg-border-subtle rounded-lg px-3 py-2"
-                    style={{ animation: 'slide-down-in 250ms ease-out' }}
+                    style={{ animation: 'slide-down-in 500ms ease-out' }}
                   >
                     <span>
                       <span className="text-muted">{PREFERENCE_LABELS[pref.type]}</span>{' '}
@@ -388,7 +397,6 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
               </div>
             )}
           </div>
-        )}
 
         <div className="flex gap-3 mt-6">
           <button

@@ -70,11 +70,14 @@ function LeaderboardSection({
                   return (
                     <span
                       key={award}
-                      className="inline-flex items-center gap-0.5 rounded-full bg-gold-subtle px-1.5 py-0.5 text-xs font-medium"
-                      title={AWARD_LABELS[award]}
+                      className="group relative inline-flex items-center gap-0.5 rounded-full bg-gold-subtle px-2 py-1 text-sm font-medium cursor-default focus:outline-none"
+                      tabIndex={0}
                     >
-                      <Icon className="w-3 h-3 text-gold" />
+                      <Icon className="w-3.5 h-3.5 text-gold" />
                       {entry.awardBreakdown[award]}
+                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-on-surface text-surface text-xs px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10">
+                        {AWARD_LABELS[award]}
+                      </span>
                     </span>
                   );
                 })}
@@ -218,8 +221,6 @@ export default function StatsPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-6">Estadísticas</h2>
-
       <div className="space-y-4">
         {/* Total awards (top 5) */}
         <LeaderboardSection
