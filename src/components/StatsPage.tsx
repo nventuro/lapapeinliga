@@ -7,24 +7,29 @@ import { TrophyIcon, SneakerIcon, MedalIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 
-interface LeaderboardEntry {
+type LeaderboardEntry = {
   player: Player;
-  count: number;
+} & ({ count: number } | { awardBreakdown: Partial<Record<AwardType, number>> });
+
+function entryTotal(entry: LeaderboardEntry): number {
+  if ('count' in entry) return entry.count;
+  return Object.values(entry.awardBreakdown).reduce((sum, n) => sum + (n ?? 0), 0);
 }
 
-/** Sort by count descending, break ties alphabetically by name. */
+/** Sort by total descending, break ties alphabetically by name. */
 function sortEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
-  return entries.sort((a, b) => b.count - a.count || a.player.name.localeCompare(b.player.name));
+  return entries.sort((a, b) => entryTotal(b) - entryTotal(a) || a.player.name.localeCompare(b.player.name));
 }
 
-/** Compute dense rank: players with the same count share the same rank number. */
+/** Compute dense rank: players with the same total share the same rank number. */
 function withRanks(entries: LeaderboardEntry[]): (LeaderboardEntry & { rank: number })[] {
   let rank = 0;
-  let prevCount = -1;
+  let prevTotal = -1;
   return entries.map((entry) => {
-    if (entry.count !== prevCount) {
+    const total = entryTotal(entry);
+    if (total !== prevTotal) {
       rank++;
-      prevCount = entry.count;
+      prevTotal = total;
     }
     return { ...entry, rank };
   });
@@ -53,12 +58,30 @@ function LeaderboardSection({
         {title}
       </h3>
       <ul className="space-y-1">
-        {ranked.map(({ player, count, rank }) => (
-          <li key={player.id} className="flex items-center gap-2 py-1 px-2">
-            <span className="w-6 text-right text-sm text-muted font-medium">{rank}.</span>
-            <GenderIcon gender={player.gender} />
-            <span className="flex-1">{player.name}</span>
-            <span className="font-medium tabular-nums">{count}</span>
+        {ranked.map((entry) => (
+          <li key={entry.player.id} className="flex items-center gap-2 py-1 px-2">
+            <span className="w-6 text-right text-sm text-muted font-medium">{entry.rank}.</span>
+            <GenderIcon gender={entry.player.gender} />
+            <span className="flex-1">{entry.player.name}</span>
+            {'awardBreakdown' in entry ? (
+              <div className="flex items-center gap-1 flex-wrap justify-end">
+                {AWARD_TYPES.filter((award) => entry.awardBreakdown[award]).map((award) => {
+                  const Icon = AWARD_ICONS[award];
+                  return (
+                    <span
+                      key={award}
+                      className="inline-flex items-center gap-0.5 rounded-full bg-gold-subtle px-1.5 py-0.5 text-xs font-medium"
+                      title={AWARD_LABELS[award]}
+                    >
+                      <Icon className="w-3 h-3 text-gold" />
+                      {entry.awardBreakdown[award]}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="font-medium tabular-nums">{entry.count}</span>
+            )}
           </li>
         ))}
       </ul>
@@ -76,7 +99,6 @@ export default function StatsPage() {
   const [gamesPlayed, setGamesPlayed] = useState<Map<number, number>>(new Map());
   const [gamesWon, setGamesWon] = useState<Map<number, number>>(new Map());
   const [awardCounts, setAwardCounts] = useState<Map<AwardType, Map<number, number>>>(new Map());
-  const [totalAwards, setTotalAwards] = useState<Map<number, number>>(new Map());
 
   useEffect(() => {
     async function fetchStats() {
@@ -124,9 +146,8 @@ export default function StatsPage() {
         }
       }
 
-      // Awards per category and total
+      // Awards per category
       const perCategory = new Map<AwardType, Map<number, number>>();
-      const totals = new Map<number, number>();
 
       for (const award of AWARD_TYPES) {
         const counts = new Map<number, number>();
@@ -134,7 +155,6 @@ export default function StatsPage() {
           const playerId = matchday[`${award}_id`] as number | null;
           if (playerId) {
             counts.set(playerId, (counts.get(playerId) ?? 0) + 1);
-            totals.set(playerId, (totals.get(playerId) ?? 0) + 1);
           }
         }
         perCategory.set(award, counts);
@@ -143,7 +163,6 @@ export default function StatsPage() {
       setGamesPlayed(played);
       setGamesWon(won);
       setAwardCounts(perCategory);
-      setTotalAwards(totals);
       setLoading(false);
     }
     fetchStats();
@@ -174,6 +193,29 @@ export default function StatsPage() {
     return entries;
   }
 
+  function toBreakdownEntries(perCategory: Map<AwardType, Map<number, number>>): LeaderboardEntry[] {
+    // Collect all player IDs that have at least one award
+    const playerIds = new Set<number>();
+    for (const counts of perCategory.values()) {
+      for (const playerId of counts.keys()) {
+        playerIds.add(playerId);
+      }
+    }
+
+    const entries: LeaderboardEntry[] = [];
+    for (const playerId of playerIds) {
+      const player = playerMap.get(playerId);
+      if (!player) continue;
+      const breakdown: Partial<Record<AwardType, number>> = {};
+      for (const award of AWARD_TYPES) {
+        const count = perCategory.get(award)?.get(playerId);
+        if (count) breakdown[award] = count;
+      }
+      entries.push({ player, awardBreakdown: breakdown });
+    }
+    return entries;
+  }
+
   return (
     <div>
       <h2 className="text-xl font-bold mb-6">Estadísticas</h2>
@@ -183,7 +225,7 @@ export default function StatsPage() {
         <LeaderboardSection
           title="Premios totales"
           icon={<MedalIcon className="w-5 h-5 text-gold" />}
-          entries={toEntries(totalAwards)}
+          entries={toBreakdownEntries(awardCounts)}
           limit={TOP_AWARDS_LIMIT}
         />
 
