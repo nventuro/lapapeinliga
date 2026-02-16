@@ -11,7 +11,6 @@ export default function ConfettiBurst() {
         const radius = 100 + seededRandom(i, 2) * 250;
         const burstX = Math.cos(angle) * radius;
         const burstY = Math.sin(angle) * radius;
-        const delay = seededRandom(i, 3) * 0.4;
         const duration = 2.5 + seededRandom(i, 4) * 2;
         const width = 5 + seededRandom(i, 5) * 7;
         const height = 5 + seededRandom(i, 6) * 6;
@@ -28,7 +27,7 @@ export default function ConfettiBurst() {
               borderRadius: seededRandom(i, 7) > 0.5 ? '50%' : '2px',
               '--burst-x': `${burstX}px`,
               '--burst-y': `${burstY}px`,
-              animation: `confetti-burst ${duration}s ${delay}s forwards`,
+              animation: `confetti-burst ${duration}s forwards`,
             } as CSSProperties}
           />
         );
