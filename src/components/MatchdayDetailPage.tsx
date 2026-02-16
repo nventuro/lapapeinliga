@@ -85,6 +85,7 @@ export default function MatchdayDetailPage() {
   const [matchdayNumber, setMatchdayNumber] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [glowingAwards, setGlowingAwards] = useState<Set<AwardType>>(new Set());
 
   const allParticipants = matchday
     ? [
@@ -137,6 +138,16 @@ export default function MatchdayDetailPage() {
 
     if (!error) {
       setMatchday({ ...matchday, [`${award}_id`]: playerId });
+      if (playerId !== null) {
+        setGlowingAwards((prev) => new Set(prev).add(award));
+        setTimeout(() => {
+          setGlowingAwards((prev) => {
+            const next = new Set(prev);
+            next.delete(award);
+            return next;
+          });
+        }, 800);
+      }
     }
     setSaving(false);
   }
@@ -309,11 +320,13 @@ export default function MatchdayDetailPage() {
             {/* Award pickers */}
             {AWARD_TYPES.map((award) => {
               const Icon = AWARD_ICONS[award];
+              const isGranted = matchday[`${award}_id`] != null;
+              const isGlowing = glowingAwards.has(award);
               return (
               <div key={award}>
                 <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                   {AWARD_LABELS[award]}
-                  <Icon className="w-4 h-4 text-gold" />
+                  <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
                 </label>
                 <select
                   value={matchday[`${award}_id`] ?? ''}
@@ -321,7 +334,7 @@ export default function MatchdayDetailPage() {
                     handleAwardChange(award, e.target.value ? Number(e.target.value) : null)
                   }
                   disabled={saving}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${isGranted ? 'border-gold' : 'border-border'} ${isGlowing ? 'animate-gold-glow-pulse' : ''}`}
                 >
                   <option value="">Sin definir</option>
                   {[...allParticipants].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
@@ -347,11 +360,12 @@ export default function MatchdayDetailPage() {
             </div>
             {AWARD_TYPES.map((award) => {
               const Icon = AWARD_ICONS[award];
+              const isGranted = matchday[`${award}_id`] != null;
               return (
                 <div key={award} className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-muted">
                     {AWARD_LABELS[award]}
-                    <Icon className="w-4 h-4 text-gold" />
+                    <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
                   </span>
                   <span className="font-medium">
                     {getPlayerName(matchday[`${award}_id`]) || 'Sin definir'}

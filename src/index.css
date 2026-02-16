@@ -43,6 +43,9 @@
   /* Confetti accent colors */
   --color-confetti-pink: #ec4899;
   --color-confetti-green: #22c55e;
+
+  /* Animations */
+  --animate-gold-glow-pulse: gold-glow-pulse 0.8s ease-out;
 }
 
 @keyframes slide-down-in {
@@ -53,6 +56,15 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes gold-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 12px 4px color-mix(in srgb, var(--color-gold) 40%, transparent);
   }
 }
 
