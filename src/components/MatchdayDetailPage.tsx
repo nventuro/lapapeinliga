@@ -215,8 +215,15 @@ export default function MatchdayDetailPage() {
                       {awards?.map((award) => {
                         const Icon = AWARD_ICONS[award];
                         return (
-                          <span key={award} className="text-gold" title={AWARD_LABELS[award]}>
+                          <span
+                            key={award}
+                            className="group relative inline-flex items-center text-gold cursor-default focus:outline-none"
+                            tabIndex={0}
+                          >
                             <Icon className="w-4 h-4" />
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-on-surface text-surface text-xs px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10">
+                              {AWARD_LABELS[award]}
+                            </span>
                           </span>
                         );
                       })}
