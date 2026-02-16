@@ -13,10 +13,15 @@ import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Confetti from './Confetti';
 
+type MatchdayPageData = {
+  matchday: MatchdayWithDetails;
+  matchdayNumber: number;
+};
+
 async function fetchMatchdayData(
   shortId: string,
   players: Player[],
-): Promise<MatchdayWithDetails | null> {
+): Promise<MatchdayPageData | null> {
   const { data: matchdayData, error: matchdayError } = await supabase
     .from('matchdays')
     .select('*')
@@ -33,35 +38,42 @@ async function fetchMatchdayData(
     .eq('matchday_id', matchdayId)
     .order('id');
 
-  const { data: teamPlayersData } = await supabase
-    .from('matchday_team_players')
-    .select('matchday_team_id, player_id')
-    .in('matchday_team_id', (teamsData ?? []).map((t) => t.id));
-
-  const { data: reservesData } = await supabase
-    .from('matchday_reserves')
-    .select('player_id')
-    .eq('matchday_id', matchdayId);
+  const [teamPlayersResult, reservesResult, allMatchdaysResult] = await Promise.all([
+    supabase
+      .from('matchday_team_players')
+      .select('matchday_team_id, player_id')
+      .in('matchday_team_id', (teamsData ?? []).map((t) => t.id)),
+    supabase
+      .from('matchday_reserves')
+      .select('player_id')
+      .eq('matchday_id', matchdayId),
+    supabase
+      .from('matchdays')
+      .select('id')
+      .order('played_at', { ascending: true })
+      .order('id', { ascending: true }),
+  ]);
 
   const playerMap = new Map(players.map((p) => [p.id, p]));
 
   const teams = (teamsData ?? []).map((team) => ({
     ...team,
-    players: (teamPlayersData ?? [])
+    players: (teamPlayersResult.data ?? [])
       .filter((tp) => tp.matchday_team_id === team.id)
       .map((tp) => playerMap.get(tp.player_id))
       .filter((p): p is Player => p !== undefined),
   }));
 
-  const reserves = (reservesData ?? [])
+  const reserves = (reservesResult.data ?? [])
     .map((r) => playerMap.get(r.player_id))
     .filter((p): p is Player => p !== undefined);
 
+  const matchdayNumber = (allMatchdaysResult.data ?? []).findIndex((m) => m.id === matchdayId) + 1;
+
   return {
-    ...matchdayData,
-    teams,
-    reserves,
-  } as MatchdayWithDetails;
+    matchday: { ...matchdayData, teams, reserves } as MatchdayWithDetails,
+    matchdayNumber,
+  };
 }
 
 export default function MatchdayDetailPage() {
@@ -70,6 +82,7 @@ export default function MatchdayDetailPage() {
   const { players, isAdmin, showRatings } = useAppContext();
 
   const [matchday, setMatchday] = useState<MatchdayWithDetails | null>(null);
+  const [matchdayNumber, setMatchdayNumber] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -87,7 +100,8 @@ export default function MatchdayDetailPage() {
     async function load() {
       const data = await fetchMatchdayData(id!, players);
       if (!cancelled) {
-        setMatchday(data);
+        setMatchday(data?.matchday ?? null);
+        setMatchdayNumber(data?.matchdayNumber ?? 0);
         setLoading(false);
       }
     }
@@ -178,7 +192,7 @@ export default function MatchdayDetailPage() {
   return (
     <div>
       <h2 className="text-xl font-bold">
-        {formatDate(matchday.played_at)}
+        Fecha #{matchdayNumber} — {formatDate(matchday.played_at)}
       </h2>
 
       {/* Teams */}

@@ -53,7 +53,8 @@ export default function MatchdayListPage() {
   return (
     <div>
       <div className="space-y-3">
-        {matchdays.map((matchday) => {
+        {matchdays.map((matchday, index) => {
+          const matchdayNumber = matchdays.length - index;
           const winnerTeam = matchday.winning_team_id
             ? matchday.teams.find((t) => t.id === matchday.winning_team_id)
             : null;
@@ -64,7 +65,7 @@ export default function MatchdayListPage() {
               to={`/fechas/${matchday.short_id}`}
               className="block border border-border rounded-xl p-4 hover:border-neutral-hover transition-colors"
             >
-              <p className="font-medium">{formatDate(matchday.played_at)}</p>
+              <p className="font-medium">Fecha #{matchdayNumber} — {formatDate(matchday.played_at)}</p>
               <p className="text-sm text-muted mt-1">
                 {matchday.teams.map((t) => t.name).join(' vs ')}
               </p>
