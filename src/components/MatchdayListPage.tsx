@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { Matchday } from '../types';
 import { supabase } from '../lib/supabase';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatTime } from '../utils/dateUtils';
 
 interface MatchdayRow extends Matchday {
   teams: { id: number; name: string }[];
+  location: { name: string } | null;
 }
 
 export default function MatchdayListPage() {
@@ -17,7 +18,7 @@ export default function MatchdayListPage() {
     async function fetchMatchdays() {
       const { data, error } = await supabase
         .from('matchdays')
-        .select('*, teams:matchday_teams!matchday_teams_matchday_id_fkey(id, name)')
+        .select('*, teams:matchday_teams!matchday_teams_matchday_id_fkey(id, name), location:locations(name)')
         .order('played_at', { ascending: false });
 
       if (error) {
@@ -65,8 +66,17 @@ export default function MatchdayListPage() {
               to={`/fechas/${matchday.short_id}`}
               className="block border border-border rounded-xl p-4 hover:border-neutral-hover transition-colors"
             >
-              <p className="font-medium">#{matchdayNumber} — {formatDate(matchday.played_at)}</p>
-              <p className="text-sm text-muted mt-1">
+              <p className="font-medium">
+                #{matchdayNumber} — {formatDate(matchday.played_at)}
+              </p>
+              {(matchday.location || matchday.played_at_time) && (
+                <p className="text-sm text-muted mt-1">
+                  {matchday.location?.name}
+                  {matchday.location && matchday.played_at_time && ' '}
+                  {matchday.played_at_time && formatTime(matchday.played_at_time)}
+                </p>
+              )}
+              <p className="text-xs text-muted mt-0.5">
                 {matchday.teams.map((t) => t.name).join(' vs ')}
               </p>
               {winnerTeam && (

@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
-import type { MatchdayWithDetails, Player, AwardType } from '../types';
-import { effectiveRating, isGuest, AWARD_LABELS, AWARD_TYPES } from '../types';
+import type { MatchdayWithDetails, Player, AwardType, Location, LocationSelection } from '../types';
+import { effectiveRating, isGuest, AWARD_LABELS, AWARD_TYPES, isNewLocationComplete } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { teamAverageRating } from '../utils/scoring';
-import { TrophyIcon, ShirtIcon } from './icons';
+import { TrophyIcon, ShirtIcon, EditIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Confetti from './Confetti';
 import ConfettiBurst from './ConfettiBurst';
+import LocationPicker from './LocationPicker';
 
 type MatchdayPageData = {
   matchday: MatchdayWithDetails;
@@ -32,6 +33,17 @@ async function fetchMatchdayData(
   if (matchdayError || !matchdayData) return null;
 
   const matchdayId = matchdayData.id;
+
+  // Fetch location if present
+  let location: Location | null = null;
+  if (matchdayData.location_id) {
+    const { data: locData } = await supabase
+      .from('locations')
+      .select('*')
+      .eq('id', matchdayData.location_id)
+      .single();
+    if (locData) location = locData as Location;
+  }
 
   const { data: teamsData } = await supabase
     .from('matchday_teams')
@@ -72,7 +84,7 @@ async function fetchMatchdayData(
   const matchdayNumber = (allMatchdaysResult.data ?? []).findIndex((m) => m.id === matchdayId) + 1;
 
   return {
-    matchday: { ...matchdayData, teams, reserves } as MatchdayWithDetails,
+    matchday: { ...matchdayData, teams, reserves, location } as MatchdayWithDetails,
     matchdayNumber,
   };
 }
@@ -88,6 +100,13 @@ export default function MatchdayDetailPage() {
   const [saving, setSaving] = useState(false);
   const [glowingAwards, setGlowingAwards] = useState<Set<AwardType>>(new Set());
   const [glowingWinner, setGlowingWinner] = useState(false);
+
+  // Time & location editing state
+  const [editingTimeLocation, setEditingTimeLocation] = useState(false);
+  const [closingTimeLocation, setClosingTimeLocation] = useState(false);
+  const [editTime, setEditTime] = useState('');
+  const [editLocationSelection, setEditLocationSelection] = useState<LocationSelection>({ type: 'none' });
+  const [allLocations, setAllLocations] = useState<Location[]>([]);
 
   const allParticipants = matchday
     ? [
@@ -105,6 +124,15 @@ export default function MatchdayDetailPage() {
       if (!cancelled) {
         setMatchday(data?.matchday ?? null);
         setMatchdayNumber(data?.matchdayNumber ?? 0);
+        // Initialize edit state from loaded data
+        if (data?.matchday) {
+          setEditTime(data.matchday.played_at_time ? formatTime(data.matchday.played_at_time) : '');
+          setEditLocationSelection(
+            data.matchday.location_id
+              ? { type: 'existing', locationId: data.matchday.location_id }
+              : { type: 'none' },
+          );
+        }
         setLoading(false);
       }
     }
@@ -112,6 +140,85 @@ export default function MatchdayDetailPage() {
 
     return () => { cancelled = true; };
   }, [id, players]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.from('locations').select('*').order('name').then(({ data }) => {
+      if (data) setAllLocations(data as Location[]);
+    });
+  }, [isAdmin]);
+
+  function closeTimeLocationEditor() {
+    setClosingTimeLocation(true);
+  }
+
+  function handleEditorAnimationEnd() {
+    if (closingTimeLocation) {
+      setEditingTimeLocation(false);
+      setClosingTimeLocation(false);
+    }
+  }
+
+  function openTimeLocationEditor() {
+    if (!matchday) return;
+    setEditTime(matchday.played_at_time ? matchday.played_at_time.slice(0, 5) : '');
+    setEditLocationSelection(
+      matchday.location_id
+        ? { type: 'existing', locationId: matchday.location_id }
+        : { type: 'none' },
+    );
+    setEditingTimeLocation(true);
+  }
+
+  async function handleSaveTimeLocation() {
+    if (!matchday) return;
+    setSaving(true);
+
+    const timeValue = editTime || null;
+
+    // Resolve location
+    let locationId: number | null = null;
+    let location: Location | null = null;
+
+    if (editLocationSelection.type === 'existing') {
+      locationId = editLocationSelection.locationId;
+      location = allLocations.find((l) => l.id === locationId) ?? null;
+    } else if (editLocationSelection.type === 'new') {
+      if (!editLocationSelection.name.trim() || !editLocationSelection.mapsUrl.trim()) {
+        setSaving(false);
+        return;
+      }
+
+      const { data: newLoc, error: locError } = await supabase
+        .from('locations')
+        .insert({
+          name: editLocationSelection.name.trim(),
+          maps_url: editLocationSelection.mapsUrl.trim(),
+        })
+        .select('*')
+        .single();
+
+      if (locError || !newLoc) {
+        setSaving(false);
+        return;
+      }
+
+      location = newLoc as Location;
+      locationId = location.id;
+      setAllLocations((prev) => [...prev, location!].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+
+    const { error } = await supabase
+      .from('matchdays')
+      .update({ played_at_time: timeValue, location_id: locationId })
+      .eq('id', matchday.id);
+
+    if (!error) {
+      setMatchday({ ...matchday, played_at_time: timeValue, location_id: locationId, location });
+      closeTimeLocationEditor();
+    }
+    setSaving(false);
+  }
 
   async function handleWinnerChange(teamId: number | null) {
     if (!matchday) return;
@@ -212,6 +319,83 @@ export default function MatchdayDetailPage() {
       <h2 className="text-xl font-bold">
         #{matchdayNumber} — {formatDate(matchday.played_at)}
       </h2>
+      <div className="flex items-center gap-2 mt-1">
+        {(matchday.location || matchday.played_at_time) && (
+          <p className="text-sm text-muted">
+            {matchday.location && (
+              <a
+                href={matchday.location.maps_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary-hover"
+              >
+                {matchday.location.name}
+              </a>
+            )}
+            {matchday.location && matchday.played_at_time && ' '}
+            {matchday.played_at_time && formatTime(matchday.played_at_time)}
+          </p>
+        )}
+        {isAdmin && !editingTimeLocation && (
+          <button
+            type="button"
+            onClick={openTimeLocationEditor}
+            className="p-1 rounded text-muted hover:text-on-surface transition-colors"
+            title="Editar hora y cancha"
+          >
+            <EditIcon className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Time & location editing (toggled by admin pencil button above) */}
+      {editingTimeLocation && (
+        <div
+          className={`border border-border rounded-lg p-4 mt-3 space-y-3 ${closingTimeLocation ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
+          onAnimationEnd={handleEditorAnimationEnd}
+        >
+          <div>
+            <label className="block text-sm font-medium mb-1">Horario</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="HH:MM"
+              value={editTime}
+              onChange={(e) => setEditTime(e.target.value)}
+              disabled={saving}
+              className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary ${editTime && !isValidTime(editTime) ? 'border-error' : 'border-border'}`}
+            />
+            {editTime && !isValidTime(editTime) && (
+              <p className="text-xs text-error mt-1">Formato inválido — usá HH:MM (ej: 18:00)</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Cancha</label>
+            <LocationPicker
+              value={editLocationSelection}
+              onChange={setEditLocationSelection}
+              locations={allLocations}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={closeTimeLocationEditor}
+              className="flex-1 py-2 rounded-lg font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveTimeLocation}
+              disabled={saving || !isValidTime(editTime) || !isNewLocationComplete(editLocationSelection)}
+              className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors text-sm"
+            >
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Teams */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">

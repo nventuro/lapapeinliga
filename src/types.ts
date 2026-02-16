@@ -73,10 +73,33 @@ export type PlayerLocks = Map<number, number | 'reserves'>;
 
 export type ShirtColor = 'light' | 'dark';
 
+export type Location = {
+  id: number;
+  name: string;
+  maps_url: string;
+};
+
+export type LocationSelection =
+  | { type: 'none' }
+  | { type: 'existing'; locationId: number }
+  | { type: 'new'; name: string; mapsUrl: string };
+
+export function isValidMapsUrl(url: string): boolean {
+  return url.startsWith('https://') || url.startsWith('http://');
+}
+
+export function isNewLocationComplete(selection: LocationSelection): boolean {
+  return selection.type !== 'new' || (
+    !!selection.name.trim() && !!selection.mapsUrl.trim() && isValidMapsUrl(selection.mapsUrl)
+  );
+}
+
 export type Matchday = {
   id: number;
   short_id: string;
   played_at: string;
+  played_at_time: string | null;
+  location_id: number | null;
   winning_team_id: number | null;
   top_scorer_id: number | null;
   best_defense_id: number | null;
@@ -96,6 +119,7 @@ export type MatchdayTeam = {
 export type MatchdayWithDetails = Matchday & {
   teams: MatchdayTeam[];
   reserves: Player[];
+  location: Location | null;
 };
 
 export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort';

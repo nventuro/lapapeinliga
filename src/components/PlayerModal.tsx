@@ -341,8 +341,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                 {addedPrefs.map((pref, index) => (
                   <li
                     key={`added-${pref.playerId}`}
-                    className="flex items-center justify-between text-sm bg-border-subtle rounded-lg px-3 py-2"
-                    style={{ animation: 'slide-down-in 500ms ease-out' }}
+                    className="flex items-center justify-between text-sm bg-border-subtle rounded-lg px-3 py-2 animate-slide-down-in"
                   >
                     <span>
                       <span className="text-muted">{PREFERENCE_LABELS[pref.type]}</span>{' '}

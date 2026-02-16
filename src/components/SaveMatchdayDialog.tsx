@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Team, Player, ShirtColor } from '../types';
+import type { Team, Player, ShirtColor, Location, LocationSelection } from '../types';
+import { isNewLocationComplete } from '../types';
 import { ShirtIcon } from './icons';
 import { supabase } from '../lib/supabase';
-import { formatDateShort } from '../utils/dateUtils';
+import { formatDateShort, isValidTime } from '../utils/dateUtils';
+import LocationPicker from './LocationPicker';
 
 function nextSaturday(): string {
   const today = new Date();
@@ -26,6 +28,9 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [date, setDate] = useState(nextSaturday);
+  const [time, setTime] = useState('');
+  const [locationSelection, setLocationSelection] = useState<LocationSelection>({ type: 'none' });
+  const [locations, setLocations] = useState<Location[]>([]);
   const [teamNames, setTeamNames] = useState(() => teams.map((t) => t.name));
   const [shirtColors, setShirtColors] = useState<ShirtColor[]>(() =>
     teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')),
@@ -46,6 +51,12 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
     dialog?.addEventListener('cancel', handleCancel);
     return () => dialog?.removeEventListener('cancel', handleCancel);
   }, [onClose]);
+
+  useEffect(() => {
+    supabase.from('locations').select('*').order('name').then(({ data }) => {
+      if (data) setLocations(data as Location[]);
+    });
+  }, []);
 
   function handleTeamNameChange(index: number, value: string) {
     setTeamNames((prev) => {
@@ -75,10 +86,38 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
 
     setSaving(true);
 
-    // 1. Insert matchday
+    // 1. Resolve location
+    let locationId: number | null = null;
+    if (locationSelection.type === 'existing') {
+      locationId = locationSelection.locationId;
+    } else if (locationSelection.type === 'new') {
+      if (!locationSelection.name.trim() || !locationSelection.mapsUrl.trim()) {
+        setError('Completá el nombre y el link de Google Maps de la cancha.');
+        setSaving(false);
+        return;
+      }
+      const { data: newLoc, error: locError } = await supabase
+        .from('locations')
+        .insert({ name: locationSelection.name.trim(), maps_url: locationSelection.mapsUrl.trim() })
+        .select('id')
+        .single();
+
+      if (locError || !newLoc) {
+        setError(locError?.message ?? 'Error al crear la cancha.');
+        setSaving(false);
+        return;
+      }
+      locationId = newLoc.id;
+    }
+
+    // 2. Insert matchday
     const { data: matchday, error: matchdayError } = await supabase
       .from('matchdays')
-      .insert({ played_at: date })
+      .insert({
+        played_at: date,
+        played_at_time: time || null,
+        location_id: locationId,
+      })
       .select('id, short_id')
       .single();
 
@@ -88,7 +127,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       return;
     }
 
-    // 2. Insert teams
+    // 3. Insert teams
     const teamInserts = trimmedNames.map((name, i) => ({
       matchday_id: matchday.id,
       name,
@@ -106,7 +145,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       return;
     }
 
-    // 3. Insert team players
+    // 4. Insert team players
     const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
       teams[i].players.map((p) => ({
         matchday_team_id: dbTeam.id,
@@ -126,7 +165,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       }
     }
 
-    // 4. Insert reserves
+    // 5. Insert reserves
     if (reserves.length > 0) {
       const reserveInserts = reserves.map((p) => ({
         matchday_id: matchday.id,
@@ -175,6 +214,30 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium mb-1">Horario</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="HH:MM"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary ${time && !isValidTime(time) ? 'border-error' : 'border-border'}`}
+            />
+            {time && !isValidTime(time) && (
+              <p className="text-xs text-error mt-1">Formato inválido — usá HH:MM (ej: 18:00)</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Cancha</label>
+            <LocationPicker
+              value={locationSelection}
+              onChange={setLocationSelection}
+              locations={locations}
+            />
+          </div>
+
           {teamNames.map((name, i) => (
             <div key={i} className="border border-border rounded-lg p-3">
               <div className="flex items-center gap-2">
@@ -219,7 +282,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || !isValidTime(time) || !isNewLocationComplete(locationSelection)}
             className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Guardando...' : 'Guardar'}
