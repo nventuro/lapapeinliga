@@ -61,7 +61,7 @@ export default function MatchdayListPage() {
           return (
             <Link
               key={matchday.id}
-              to={`/fechas/${matchday.id}`}
+              to={`/fechas/${matchday.short_id}`}
               className="block border border-border rounded-xl p-4 hover:border-neutral-hover transition-colors"
             >
               <p className="font-medium">{formatDate(matchday.played_at)}</p>

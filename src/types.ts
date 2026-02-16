@@ -8,6 +8,8 @@ export const MAX_RATING = 10;
 export const MAX_RATING_SPREAD = 0.75;
 export const DEFAULT_UNRATED_RATING = 4;
 
+export const LEADERBOARD_MIN_DISPLAY = 10;
+
 // Scoring weights for team assignment optimization
 export const WEIGHT_RATING = 10;
 export const WEIGHT_GENDER = 6;
@@ -71,6 +73,7 @@ export type PlayerLocks = Map<number, number | 'reserves'>;
 
 export type Matchday = {
   id: number;
+  short_id: string;
   played_at: string;
   winning_team_id: number | null;
   top_scorer_id: number | null;
@@ -97,11 +100,11 @@ export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 
 export const AWARD_TYPES: AwardType[] = ['mvp', 'most_effort', 'top_scorer', 'best_defense', 'best_goalie'];
 
 export const AWARD_LABELS: Record<AwardType, string> = {
-  top_scorer: 'Goleador',
-  best_defense: 'Mejor defensa',
-  mvp: 'Figura del partido',
-  best_goalie: 'Mejor arquero',
-  most_effort: 'Más huevo',
+  top_scorer: 'Gol de Oro',
+  best_defense: 'Muralla',
+  mvp: 'Figura del Partido',
+  best_goalie: 'Manos de Acero',
+  most_effort: 'Mas Huevo',
 };
 
 export interface ScoreBreakdown {

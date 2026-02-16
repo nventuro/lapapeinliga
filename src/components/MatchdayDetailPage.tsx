@@ -14,21 +14,23 @@ import InvBadge from './InvBadge';
 import Confetti from './Confetti';
 
 async function fetchMatchdayData(
-  id: string,
+  shortId: string,
   players: Player[],
 ): Promise<MatchdayWithDetails | null> {
   const { data: matchdayData, error: matchdayError } = await supabase
     .from('matchdays')
     .select('*')
-    .eq('id', id)
+    .eq('short_id', shortId)
     .single();
 
   if (matchdayError || !matchdayData) return null;
 
+  const matchdayId = matchdayData.id;
+
   const { data: teamsData } = await supabase
     .from('matchday_teams')
     .select('id, matchday_id, name')
-    .eq('matchday_id', id)
+    .eq('matchday_id', matchdayId)
     .order('id');
 
   const { data: teamPlayersData } = await supabase
@@ -39,7 +41,7 @@ async function fetchMatchdayData(
   const { data: reservesData } = await supabase
     .from('matchday_reserves')
     .select('player_id')
-    .eq('matchday_id', id);
+    .eq('matchday_id', matchdayId);
 
   const playerMap = new Map(players.map((p) => [p.id, p]));
 

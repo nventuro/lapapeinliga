@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Player, AwardType } from '../types';
-import { AWARD_TYPES, AWARD_LABELS } from '../types';
+import { AWARD_TYPES, AWARD_LABELS, LEADERBOARD_MIN_DISPLAY } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { TrophyIcon, SneakerIcon, MedalIcon } from './icons';
@@ -35,19 +35,31 @@ function withRanks(entries: LeaderboardEntry[]): (LeaderboardEntry & { rank: num
   });
 }
 
+/** Keep full rank tiers until at least LEADERBOARD_MIN_DISPLAY players are included. */
+function tierLimited<T extends { rank: number }>(ranked: T[]): T[] {
+  if (ranked.length <= LEADERBOARD_MIN_DISPLAY) return ranked;
+
+  for (let i = 0; i < ranked.length; i++) {
+    const isEndOfTier = i + 1 >= ranked.length || ranked[i + 1].rank !== ranked[i].rank;
+    if (isEndOfTier && i + 1 >= LEADERBOARD_MIN_DISPLAY) {
+      return ranked.slice(0, i + 1);
+    }
+  }
+
+  return ranked;
+}
+
 function LeaderboardSection({
   title,
   icon,
   entries,
-  limit,
 }: {
   title: string;
   icon: React.ReactNode;
   entries: LeaderboardEntry[];
-  limit?: number;
 }) {
   const sorted = sortEntries([...entries]);
-  const ranked = withRanks(limit ? sorted.slice(0, limit) : sorted);
+  const ranked = tierLimited(withRanks(sorted));
 
   if (ranked.length === 0) return null;
 
@@ -91,8 +103,6 @@ function LeaderboardSection({
     </div>
   );
 }
-
-const TOP_AWARDS_LIMIT = 5;
 
 export default function StatsPage() {
   const { players } = useAppContext();
@@ -222,12 +232,11 @@ export default function StatsPage() {
   return (
     <div>
       <div className="space-y-4">
-        {/* Total awards (top 5) */}
+        {/* Total awards */}
         <LeaderboardSection
           title="Premios totales"
           icon={<MedalIcon className="w-5 h-5 text-gold" />}
           entries={toBreakdownEntries(awardCounts)}
-          limit={TOP_AWARDS_LIMIT}
         />
 
         {/* Awards per category */}

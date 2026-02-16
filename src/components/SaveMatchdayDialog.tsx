@@ -67,7 +67,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
     const { data: matchday, error: matchdayError } = await supabase
       .from('matchdays')
       .insert({ played_at: date })
-      .select('id')
+      .select('id, short_id')
       .single();
 
     if (matchdayError || !matchday) {
@@ -131,7 +131,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       }
     }
 
-    navigate(`/fechas/${matchday.id}`);
+    navigate(`/fechas/${matchday.short_id}`);
   }
 
   return (
