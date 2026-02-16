@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import TeamSorterPage from './components/TeamSorterPage.tsx'
@@ -14,11 +14,12 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route element={<App />}>
-          <Route index element={<MatchdayListPage />} />
-          <Route path="matchdays/:id" element={<MatchdayDetailPage />} />
-          <Route path="stats" element={<StatsPage />} />
-          <Route path="sorter" element={<TeamSorterPage />} />
-          <Route path="players" element={<PlayerManagementPage />} />
+          <Route index element={<Navigate to="/fechas" replace />} />
+          <Route path="fechas" element={<MatchdayListPage />} />
+          <Route path="fechas/:id" element={<MatchdayDetailPage />} />
+          <Route path="estadisticas" element={<StatsPage />} />
+          <Route path="armado" element={<TeamSorterPage />} />
+          <Route path="jugadores" element={<PlayerManagementPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

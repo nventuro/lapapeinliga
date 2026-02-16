@@ -34,7 +34,7 @@ export default function AuthenticatedLayout() {
       <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col min-h-dvh">
         <header className="mb-8">
           <div className="flex items-center justify-between">
-            <Link to="/" className="text-3xl font-bold hover:opacity-80 transition-opacity">
+            <Link to="/fechas" className="text-3xl font-bold hover:opacity-80 transition-opacity">
               La Papeinliga
             </Link>
             <div className="relative" ref={menuRef}>
@@ -90,9 +90,9 @@ export default function AuthenticatedLayout() {
           </div>
           <nav className="flex gap-4 mt-3 border-b border-border pb-2">
             <Link
-              to="/"
+              to="/fechas"
               className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                location.pathname === '/' || location.pathname.startsWith('/matchdays')
+                location.pathname.startsWith('/fechas')
                   ? 'text-primary'
                   : 'text-muted hover:text-muted-strong'
               }`}
@@ -101,9 +101,9 @@ export default function AuthenticatedLayout() {
               Fechas
             </Link>
             <Link
-              to="/stats"
+              to="/estadisticas"
               className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                location.pathname === '/stats'
+                location.pathname === '/estadisticas'
                   ? 'text-primary'
                   : 'text-muted hover:text-muted-strong'
               }`}
@@ -114,9 +114,9 @@ export default function AuthenticatedLayout() {
             {isAdmin && (
               <>
                 <Link
-                  to="/sorter"
+                  to="/armado"
                   className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    location.pathname === '/sorter'
+                    location.pathname === '/armado'
                       ? 'text-primary'
                       : 'text-muted hover:text-muted-strong'
                   }`}
@@ -125,9 +125,9 @@ export default function AuthenticatedLayout() {
                   Armado
                 </Link>
                 <Link
-                  to="/players"
+                  to="/jugadores"
                   className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    location.pathname === '/players'
+                    location.pathname === '/jugadores'
                       ? 'text-primary'
                       : 'text-muted hover:text-muted-strong'
                   }`}

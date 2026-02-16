@@ -131,7 +131,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       }
     }
 
-    navigate(`/matchdays/${matchday.id}`);
+    navigate(`/fechas/${matchday.id}`);
   }
 
   return (

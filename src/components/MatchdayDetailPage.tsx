@@ -138,7 +138,7 @@ export default function MatchdayDetailPage() {
       return;
     }
 
-    navigate('/');
+    navigate('/fechas');
   }
 
   if (loading) {
