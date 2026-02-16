@@ -12,6 +12,7 @@ import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Confetti from './Confetti';
+import ConfettiBurst from './ConfettiBurst';
 
 type MatchdayPageData = {
   matchday: MatchdayWithDetails;
@@ -86,6 +87,7 @@ export default function MatchdayDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [glowingAwards, setGlowingAwards] = useState<Set<AwardType>>(new Set());
+  const [glowingWinner, setGlowingWinner] = useState(false);
 
   const allParticipants = matchday
     ? [
@@ -122,6 +124,10 @@ export default function MatchdayDetailPage() {
 
     if (!error) {
       setMatchday({ ...matchday, winning_team_id: teamId });
+      if (teamId !== null) {
+        setGlowingWinner(true);
+        setTimeout(() => setGlowingWinner(false), 4000);
+      }
     }
     setSaving(false);
   }
@@ -146,7 +152,7 @@ export default function MatchdayDetailPage() {
             next.delete(award);
             return next;
           });
-        }, 800);
+        }, 4000);
       }
     }
     setSaving(false);
@@ -202,8 +208,9 @@ export default function MatchdayDetailPage() {
 
   return (
     <div>
+      {glowingWinner && <ConfettiBurst />}
       <h2 className="text-xl font-bold">
-        Fecha #{matchdayNumber} — {formatDate(matchday.played_at)}
+        #{matchdayNumber} — {formatDate(matchday.played_at)}
       </h2>
 
       {/* Teams */}
@@ -220,7 +227,14 @@ export default function MatchdayDetailPage() {
               {isWinner && <Confetti />}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  {isWinner && <TrophyIcon className="w-5 h-5 text-gold" />}
+                  {isWinner && (
+                    <span className="group relative inline-flex items-center cursor-default focus:outline-none" tabIndex={0}>
+                      <TrophyIcon className="w-5 h-5 text-gold" />
+                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-on-surface text-surface text-xs px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10">
+                        Ganador
+                      </span>
+                    </span>
+                  )}
                   <h3 className="font-bold text-lg">{team.name}</h3>
                   <ShirtIcon
                     className={`w-5 h-5 ${team.shirt_color === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
@@ -298,7 +312,7 @@ export default function MatchdayDetailPage() {
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                 Ganador
-                <TrophyIcon className="w-4 h-4 text-gold" />
+                <TrophyIcon className={`w-4 h-4 ${matchday.winning_team_id ? 'text-gold' : 'text-muted'}`} />
               </label>
               <select
                 value={matchday.winning_team_id ?? ''}
@@ -306,7 +320,7 @@ export default function MatchdayDetailPage() {
                   handleWinnerChange(e.target.value ? Number(e.target.value) : null)
                 }
                 disabled={saving}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${matchday.winning_team_id ? 'border-gold' : 'border-border'} ${glowingWinner ? 'animate-gold-glow-pulse' : ''}`}
               >
                 <option value="">Sin definir</option>
                 {[...matchday.teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
@@ -352,7 +366,7 @@ export default function MatchdayDetailPage() {
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-muted">
                 Ganador
-                <TrophyIcon className="w-4 h-4 text-gold" />
+                <TrophyIcon className={`w-4 h-4 ${matchday.winning_team_id ? 'text-gold' : 'text-muted'}`} />
               </span>
               <span className="font-medium">
                 {winnerTeam ? winnerTeam.name : 'Sin definir'}

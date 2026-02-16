@@ -65,7 +65,7 @@ export default function MatchdayListPage() {
               to={`/fechas/${matchday.short_id}`}
               className="block border border-border rounded-xl p-4 hover:border-neutral-hover transition-colors"
             >
-              <p className="font-medium">Fecha #{matchdayNumber} — {formatDate(matchday.played_at)}</p>
+              <p className="font-medium">#{matchdayNumber} — {formatDate(matchday.played_at)}</p>
               <p className="text-sm text-muted mt-1">
                 {matchday.teams.map((t) => t.name).join(' vs ')}
               </p>

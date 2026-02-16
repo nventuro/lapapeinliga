@@ -37,7 +37,7 @@
   --color-gold-subtle: #fef3c7;
 
   /* Shirt colors */
-  --color-shirt-light: #d1d5db;
+  --color-shirt-light: #e2e5e9;
   --color-shirt-dark: #374151;
 
   /* Confetti accent colors */
@@ -45,7 +45,7 @@
   --color-confetti-green: #22c55e;
 
   /* Animations */
-  --animate-gold-glow-pulse: gold-glow-pulse 0.8s ease-out;
+  --animate-gold-glow-pulse: gold-glow-pulse 4s ease-out;
 }
 
 @keyframes slide-down-in {
@@ -60,11 +60,29 @@
 }
 
 @keyframes gold-glow-pulse {
-  0%, 100% {
+  0% {
     box-shadow: 0 0 0 0 transparent;
   }
-  50% {
-    box-shadow: 0 0 12px 4px color-mix(in srgb, var(--color-gold) 40%, transparent);
+  25% {
+    box-shadow: 0 0 16px 6px color-mix(in srgb, var(--color-gold) 60%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0);
+    opacity: 1;
+  }
+  15% {
+    transform: translate(var(--burst-x), var(--burst-y)) rotate(180deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--burst-x), calc(var(--burst-y) + 500px)) rotate(720deg);
+    opacity: 0;
   }
 }
 
