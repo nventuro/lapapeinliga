@@ -75,13 +75,18 @@
   0% {
     transform: translate(0, 0) rotate(0deg) scale(0);
     opacity: 1;
+    animation-timing-function: ease-out;
   }
-  15% {
+  12% {
     transform: translate(var(--burst-x), var(--burst-y)) rotate(180deg) scale(1);
     opacity: 1;
+    animation-timing-function: cubic-bezier(0.35, 0, 0.9, 0.4);
+  }
+  85% {
+    opacity: 0.7;
   }
   100% {
-    transform: translate(var(--burst-x), calc(var(--burst-y) + 500px)) rotate(720deg);
+    transform: translate(var(--burst-x), calc(var(--burst-y) + 700px)) rotate(720deg);
     opacity: 0;
   }
 }
