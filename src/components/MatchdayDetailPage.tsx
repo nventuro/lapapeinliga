@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate } from '../utils/dateUtils';
 import { teamAverageRating } from '../utils/scoring';
-import { TrophyIcon } from './icons';
+import { TrophyIcon, ShirtIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
@@ -34,7 +34,7 @@ async function fetchMatchdayData(
 
   const { data: teamsData } = await supabase
     .from('matchday_teams')
-    .select('id, matchday_id, name')
+    .select('id, matchday_id, name, shirt_color')
     .eq('matchday_id', matchdayId)
     .order('id');
 
@@ -211,6 +211,9 @@ export default function MatchdayDetailPage() {
                 <div className="flex items-center gap-2">
                   {isWinner && <TrophyIcon className="w-5 h-5 text-gold" />}
                   <h3 className="font-bold text-lg">{team.name}</h3>
+                  <ShirtIcon
+                    className={`w-5 h-5 ${team.shirt_color === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
+                  />
                 </div>
                 {isAdmin && showRatings && (
                   <span className="text-sm text-muted">

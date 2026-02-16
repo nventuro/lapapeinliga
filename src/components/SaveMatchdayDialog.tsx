@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Team, Player } from '../types';
+import type { Team, Player, ShirtColor } from '../types';
+import { ShirtIcon } from './icons';
 import { supabase } from '../lib/supabase';
 import { formatDateShort } from '../utils/dateUtils';
 
@@ -26,6 +27,9 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
 
   const [date, setDate] = useState(nextSaturday);
   const [teamNames, setTeamNames] = useState(() => teams.map((t) => t.name));
+  const [shirtColors, setShirtColors] = useState<ShirtColor[]>(() =>
+    teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +51,14 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
     setTeamNames((prev) => {
       const next = [...prev];
       next[index] = value;
+      return next;
+    });
+  }
+
+  function handleShirtColorToggle(index: number) {
+    setShirtColors((prev) => {
+      const next = [...prev];
+      next[index] = next[index] === 'light' ? 'dark' : 'light';
       return next;
     });
   }
@@ -77,9 +89,10 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
     }
 
     // 2. Insert teams
-    const teamInserts = trimmedNames.map((name) => ({
+    const teamInserts = trimmedNames.map((name, i) => ({
       matchday_id: matchday.id,
       name,
+      shirt_color: shirtColors[i],
     }));
 
     const { data: insertedTeams, error: teamsError } = await supabase
@@ -164,13 +177,25 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
 
           {teamNames.map((name, i) => (
             <div key={i} className="border border-border rounded-lg p-3">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => handleTeamNameChange(i, e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => handleTeamNameChange(i, e.target.value)}
+                  required
+                  className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleShirtColorToggle(i)}
+                  className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
+                  title={shirtColors[i] === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}
+                >
+                  <ShirtIcon
+                    className={`w-5 h-5 ${shirtColors[i] === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
+                  />
+                </button>
+              </div>
               <ul className="mt-2 text-sm text-muted space-y-0.5">
                 {teams[i].players.map((p) => (
                   <li key={p.id}>{p.name}</li>

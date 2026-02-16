@@ -19,6 +19,7 @@ import {
   IconBrandInstagram,
   IconGenderMale,
   IconGenderFemale,
+  IconShirtFilled,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -105,4 +106,8 @@ export function GenderMaleIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function GenderFemaleIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconGenderFemale className={className} stroke={STROKE} />;
+}
+
+export function ShirtIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconShirtFilled className={className} />;
 }

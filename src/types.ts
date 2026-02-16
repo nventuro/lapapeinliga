@@ -71,6 +71,8 @@ export interface Team {
 /** Maps player ID → team index (or 'reserves') for locked players. */
 export type PlayerLocks = Map<number, number | 'reserves'>;
 
+export type ShirtColor = 'light' | 'dark';
+
 export type Matchday = {
   id: number;
   short_id: string;
@@ -87,6 +89,7 @@ export type MatchdayTeam = {
   id: number;
   matchday_id: number;
   name: string;
+  shirt_color: ShirtColor;
   players: Player[];
 };
 

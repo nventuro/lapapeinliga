@@ -36,6 +36,10 @@
   --color-gold: #d4a017;
   --color-gold-subtle: #fef3c7;
 
+  /* Shirt colors */
+  --color-shirt-light: #d1d5db;
+  --color-shirt-dark: #374151;
+
   /* Confetti accent colors */
   --color-confetti-pink: #ec4899;
   --color-confetti-green: #22c55e;
