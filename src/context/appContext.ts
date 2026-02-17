@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { Player, PlayerPreference } from '../types';
 
 export interface AppContextValue {
-  session: Session;
+  session: Session | null;
   players: Player[];
   preferences: PlayerPreference[];
   isAdmin: boolean;
@@ -12,6 +12,7 @@ export interface AppContextValue {
   showCosts: boolean;
   setShowCosts: (show: boolean) => void;
   refetchData: () => Promise<void>;
+  signIn: () => void;
 }
 
 export const AppContext = createContext<AppContextValue | null>(null);

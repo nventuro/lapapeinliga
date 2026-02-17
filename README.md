@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Requires a Supabase project for database and Google OAuth. Copy `.env` template and fill in `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD`.
+Requires a Supabase project for database. Admin authentication uses Google OAuth. Copy `.env` template and fill in `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD`.
 
 ### Database
 
@@ -23,18 +23,20 @@ Migrations live in `supabase/migrations/`.
 
 ## How It Works
 
-1. **Sign in** — authenticate with Google
-2. **Manage players** — admins can add, edit, and delete players from the roster via a dedicated management page. Players have a tier (core, sporadic, guest) that determines grouping and defaults.
-3. **Select players** — check who's attending from the roster, grouped by tier
-4. **Configure teams** — choose how many teams to create (valid splits shown based on team size limits)
-5. **Sort teams** — a hill-climbing optimizer distributes players into balanced teams, minimizing rating spread, gender imbalance, and preference violations
-6. **Adjust** — move players between teams and reserves, re-sort as needed. A score breakdown shows per-category penalties and specific preference violations. Per-team cards flag size errors and gender warnings.
-7. **Lock & reshuffle** — lock specific players into their current teams, then reshuffle. Locked players stay put while the optimizer redistributes everyone else.
-8. **Save as matchday** — admins can save the current team assignment as a matchday ("fecha"), picking a date, time, location, cost, payee, and team names
-9. **Browse matchdays** — view past matchdays from the "Fechas" tab, with team rosters, reserves, and cost breakdown (admin-only)
-10. **Record results** — admins can set the winning team and individual awards (top scorer, best defense, best player, best goalie, most effort) on any matchday
-11. **Share via WhatsApp** — admins can share matchday details (teams, time, location, per-player cost) to WhatsApp once all details are filled in
-12. **Stats** — view player leaderboards for total awards, per-category awards, games won, and games played
+The site is publicly accessible — anyone can browse matchdays, results, and stats without logging in. Admin features (player management, team sorting, editing results) require Google OAuth sign-in.
+
+1. **Browse matchdays** — view past matchdays from the "Fechas" tab, with team rosters, reserves, winner, and awards
+2. **Stats** — view player leaderboards for total awards, per-category awards, games won, and games played
+3. **Sign in** (admin) — authenticate with Google to access management features
+4. **Manage players** — admins can add, edit, and delete players from the roster via a dedicated management page. Players have a tier (core, sporadic, guest) that determines grouping and defaults.
+5. **Select players** — check who's attending from the roster, grouped by tier
+6. **Configure teams** — choose how many teams to create (valid splits shown based on team size limits)
+7. **Sort teams** — a hill-climbing optimizer distributes players into balanced teams, minimizing rating spread, gender imbalance, and preference violations
+8. **Adjust** — move players between teams and reserves, re-sort as needed. A score breakdown shows per-category penalties and specific preference violations. Per-team cards flag size errors and gender warnings.
+9. **Lock & reshuffle** — lock specific players into their current teams, then reshuffle. Locked players stay put while the optimizer redistributes everyone else.
+10. **Save as matchday** — admins can save the current team assignment as a matchday ("fecha"), picking a date, time, location, cost, payee, and team names
+11. **Record results** — admins can set the winning team and individual awards (top scorer, best defense, best player, best goalie, most effort) on any matchday
+12. **Share via WhatsApp** — admins can share matchday details (teams, time, location, per-player cost) to WhatsApp once all details are filled in
 
 ## Team Sorting Algorithm
 
@@ -59,7 +61,7 @@ Hard constraints (never violated): teams differ by at most 1 in size, and each t
 
 - React + TypeScript + Vite
 - Tailwind CSS v4
-- Supabase (database + Google OAuth)
+- Supabase (database + admin auth via Google OAuth)
 - Hosted on GitHub Pages
 
 ---

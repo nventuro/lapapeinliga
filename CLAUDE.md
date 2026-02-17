@@ -6,7 +6,7 @@ Friendly soccer group team organizer — static site POC.
 
 - React + TypeScript + Vite
 - Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- Supabase (database + auth) — migrations in `supabase/migrations/`
+- Supabase (database + admin auth via Google OAuth) — migrations in `supabase/migrations/`
 
 ## Conventions
 

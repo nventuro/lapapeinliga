@@ -6,8 +6,8 @@ import { CalendarIcon, ChartBarIcon, ClipboardIcon, CogIcon, UserGroupIcon } fro
 import ToggleSwitch from './ToggleSwitch';
 import Footer from './Footer';
 
-export default function AuthenticatedLayout() {
-  const { session, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts } = useAppContext();
+export default function MainLayout() {
+  const { session, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, signIn } = useAppContext();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -38,61 +38,70 @@ export default function AuthenticatedLayout() {
             <Link to="/fechas" className="text-3xl font-bold hover:opacity-80 transition-opacity">
               La Papeinliga
             </Link>
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="p-1.5 rounded-full border border-border hover:border-neutral-hover text-muted hover:text-muted-strong transition-colors flex items-center gap-1.5"
-              >
-                {session.user.user_metadata.avatar_url ? (
-                  <img
-                    src={session.user.user_metadata.avatar_url}
-                    alt=""
-                    className="w-6 h-6 rounded-full"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <CogIcon className="w-5 h-5" />
-                )}
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-lg shadow-lg z-50 py-2">
-                  {/* User info */}
-                  <div className="px-4 py-2 border-b border-border-subtle">
-                    <p className="text-sm font-medium truncate">
-                      {session.user.user_metadata.full_name ?? session.user.email}
-                    </p>
-                    {session.user.user_metadata.full_name && session.user.email && (
-                      <p className="text-xs text-muted truncate">{session.user.email}</p>
-                    )}
-                  </div>
-
-                  {/* Admin toggles */}
-                  {isAdmin && (
-                    <div className="px-4 py-2 border-b border-border-subtle space-y-2">
-                      <ToggleSwitch
-                        checked={showRatings}
-                        onChange={setShowRatings}
-                        label="Mostrar puntajes"
-                      />
-                      <ToggleSwitch
-                        checked={showCosts}
-                        onChange={setShowCosts}
-                        label="Mostrar costos"
-                      />
-                    </div>
+            {session ? (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="p-1.5 rounded-full border border-border hover:border-neutral-hover text-muted hover:text-muted-strong transition-colors flex items-center gap-1.5"
+                >
+                  {session.user.user_metadata.avatar_url ? (
+                    <img
+                      src={session.user.user_metadata.avatar_url}
+                      alt=""
+                      className="w-6 h-6 rounded-full"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <CogIcon className="w-5 h-5" />
                   )}
+                </button>
 
-                  {/* Logout */}
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full text-left px-4 py-2 text-sm text-muted hover:text-error hover:bg-border-subtle transition-colors"
-                  >
-                    Cerrar sesión
-                  </button>
-                </div>
-              )}
-            </div>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-lg shadow-lg z-50 py-2">
+                    {/* User info */}
+                    <div className="px-4 py-2 border-b border-border-subtle">
+                      <p className="text-sm font-medium truncate">
+                        {session.user.user_metadata.full_name ?? session.user.email}
+                      </p>
+                      {session.user.user_metadata.full_name && session.user.email && (
+                        <p className="text-xs text-muted truncate">{session.user.email}</p>
+                      )}
+                    </div>
+
+                    {/* Admin toggles */}
+                    {isAdmin && (
+                      <div className="px-4 py-2 border-b border-border-subtle space-y-2">
+                        <ToggleSwitch
+                          checked={showRatings}
+                          onChange={setShowRatings}
+                          label="Mostrar puntajes"
+                        />
+                        <ToggleSwitch
+                          checked={showCosts}
+                          onChange={setShowCosts}
+                          label="Mostrar costos"
+                        />
+                      </div>
+                    )}
+
+                    {/* Logout */}
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full text-left px-4 py-2 text-sm text-muted hover:text-error hover:bg-border-subtle transition-colors"
+                    >
+                      Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={signIn}
+                className="text-sm text-muted hover:text-muted-strong transition-colors"
+              >
+                Iniciar sesión
+              </button>
+            )}
           </div>
           <nav className="flex gap-4 mt-3 border-b border-border pb-2">
             <Link

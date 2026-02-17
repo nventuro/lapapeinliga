@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import { AppProvider } from './context/AppContext';
-import AuthenticatedLayout from './components/AuthenticatedLayout';
-import Footer from './components/Footer';
+import MainLayout from './components/MainLayout';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -24,13 +23,6 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSignIn = () => {
-    supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
-  };
-
   if (authLoading) {
     return (
       <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
@@ -39,27 +31,9 @@ function App() {
     );
   }
 
-  if (!session) {
-    return (
-      <div className="min-h-dvh bg-surface text-on-surface flex flex-col items-center justify-center">
-        <div className="text-center px-4">
-          <h1 className="text-3xl font-bold mb-6">La Papeinliga</h1>
-          <p className="text-muted mb-8">Iniciá sesión para unirte a la sensación.</p>
-          <button
-            onClick={handleSignIn}
-            className="px-6 py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors"
-          >
-            Iniciar sesión con Google
-          </button>
-        </div>
-        <Footer className="absolute bottom-6" />
-      </div>
-    );
-  }
-
   return (
     <AppProvider session={session}>
-      <AuthenticatedLayout />
+      <MainLayout />
     </AppProvider>
   );
 }

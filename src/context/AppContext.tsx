@@ -8,7 +8,7 @@ export function AppProvider({
   session,
   children,
 }: {
-  session: Session;
+  session: Session | null;
   children: React.ReactNode;
 }) {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -59,26 +59,38 @@ export function AppProvider({
     async function init() {
       setLoading(true);
 
-      const { data: adminResult } = await supabase.rpc('is_admin');
-      const admin = adminResult === true;
-      setIsAdmin(admin);
+      let admin = false;
+      if (session) {
+        const { data: adminResult } = await supabase.rpc('is_admin');
+        admin = adminResult === true;
+        setIsAdmin(admin);
 
-      if (admin) {
-        const stored = localStorage.getItem(SHOW_RATINGS_KEY);
-        if (stored === 'true') setShowRatingsState(true);
-        const storedCosts = localStorage.getItem(SHOW_COSTS_KEY);
-        if (storedCosts === 'true') setShowCostsState(true);
+        if (admin) {
+          const stored = localStorage.getItem(SHOW_RATINGS_KEY);
+          if (stored === 'true') setShowRatingsState(true);
+          const storedCosts = localStorage.getItem(SHOW_COSTS_KEY);
+          if (storedCosts === 'true') setShowCostsState(true);
+        }
+      } else {
+        setIsAdmin(false);
       }
 
       await fetchData(admin);
       setLoading(false);
     }
     init();
-  }, [fetchData]);
+  }, [session, fetchData]);
 
   const refetchData = useCallback(async () => {
     await fetchData(isAdmin);
   }, [fetchData, isAdmin]);
+
+  const signIn = useCallback(() => {
+    supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+  }, []);
 
   const handleSignOut = () => {
     localStorage.removeItem(SHOW_RATINGS_KEY);
@@ -89,7 +101,7 @@ export function AppProvider({
   if (loading) {
     return (
       <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
-        <p className="text-muted text-lg">Cargando jugadores...</p>
+        <p className="text-muted text-lg">Cargando...</p>
       </div>
     );
   }
@@ -99,36 +111,21 @@ export function AppProvider({
       <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
         <div className="text-center px-4">
           <p className="text-error mb-4">Error: {error}</p>
-          <button
-            onClick={handleSignOut}
-            className="text-muted hover:text-muted-strong underline"
-          >
-            Cerrar sesión
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (players.length === 0 && !isAdmin) {
-    return (
-      <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
-        <div className="text-center px-4">
-          <h1 className="text-3xl font-bold mb-4">La Papeinliga</h1>
-          <p className="text-muted mb-6">No tenés acceso a los jugadores.</p>
-          <button
-            onClick={handleSignOut}
-            className="text-muted hover:text-muted-strong underline"
-          >
-            Cerrar sesión
-          </button>
+          {session && (
+            <button
+              onClick={handleSignOut}
+              className="text-muted hover:text-muted-strong underline"
+            >
+              Cerrar sesión
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, refetchData }}>
+    <AppContext.Provider value={{ session, players, preferences, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
       {children}
     </AppContext.Provider>
   );
