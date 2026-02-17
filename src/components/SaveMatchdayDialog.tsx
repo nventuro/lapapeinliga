@@ -31,6 +31,8 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
   const [time, setTime] = useState('');
   const [locationSelection, setLocationSelection] = useState<LocationSelection>({ type: 'none' });
   const [locations, setLocations] = useState<Location[]>([]);
+  const [cost, setCost] = useState('');
+  const [payee, setPayee] = useState('');
   const [teamNames, setTeamNames] = useState(() => teams.map((t) => t.name));
   const [shirtColors, setShirtColors] = useState<ShirtColor[]>(() =>
     teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')),
@@ -117,6 +119,8 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
         played_at: date,
         played_at_time: time || null,
         location_id: locationId,
+        cost: cost.trim() ? parseInt(cost.trim(), 10) : null,
+        payee_alias_cbu: payee.trim() || null,
       })
       .select('id, short_id')
       .single();
@@ -235,6 +239,29 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
               value={locationSelection}
               onChange={setLocationSelection}
               locations={locations}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Costo</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Ej: 15000"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
+            <input
+              type="text"
+              placeholder="Alias o CBU"
+              value={payee}
+              onChange={(e) => setPayee(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 

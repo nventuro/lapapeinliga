@@ -94,12 +94,17 @@ export function isNewLocationComplete(selection: LocationSelection): boolean {
   );
 }
 
+export const COST_MARKUP_MULTIPLIER = 1.2;
+export const COST_ROUNDING_NEAREST = 100;
+
 export type Matchday = {
   id: number;
   short_id: string;
   played_at: string;
   played_at_time: string | null;
   location_id: number | null;
+  cost: number | null;
+  payee_alias_cbu: string | null;
   winning_team_id: number | null;
   top_scorer_id: number | null;
   best_defense_id: number | null;
@@ -121,6 +126,10 @@ export type MatchdayWithDetails = Matchday & {
   reserves: Player[];
   location: Location | null;
 };
+
+export function allParticipants(matchday: MatchdayWithDetails): Player[] {
+  return [...matchday.teams.flatMap((t) => t.players), ...matchday.reserves];
+}
 
 export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort';
 

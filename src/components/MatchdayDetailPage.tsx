@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { MatchdayWithDetails, Player, AwardType, Location, LocationSelection } from '../types';
-import { effectiveRating, isGuest, AWARD_LABELS, AWARD_TYPES, isNewLocationComplete } from '../types';
+import { effectiveRating, isGuest, allParticipants, AWARD_LABELS, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
+import { formatPesos, perPlayerCost } from '../utils/costUtils';
 import { teamAverageRating } from '../utils/scoring';
-import { TrophyIcon, ShirtIcon, EditIcon } from './icons';
+import { TrophyIcon, ShirtIcon, EditIcon, WhatsAppIcon } from './icons';
+import { buildPreGameMessage, openWhatsAppShare } from '../utils/shareMessage';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
@@ -93,7 +95,7 @@ async function fetchMatchdayData(
 export default function MatchdayDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { players, isAdmin, showRatings } = useAppContext();
+  const { players, isAdmin, showRatings, showCosts } = useAppContext();
 
   const [matchday, setMatchday] = useState<MatchdayWithDetails | null>(null);
   const [matchdayNumber, setMatchdayNumber] = useState(0);
@@ -102,19 +104,16 @@ export default function MatchdayDetailPage() {
   const [glowingAwards, setGlowingAwards] = useState<Set<AwardType>>(new Set());
   const [glowingWinner, setGlowingWinner] = useState(false);
 
-  // Time & location editing state
-  const [editingTimeLocation, setEditingTimeLocation] = useState(false);
-  const [closingTimeLocation, setClosingTimeLocation] = useState(false);
+  // Details editing state (time, location, cost, payee)
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [closingDetails, setClosingDetails] = useState(false);
   const [editTime, setEditTime] = useState('');
+  const [editCost, setEditCost] = useState('');
+  const [editPayee, setEditPayee] = useState('');
   const [editLocationSelection, setEditLocationSelection] = useState<LocationSelection>({ type: 'none' });
   const [allLocations, setAllLocations] = useState<Location[]>([]);
 
-  const allParticipants = matchday
-    ? [
-        ...matchday.teams.flatMap((t) => t.players),
-        ...matchday.reserves,
-      ]
-    : [];
+  const participants = matchday ? allParticipants(matchday) : [];
 
   useEffect(() => {
     if (!id) return;
@@ -149,29 +148,31 @@ export default function MatchdayDetailPage() {
     });
   }, [isAdmin]);
 
-  function closeTimeLocationEditor() {
-    setClosingTimeLocation(true);
+  function closeDetailsEditor() {
+    setClosingDetails(true);
   }
 
   function handleEditorAnimationEnd() {
-    if (closingTimeLocation) {
-      setEditingTimeLocation(false);
-      setClosingTimeLocation(false);
+    if (closingDetails) {
+      setEditingDetails(false);
+      setClosingDetails(false);
     }
   }
 
-  function openTimeLocationEditor() {
+  function openDetailsEditor() {
     if (!matchday) return;
     setEditTime(matchday.played_at_time ? matchday.played_at_time.slice(0, 5) : '');
+    setEditCost(matchday.cost != null ? String(matchday.cost) : '');
+    setEditPayee(matchday.payee_alias_cbu ?? '');
     setEditLocationSelection(
       matchday.location_id
         ? { type: 'existing', locationId: matchday.location_id }
         : { type: 'none' },
     );
-    setEditingTimeLocation(true);
+    setEditingDetails(true);
   }
 
-  async function handleSaveTimeLocation() {
+  async function handleSaveDetails() {
     if (!matchday) return;
     setSaving(true);
 
@@ -209,14 +210,17 @@ export default function MatchdayDetailPage() {
       setAllLocations((prev) => [...prev, location!].sort((a, b) => a.name.localeCompare(b.name)));
     }
 
+    const costValue = editCost.trim() ? parseInt(editCost.trim(), 10) : null;
+    const payeeValue = editPayee.trim() || null;
+
     const { error } = await supabase
       .from('matchdays')
-      .update({ played_at_time: timeValue, location_id: locationId })
+      .update({ played_at_time: timeValue, location_id: locationId, cost: costValue, payee_alias_cbu: payeeValue })
       .eq('id', matchday.id);
 
     if (!error) {
-      setMatchday({ ...matchday, played_at_time: timeValue, location_id: locationId, location });
-      closeTimeLocationEditor();
+      setMatchday({ ...matchday, played_at_time: timeValue, location_id: locationId, location, cost: costValue, payee_alias_cbu: payeeValue });
+      closeDetailsEditor();
     }
     setSaving(false);
   }
@@ -320,39 +324,10 @@ export default function MatchdayDetailPage() {
       <h2 className="text-xl font-bold">
         #{matchdayNumber} — {formatDate(matchday.played_at)}
       </h2>
-      <div className="flex items-center gap-2 mt-1">
-        {(matchday.location || matchday.played_at_time) && (
-          <p className="text-sm text-muted">
-            {matchday.location && (
-              <a
-                href={matchday.location.maps_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:text-primary-hover"
-              >
-                {matchday.location.name}
-              </a>
-            )}
-            {matchday.location && matchday.played_at_time && ' '}
-            {matchday.played_at_time && formatTime(matchday.played_at_time)}
-          </p>
-        )}
-        {isAdmin && !editingTimeLocation && (
-          <button
-            type="button"
-            onClick={openTimeLocationEditor}
-            className="p-1 rounded text-muted hover:text-on-surface transition-colors"
-            title="Editar hora y cancha"
-          >
-            <EditIcon className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Time & location editing (toggled by admin pencil button above) */}
-      {editingTimeLocation && (
+      {/* Matchday details box (display or edit mode) */}
+      {editingDetails ? (
         <div
-          className={`border border-border rounded-lg p-4 mt-3 space-y-3 ${closingTimeLocation ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
+          className={`border border-border rounded-lg p-4 mt-3 space-y-3 ${closingDetails ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
           onAnimationEnd={handleEditorAnimationEnd}
         >
           <div>
@@ -378,17 +353,40 @@ export default function MatchdayDetailPage() {
               locations={allLocations}
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Costo</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Ej: 15000"
+              value={editCost}
+              onChange={(e) => setEditCost(e.target.value)}
+              disabled={saving}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
+            <input
+              type="text"
+              placeholder="Alias o CBU"
+              value={editPayee}
+              onChange={(e) => setEditPayee(e.target.value)}
+              disabled={saving}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={closeTimeLocationEditor}
+              onClick={closeDetailsEditor}
               className="flex-1 py-2 rounded-lg font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors text-sm"
             >
               Cancelar
             </button>
             <button
               type="button"
-              onClick={handleSaveTimeLocation}
+              onClick={handleSaveDetails}
               disabled={saving || !isValidTime(editTime) || !isNewLocationComplete(editLocationSelection)}
               className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors text-sm"
             >
@@ -396,7 +394,86 @@ export default function MatchdayDetailPage() {
             </button>
           </div>
         </div>
-      )}
+      ) : (isAdmin || matchday.location || matchday.played_at_time) && (() => {
+        const hasTimeOrLocation = matchday.location || matchday.played_at_time;
+        const hasCost = isAdmin && showCosts && matchday.cost != null;
+        const hasAnyDetails = hasTimeOrLocation || hasCost;
+        return (
+          <div className="border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
+            <div className="flex items-center justify-between">
+              {hasAnyDetails ? (
+                <div className="space-y-1">
+                  {hasTimeOrLocation && (
+                    <p>
+                      {matchday.location && (
+                        <a
+                          href={matchday.location.maps_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary-hover"
+                        >
+                          {matchday.location.name}
+                        </a>
+                      )}
+                      {matchday.location && matchday.played_at_time && ' · '}
+                      {matchday.played_at_time && formatTime(matchday.played_at_time)}
+                    </p>
+                  )}
+                  {hasCost && (
+                    <p className="flex flex-wrap gap-x-4">
+                      <span>Total: {formatPesos(matchday.cost!)}</span>
+                      <span>Inflado: {formatPesos(matchday.cost! * COST_MARKUP_MULTIPLIER)}</span>
+                      {participants.length > 0 && (
+                        <span>Por jugador: {formatPesos(perPlayerCost(matchday.cost!, participants.length))}</span>
+                      )}
+                      {matchday.payee_alias_cbu && <span>Pagó: {matchday.payee_alias_cbu}</span>}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="italic">Sin detalles</p>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={openDetailsEditor}
+                  className="p-1 rounded text-muted hover:text-on-surface transition-colors shrink-0 self-start"
+                  title="Editar detalles"
+                >
+                  <EditIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* WhatsApp share (admin only) */}
+      {isAdmin && (() => {
+        const missing: string[] = [];
+        if (!matchday.played_at_time) missing.push('horario');
+        if (!matchday.location) missing.push('cancha');
+        if (!matchday.payee_alias_cbu) missing.push('alias/CBU de quien pagó');
+        const canShare = missing.length === 0;
+        return (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => openWhatsAppShare(buildPreGameMessage(matchday, matchdayNumber))}
+              disabled={!canShare}
+              className="w-full py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              <WhatsAppIcon className="w-5 h-5" />
+              Compartir en WhatsApp
+            </button>
+            {!canShare && (
+              <p className="text-xs text-muted mt-1 text-center">
+                Completá {missing.join(', ')} para compartir
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Teams */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -528,7 +605,7 @@ export default function MatchdayDetailPage() {
                   className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${isGranted ? 'border-gold' : 'border-border'} ${isGlowing ? 'animate-gold-glow-pulse' : ''}`}
                 >
                   <option value="">Sin definir</option>
-                  {[...allParticipants].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+                  {[...participants].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>

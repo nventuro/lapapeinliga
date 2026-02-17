@@ -7,13 +7,14 @@ import ToggleSwitch from './ToggleSwitch';
 import Footer from './Footer';
 
 export default function AuthenticatedLayout() {
-  const { session, isAdmin, showRatings, setShowRatings } = useAppContext();
+  const { session, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts } = useAppContext();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = () => {
     localStorage.removeItem('showRatings');
+    localStorage.removeItem('showCosts');
     supabase.auth.signOut();
   };
 
@@ -66,13 +67,18 @@ export default function AuthenticatedLayout() {
                     )}
                   </div>
 
-                  {/* Admin: rating toggle */}
+                  {/* Admin toggles */}
                   {isAdmin && (
-                    <div className="px-4 py-2 border-b border-border-subtle">
+                    <div className="px-4 py-2 border-b border-border-subtle space-y-2">
                       <ToggleSwitch
                         checked={showRatings}
                         onChange={setShowRatings}
                         label="Mostrar puntajes"
+                      />
+                      <ToggleSwitch
+                        checked={showCosts}
+                        onChange={setShowCosts}
+                        label="Mostrar costos"
                       />
                     </div>
                   )}

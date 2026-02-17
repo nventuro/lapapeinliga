@@ -9,6 +9,8 @@ export interface AppContextValue {
   isAdmin: boolean;
   showRatings: boolean;
   setShowRatings: (show: boolean) => void;
+  showCosts: boolean;
+  setShowCosts: (show: boolean) => void;
   refetchData: () => Promise<void>;
 }
 

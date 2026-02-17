@@ -1,0 +1,1 @@
+ALTER TABLE matchdays ADD COLUMN cost INTEGER;

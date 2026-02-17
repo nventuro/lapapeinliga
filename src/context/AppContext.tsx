@@ -15,14 +15,21 @@ export function AppProvider({
   const [preferences, setPreferences] = useState<PlayerPreference[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showRatings, setShowRatingsState] = useState(false);
+  const [showCosts, setShowCostsState] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const SHOW_RATINGS_KEY = 'showRatings';
+  const SHOW_COSTS_KEY = 'showCosts';
 
   const setShowRatings = useCallback((show: boolean) => {
     setShowRatingsState(show);
     localStorage.setItem(SHOW_RATINGS_KEY, JSON.stringify(show));
+  }, []);
+
+  const setShowCosts = useCallback((show: boolean) => {
+    setShowCostsState(show);
+    localStorage.setItem(SHOW_COSTS_KEY, JSON.stringify(show));
   }, []);
 
   const fetchData = useCallback(async (admin: boolean) => {
@@ -59,6 +66,8 @@ export function AppProvider({
       if (admin) {
         const stored = localStorage.getItem(SHOW_RATINGS_KEY);
         if (stored === 'true') setShowRatingsState(true);
+        const storedCosts = localStorage.getItem(SHOW_COSTS_KEY);
+        if (storedCosts === 'true') setShowCostsState(true);
       }
 
       await fetchData(admin);
@@ -73,6 +82,7 @@ export function AppProvider({
 
   const handleSignOut = () => {
     localStorage.removeItem(SHOW_RATINGS_KEY);
+    localStorage.removeItem(SHOW_COSTS_KEY);
     supabase.auth.signOut();
   };
 
@@ -118,7 +128,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, isAdmin, showRatings, setShowRatings, refetchData }}>
+    <AppContext.Provider value={{ session, players, preferences, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, refetchData }}>
       {children}
     </AppContext.Provider>
   );
