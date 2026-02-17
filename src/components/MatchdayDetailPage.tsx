@@ -12,6 +12,7 @@ import { TrophyIcon, ShirtIcon, EditIcon, WhatsAppIcon } from './icons';
 import { buildPreGameMessage, openWhatsAppShare } from '../utils/shareMessage';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
+import TimeInput from './TimeInput';
 import InvBadge from './InvBadge';
 import Tooltip from './Tooltip';
 import Confetti from './Confetti';
@@ -332,18 +333,7 @@ export default function MatchdayDetailPage() {
         >
           <div>
             <label className="block text-sm font-medium mb-1">Horario</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="HH:MM"
-              value={editTime}
-              onChange={(e) => setEditTime(e.target.value)}
-              disabled={saving}
-              className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary ${editTime && !isValidTime(editTime) ? 'border-error' : 'border-border'}`}
-            />
-            {editTime && !isValidTime(editTime) && (
-              <p className="text-xs text-error mt-1">Formato inválido — usá HH:MM (ej: 18:00)</p>
-            )}
+            <TimeInput value={editTime} onChange={setEditTime} disabled={saving} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Cancha</label>

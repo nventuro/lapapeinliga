@@ -6,6 +6,7 @@ import { ShirtIcon } from './icons';
 import { supabase } from '../lib/supabase';
 import { formatDateShort, isValidTime } from '../utils/dateUtils';
 import LocationPicker from './LocationPicker';
+import TimeInput from './TimeInput';
 
 function nextSaturday(): string {
   const today = new Date();
@@ -220,17 +221,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
 
           <div>
             <label className="block text-sm font-medium mb-1">Horario</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="HH:MM"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary ${time && !isValidTime(time) ? 'border-error' : 'border-border'}`}
-            />
-            {time && !isValidTime(time) && (
-              <p className="text-xs text-error mt-1">Formato inválido — usá HH:MM (ej: 18:00)</p>
-            )}
+            <TimeInput value={time} onChange={setTime} />
           </div>
 
           <div>
