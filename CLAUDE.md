@@ -19,6 +19,7 @@ Friendly soccer group team organizer — static site POC.
 - **No magic numbers**: Domain logic constants (team sizes, player limits, thresholds) must be named constants in `src/types.ts`, never hardcoded in components or utils. UI-facing text must interpolate these constants, not repeat literal values.
 - **Date format**: Always dd/mm order, never mm/dd/yyyy. Use `formatDate` (long locale) or `formatDateShort` (dd/mm/yyyy) from `src/utils/dateUtils.ts`.
 - **No duplicated logic**: If the same computation exists in two places, extract it. Check for existing logic before writing new code that searches/filters/computes the same thing.
+- **Icon tooltips**: All icons must have a hover/tap tooltip (via the `Tooltip` component in `src/components/Tooltip.tsx`), except gender icons (`GenderIcon`) and navbar navigation icons.
 - **Zero lint errors**: Run `npm run lint` after changes and fix any errors before considering work done. Never introduce new lint violations.
 
 ## Commands

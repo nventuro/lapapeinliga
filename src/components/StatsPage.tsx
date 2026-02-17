@@ -6,6 +6,7 @@ import { useAppContext } from '../context/appContext';
 import { TrophyIcon, SneakerIcon, MedalIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
+import Tooltip from './Tooltip';
 
 type LeaderboardEntry = {
   player: Player;
@@ -80,17 +81,14 @@ function LeaderboardSection({
                 {AWARD_TYPES.filter((award) => entry.awardBreakdown[award]).map((award) => {
                   const Icon = AWARD_ICONS[award];
                   return (
-                    <span
+                    <Tooltip
                       key={award}
-                      className="group relative inline-flex items-center gap-0.5 rounded-full bg-gold-subtle px-2 py-1 text-sm font-medium cursor-default focus:outline-none"
-                      tabIndex={0}
+                      label={AWARD_LABELS[award]}
+                      className="gap-0.5 rounded-full bg-gold-subtle px-2 py-1 text-sm font-medium"
                     >
                       <Icon className="w-3.5 h-3.5 text-gold" />
                       {entry.awardBreakdown[award]}
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-on-surface text-surface text-xs px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10">
-                        {AWARD_LABELS[award]}
-                      </span>
-                    </span>
+                    </Tooltip>
                   );
                 })}
               </div>

@@ -76,7 +76,7 @@ export default function MatchdayListPage() {
                   {matchday.played_at_time && formatTime(matchday.played_at_time)}
                 </p>
               )}
-              <p className="text-xs text-muted mt-0.5">
+              <p className="text-xs text-muted mt-1.5">
                 {matchday.teams.map((t) => t.name).join(' vs ')}
               </p>
               {winnerTeam && (

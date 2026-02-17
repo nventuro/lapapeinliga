@@ -11,6 +11,7 @@ import { TrophyIcon, ShirtIcon, EditIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
+import Tooltip from './Tooltip';
 import Confetti from './Confetti';
 import ConfettiBurst from './ConfettiBurst';
 import LocationPicker from './LocationPicker';
@@ -404,7 +405,7 @@ export default function MatchdayDetailPage() {
           return (
             <div
               key={team.id}
-              className={`relative overflow-hidden rounded-lg p-4 ${
+              className={`relative rounded-lg p-4 ${
                 isWinner ? 'border-2 border-gold bg-gold-subtle' : 'border border-border'
               }`}
             >
@@ -412,17 +413,16 @@ export default function MatchdayDetailPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {isWinner && (
-                    <span className="group relative inline-flex items-center cursor-default focus:outline-none" tabIndex={0}>
+                    <Tooltip label="Ganador">
                       <TrophyIcon className="w-5 h-5 text-gold" />
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-on-surface text-surface text-xs px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10">
-                        Ganador
-                      </span>
-                    </span>
+                    </Tooltip>
                   )}
                   <h3 className="font-bold text-lg">{team.name}</h3>
-                  <ShirtIcon
-                    className={`w-5 h-5 ${team.shirt_color === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-                  />
+                  <Tooltip label={team.shirt_color === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
+                    <ShirtIcon
+                      className={`w-5 h-5 ${team.shirt_color === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
+                    />
+                  </Tooltip>
                 </div>
                 {isAdmin && showRatings && (
                   <span className="text-sm text-muted">
@@ -441,16 +441,9 @@ export default function MatchdayDetailPage() {
                       {awards?.map((award) => {
                         const Icon = AWARD_ICONS[award];
                         return (
-                          <span
-                            key={award}
-                            className="group relative inline-flex items-center text-gold cursor-default focus:outline-none"
-                            tabIndex={0}
-                          >
+                          <Tooltip key={award} label={AWARD_LABELS[award]} className="text-gold">
                             <Icon className="w-4 h-4" />
-                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-on-surface text-surface text-xs px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10">
-                              {AWARD_LABELS[award]}
-                            </span>
-                          </span>
+                          </Tooltip>
                         );
                       })}
                     </li>
