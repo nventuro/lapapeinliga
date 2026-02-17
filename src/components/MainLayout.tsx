@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { CalendarIcon, ChartBarIcon, ClipboardIcon, CogIcon, UserGroupIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardIcon, CogIcon, GoogleIcon, UserGroupIcon } from './icons';
 import ToggleSwitch from './ToggleSwitch';
 import Footer from './Footer';
 
@@ -97,8 +97,9 @@ export default function MainLayout() {
             ) : (
               <button
                 onClick={signIn}
-                className="text-sm text-muted hover:text-muted-strong transition-colors"
+                className="px-3 py-1.5 rounded-full border border-border hover:border-neutral-hover text-sm text-muted hover:text-muted-strong transition-colors flex items-center gap-1.5"
               >
+                <GoogleIcon className="w-4 h-4" />
                 Iniciar sesión
               </button>
             )}
