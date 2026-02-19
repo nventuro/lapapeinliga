@@ -13,6 +13,7 @@ export function AppProvider({
 }) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [preferences, setPreferences] = useState<PlayerPreference[]>([]);
+  const [teamNames, setTeamNames] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showRatings, setShowRatingsState] = useState(false);
   const [showCosts, setShowCostsState] = useState(false);
@@ -42,6 +43,12 @@ export function AppProvider({
     }
 
     setPlayers(playersResult.data as Player[]);
+
+    // Team names are public — fetch unconditionally
+    const teamNamesResult = await supabase.from('team_names').select('name').order('name');
+    if (!teamNamesResult.error) {
+      setTeamNames(teamNamesResult.data.map((r) => r.name));
+    }
 
     // Preferences are admin-only (RLS restricted)
     if (admin) {
@@ -125,7 +132,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
+    <AppContext.Provider value={{ session, players, preferences, teamNames, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
       {children}
     </AppContext.Provider>
   );

@@ -6,6 +6,7 @@ export interface AppContextValue {
   session: Session | null;
   players: Player[];
   preferences: PlayerPreference[];
+  teamNames: string[];
   isAdmin: boolean;
   showRatings: boolean;
   setShowRatings: (show: boolean) => void;
