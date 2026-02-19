@@ -20,7 +20,7 @@ export function buildPreGameMessage(
   for (const team of matchday.teams) {
     const shirtLabel = team.shirt_color === 'dark' ? 'Oscuros ⚫' : 'Claros ⚪';
     lines.push('');
-    lines.push(`👕 ${team.name} (${shirtLabel})`);
+    lines.push(`${team.name} (${shirtLabel})`);
     const sorted = [...team.players].sort((a, b) => a.name.localeCompare(b.name));
     for (const player of sorted) {
       lines.push(`- ${player.name}`);
@@ -53,6 +53,6 @@ export function buildPreGameMessage(
 }
 
 export function openWhatsAppShare(text: string): void {
-  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank');
 }

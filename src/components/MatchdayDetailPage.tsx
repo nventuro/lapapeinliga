@@ -423,44 +423,37 @@ export default function MatchdayDetailPage() {
               ) : (
                 <p className="italic">Sin detalles</p>
               )}
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={openDetailsEditor}
-                  className="p-1 rounded text-muted hover:text-on-surface transition-colors shrink-0 self-start"
-                  title="Editar detalles"
-                >
-                  <EditIcon className="w-4 h-4" />
-                </button>
-              )}
+              {isAdmin && (() => {
+                const missing: string[] = [];
+                if (!matchday.played_at_time) missing.push('horario');
+                if (!matchday.location) missing.push('cancha');
+                if (!matchday.payee_alias_cbu) missing.push('alias/CBU');
+                const canShare = missing.length === 0;
+                return (
+                  <div className="flex items-center gap-1 shrink-0 self-start">
+                    <Tooltip label={canShare ? 'Compartir por WhatsApp' : `Completá ${missing.join(', ')} para compartir`}>
+                      <button
+                        type="button"
+                        onClick={() => openWhatsAppShare(buildPreGameMessage(matchday, matchdayNumber))}
+                        disabled={!canShare}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-sm text-muted hover:text-on-surface disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Compartir
+                        <WhatsAppIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                    <button
+                      type="button"
+                      onClick={openDetailsEditor}
+                      className="p-1 rounded text-muted hover:text-on-surface transition-colors"
+                      title="Editar detalles"
+                    >
+                      <EditIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
-          </div>
-        );
-      })()}
-
-      {/* WhatsApp share (admin only) */}
-      {isAdmin && (() => {
-        const missing: string[] = [];
-        if (!matchday.played_at_time) missing.push('horario');
-        if (!matchday.location) missing.push('cancha');
-        if (!matchday.payee_alias_cbu) missing.push('alias/CBU de quien pagó');
-        const canShare = missing.length === 0;
-        return (
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => openWhatsAppShare(buildPreGameMessage(matchday, matchdayNumber))}
-              disabled={!canShare}
-              className="w-full py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
-              <WhatsAppIcon className="w-5 h-5" />
-              Compartir en WhatsApp
-            </button>
-            {!canShare && (
-              <p className="text-xs text-muted mt-1 text-center">
-                Completá {missing.join(', ')} para compartir
-              </p>
-            )}
           </div>
         );
       })()}

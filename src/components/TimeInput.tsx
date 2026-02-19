@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface TimeInputProps {
   value: string; // "HH:MM" or ""
   onChange: (value: string) => void;
@@ -7,23 +9,15 @@ interface TimeInputProps {
 /** Two-field 24h time input (HH : MM) that works well on mobile numeric keyboards. */
 export default function TimeInput({ value, onChange, disabled }: TimeInputProps) {
   const [hours, minutes] = value ? value.split(':') : ['', ''];
+  const [localHours, setLocalHours] = useState<string | null>(null);
+  const [localMinutes, setLocalMinutes] = useState<string | null>(null);
 
-  function update(h: string, m: string) {
+  function commit(h: string, m: string) {
     if (h === '' && m === '') {
       onChange('');
     } else {
       onChange(`${h.padStart(2, '0')}:${m.padStart(2, '0')}`);
     }
-  }
-
-  function handleHoursChange(raw: string) {
-    const digits = raw.replace(/\D/g, '').slice(0, 2);
-    update(digits, minutes);
-  }
-
-  function handleMinutesChange(raw: string) {
-    const digits = raw.replace(/\D/g, '').slice(0, 2);
-    update(hours, digits);
   }
 
   return (
@@ -32,8 +26,16 @@ export default function TimeInput({ value, onChange, disabled }: TimeInputProps)
         type="text"
         inputMode="numeric"
         placeholder="HH"
-        value={hours}
-        onChange={(e) => handleHoursChange(e.target.value)}
+        value={localHours ?? hours}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setLocalHours(digits);
+        }}
+        onBlur={() => {
+          const h = localHours ?? hours;
+          setLocalHours(null);
+          commit(h, minutes);
+        }}
         disabled={disabled}
         className="w-16 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface text-center focus:outline-none focus:ring-2 focus:ring-primary"
       />
@@ -42,8 +44,16 @@ export default function TimeInput({ value, onChange, disabled }: TimeInputProps)
         type="text"
         inputMode="numeric"
         placeholder="MM"
-        value={minutes}
-        onChange={(e) => handleMinutesChange(e.target.value)}
+        value={localMinutes ?? minutes}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setLocalMinutes(digits);
+        }}
+        onBlur={() => {
+          const m = localMinutes ?? minutes;
+          setLocalMinutes(null);
+          commit(hours, m);
+        }}
         disabled={disabled}
         className="w-16 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface text-center focus:outline-none focus:ring-2 focus:ring-primary"
       />
