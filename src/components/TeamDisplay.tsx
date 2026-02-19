@@ -22,11 +22,12 @@ interface PlayerRowProps {
   player: Player;
   isSelected: boolean;
   isLocked: boolean;
+  showRating: boolean;
   onTap: (id: number) => void;
   onToggleLock: (id: number) => void;
 }
 
-function PlayerRow({ player, isSelected, isLocked, onTap, onToggleLock }: PlayerRowProps) {
+function PlayerRow({ player, isSelected, isLocked, showRating, onTap, onToggleLock }: PlayerRowProps) {
   return (
     <li
       onClick={() => !isLocked && onTap(player.id)}
@@ -41,7 +42,7 @@ function PlayerRow({ player, isSelected, isLocked, onTap, onToggleLock }: Player
       <GenderIcon gender={player.gender} />
       <span>{player.name}</span>
       {isGuest(player) && <InvBadge />}
-      <RatingBadge rating={player.rating} className="ml-auto" />
+      {showRating && <RatingBadge rating={player.rating} className="ml-auto" />}
       <button
         onClick={(e) => { e.stopPropagation(); onToggleLock(player.id); }}
         className="ml-1 p-1 rounded hover:bg-neutral-hover transition-colors"
@@ -74,7 +75,7 @@ export default function TeamDisplay({
   onResort,
   onReset,
 }: TeamDisplayProps) {
-  const { isAdmin } = useAppContext();
+  const { isAdmin, showRatings } = useAppContext();
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
@@ -256,9 +257,11 @@ export default function TeamDisplay({
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-lg">{team.name}</h3>
-                <span className={`text-sm ${ratingHighlight ? highlightClasses(ratingHighlight) : 'text-muted'}`}>
-                  Promedio: {avgRating.toFixed(1)}
-                </span>
+                {showRatings && (
+                  <span className={`text-sm ${ratingHighlight ? highlightClasses(ratingHighlight) : 'text-muted'}`}>
+                    Promedio: {avgRating.toFixed(1)}
+                  </span>
+                )}
               </div>
 
               <ul className="space-y-1">
@@ -268,6 +271,7 @@ export default function TeamDisplay({
                     player={player}
                     isSelected={selectedPlayerId === player.id}
                     isLocked={lockedIds.has(player.id)}
+                    showRating={showRatings}
                     onTap={handlePlayerTap}
                     onToggleLock={onToggleLock}
                   />
@@ -333,6 +337,7 @@ export default function TeamDisplay({
                 player={player}
                 isSelected={selectedPlayerId === player.id}
                 isLocked={lockedIds.has(player.id)}
+                showRating={showRatings}
                 onTap={handlePlayerTap}
                 onToggleLock={onToggleLock}
               />
