@@ -436,7 +436,7 @@ export default function MatchdayDetailPage() {
                         type="button"
                         onClick={() => openWhatsAppShare(buildPreGameMessage(matchday, matchdayNumber))}
                         disabled={!canShare}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-on-surface hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
                       >
                         Compartir
                         <WhatsAppIcon className="w-4 h-4" />
