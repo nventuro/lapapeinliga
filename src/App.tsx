@@ -16,8 +16,13 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only update session on meaningful auth changes, not token refreshes.
+      // Supabase auto-refreshes tokens on tab visibility change, which would
+      // otherwise trigger a full data reload via the session dependency in AppContext.
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setSession(session);
+      }
     });
 
     return () => subscription.unsubscribe();
