@@ -400,7 +400,7 @@ export default function MatchdayDetailPage() {
                           href={matchday.location.maps_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:text-primary-hover"
+                          className="text-primary hover:text-primary-hover underline underline-offset-2"
                         >
                           {matchday.location.name}
                         </a>
@@ -436,20 +436,21 @@ export default function MatchdayDetailPage() {
                         type="button"
                         onClick={() => openWhatsAppShare(buildPreGameMessage(matchday, matchdayNumber))}
                         disabled={!canShare}
-                        className="flex items-center gap-1 px-2 py-1 rounded text-sm text-muted hover:text-on-surface disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-on-surface hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Compartir
                         <WhatsAppIcon className="w-4 h-4" />
                       </button>
                     </Tooltip>
-                    <button
-                      type="button"
-                      onClick={openDetailsEditor}
-                      className="p-1 rounded text-muted hover:text-on-surface transition-colors"
-                      title="Editar detalles"
-                    >
-                      <EditIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip label="Editar detalles">
+                      <button
+                        type="button"
+                        onClick={openDetailsEditor}
+                        className="p-1 rounded text-muted hover:text-on-surface transition-colors"
+                      >
+                        <EditIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
                   </div>
                 );
               })()}

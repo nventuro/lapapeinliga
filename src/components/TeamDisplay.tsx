@@ -8,6 +8,7 @@ import { LockedIcon, UnlockedIcon, GenderMaleIcon, GenderFemaleIcon } from './ic
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
+import Tooltip from './Tooltip';
 import SaveMatchdayDialog from './SaveMatchdayDialog';
 
 type HighlightLevel = 'error' | 'warning' | null;
@@ -43,13 +44,14 @@ function PlayerRow({ player, isSelected, isLocked, showRating, onTap, onToggleLo
       <span>{player.name}</span>
       {isGuest(player) && <InvBadge />}
       {showRating && <RatingBadge rating={player.rating} className="ml-auto" />}
-      <button
-        onClick={(e) => { e.stopPropagation(); onToggleLock(player.id); }}
-        className="ml-1 p-1 rounded hover:bg-neutral-hover transition-colors"
-        title={isLocked ? 'Desbloquear jugador' : 'Bloquear jugador'}
-      >
-        {isLocked ? <LockedIcon /> : <UnlockedIcon />}
-      </button>
+      <Tooltip label={isLocked ? 'Desbloquear jugador' : 'Bloquear jugador'}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleLock(player.id); }}
+          className="ml-1 p-1 rounded hover:bg-neutral-hover transition-colors"
+        >
+          {isLocked ? <LockedIcon /> : <UnlockedIcon />}
+        </button>
+      </Tooltip>
     </li>
   );
 }

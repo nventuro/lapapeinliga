@@ -8,6 +8,7 @@ import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import NoAccess from './NoAccess';
+import Tooltip from './Tooltip';
 
 export default function PlayerManagementPage() {
   const { players, isAdmin, showRatings, refetchData } = useAppContext();
@@ -68,20 +69,22 @@ export default function PlayerManagementPage() {
                   <span className="font-medium truncate">{player.name}</span>
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
                   <div className="flex items-center gap-1 shrink-0 ml-auto">
-                    <button
-                      onClick={() => setModalPlayer(player)}
-                      className="text-muted hover:text-primary transition-colors p-1"
-                      title="Editar jugador"
-                    >
-                      <EditIcon />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(player)}
-                      className="text-muted hover:text-error transition-colors p-1"
-                      title="Eliminar jugador"
-                    >
-                      <TrashIcon />
-                    </button>
+                    <Tooltip label="Editar jugador">
+                      <button
+                        onClick={() => setModalPlayer(player)}
+                        className="text-muted hover:text-primary transition-colors p-1"
+                      >
+                        <EditIcon />
+                      </button>
+                    </Tooltip>
+                    <Tooltip label="Eliminar jugador">
+                      <button
+                        onClick={() => handleDelete(player)}
+                        className="text-muted hover:text-error transition-colors p-1"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </Tooltip>
                   </div>
                 </li>
               ))}

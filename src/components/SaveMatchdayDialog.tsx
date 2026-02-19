@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { formatDateShort, isValidTime } from '../utils/dateUtils';
 import LocationPicker from './LocationPicker';
 import TimeInput from './TimeInput';
+import Tooltip from './Tooltip';
 
 function nextSaturday(): string {
   const today = new Date();
@@ -266,16 +267,17 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
                   required
                   className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 />
-                <button
-                  type="button"
-                  onClick={() => handleShirtColorToggle(i)}
-                  className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
-                  title={shirtColors[i] === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}
-                >
-                  <ShirtIcon
-                    className={`w-5 h-5 ${shirtColors[i] === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-                  />
-                </button>
+                <Tooltip label={shirtColors[i] === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
+                  <button
+                    type="button"
+                    onClick={() => handleShirtColorToggle(i)}
+                    className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
+                  >
+                    <ShirtIcon
+                      className={`w-5 h-5 ${shirtColors[i] === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
+                    />
+                  </button>
+                </Tooltip>
               </div>
               <ul className="mt-2 text-sm text-muted space-y-0.5">
                 {teams[i].players.map((p) => (
