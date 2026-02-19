@@ -1,10 +1,15 @@
 import type { Player, Team, PlayerPreference, PlayerLocks, ScoreBreakdown } from '../types';
 import { MIN_GENDER_PER_TEAM, MAX_TEAM_SIZE, HILL_CLIMB_STARTS } from '../types';
 import { scoreAssignment, scoreTotal, buildPlayerTeamMap } from './scoring';
+import { shuffle } from './shuffle';
 import { playersPerTeam } from './teamCalculator';
 
 // Re-export for existing consumers
 export { teamAverageRating } from './scoring';
+
+export function defaultTeamName(index: number): string {
+  return `Equipo ${String.fromCharCode(65 + index)}`;
+}
 
 export interface SortResult {
   teams: Team[];
@@ -12,37 +17,21 @@ export interface SortResult {
   score: ScoreBreakdown;
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const result = [...arr];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 /**
  * Generate one valid initial assignment.
  * Pre-places locked players, then distributes free players via gender
  * round-robin (when enforceGender) or simple shuffle.
  */
-function teamName(index: number, suggestedNames: string[]): string {
-  return index < suggestedNames.length
-    ? suggestedNames[index]
-    : `Equipo ${String.fromCharCode(65 + index)}`;
-}
-
 function generateInitialAssignment(
   players: Player[],
   teamCount: number,
   enforceGender: boolean,
   locks: PlayerLocks = new Map(),
-  suggestedNames: string[] = [],
 ): { teams: Team[]; reserves: Player[] } {
   const perTeam = playersPerTeam(players.length, teamCount);
 
   const teams: Team[] = Array.from({ length: teamCount }, (_, i) => ({
-    name: teamName(i, suggestedNames),
+    name: defaultTeamName(i),
     players: [],
   }));
   const reserves: Player[] = [];
@@ -264,17 +253,15 @@ export function sortTeams(
   teamCount: number,
   preferences: PlayerPreference[] = [],
   locks: PlayerLocks = new Map(),
-  suggestedNames: string[] = [],
 ): SortResult {
   const enforceGender = canEnforceGender(players, teamCount);
-  const shuffledNames = shuffle(suggestedNames);
 
   let bestTeams: Team[] | null = null;
   let bestReserves: Player[] | null = null;
   let bestTotalScore = -Infinity;
 
   for (let start = 0; start < HILL_CLIMB_STARTS; start++) {
-    const initial = generateInitialAssignment(players, teamCount, enforceGender, locks, shuffledNames);
+    const initial = generateInitialAssignment(players, teamCount, enforceGender, locks);
     const result = hillClimb(initial.teams, initial.reserves, preferences, enforceGender, locks);
 
     if (result.totalScore > bestTotalScore) {

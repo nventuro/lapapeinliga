@@ -2,9 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Team, Player, ShirtColor, Location, LocationSelection } from '../types';
 import { isNewLocationComplete } from '../types';
-import { ShirtIcon } from './icons';
+import { ShirtIcon, ShuffleIcon } from './icons';
 import { supabase } from '../lib/supabase';
+import { useAppContext } from '../context/appContext';
 import { formatDateShort, isValidTime } from '../utils/dateUtils';
+import { shuffle } from '../utils/shuffle';
+import { defaultTeamName } from '../utils/teamSorter';
 import LocationPicker from './LocationPicker';
 import TimeInput from './TimeInput';
 import Tooltip from './Tooltip';
@@ -25,9 +28,17 @@ interface SaveMatchdayDialogProps {
   onClose: () => void;
 }
 
+function initialTeamNames(count: number, suggestedNames: string[]): string[] {
+  const shuffled = shuffle(suggestedNames);
+  return Array.from({ length: count }, (_, i) =>
+    i < shuffled.length ? shuffled[i] : defaultTeamName(i),
+  );
+}
+
 export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMatchdayDialogProps) {
   const navigate = useNavigate();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const { teamNames: suggestedTeamNames } = useAppContext();
 
   const [date, setDate] = useState(nextSaturday);
   const [time, setTime] = useState('');
@@ -35,7 +46,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
   const [locations, setLocations] = useState<Location[]>([]);
   const [cost, setCost] = useState('');
   const [payee, setPayee] = useState('');
-  const [teamNames, setTeamNames] = useState(() => teams.map((t) => t.name));
+  const [teamNames, setTeamNames] = useState(() => initialTeamNames(teams.length, suggestedTeamNames));
   const [shirtColors, setShirtColors] = useState<ShirtColor[]>(() =>
     teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')),
   );
@@ -66,6 +77,18 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
     setTeamNames((prev) => {
       const next = [...prev];
       next[index] = value;
+      return next;
+    });
+  }
+
+  function handleRandomizeName(index: number) {
+    if (suggestedTeamNames.length === 0) return;
+    setTeamNames((prev) => {
+      const usedByOthers = new Set(prev.filter((_, j) => j !== index));
+      const available = suggestedTeamNames.filter((n) => !usedByOthers.has(n));
+      if (available.length === 0) return prev;
+      const next = [...prev];
+      next[index] = available[Math.floor(Math.random() * available.length)];
       return next;
     });
   }
@@ -267,6 +290,17 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
                   required
                   className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 />
+                {suggestedTeamNames.length > 0 && (
+                  <Tooltip label="Nombre aleatorio">
+                    <button
+                      type="button"
+                      onClick={() => handleRandomizeName(i)}
+                      className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
+                    >
+                      <ShuffleIcon className="w-5 h-5 text-muted" />
+                    </button>
+                  </Tooltip>
+                )}
                 <Tooltip label={shirtColors[i] === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
                   <button
                     type="button"

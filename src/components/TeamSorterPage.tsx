@@ -12,7 +12,7 @@ import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 type Step = 'select' | 'configure' | 'results';
 
 export default function TeamSorterPage() {
-  const { players, preferences, teamNames, isAdmin } = useAppContext();
+  const { players, preferences, isAdmin } = useAppContext();
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [result, setResult] = useState<{ teams: Team[]; reserves: Player[] } | null>(null);
@@ -64,11 +64,11 @@ export default function TeamSorterPage() {
 
   const generateTeams = useCallback(
     (teamCount: number) => {
-      setResult(sortTeams(selectedPlayers, teamCount, preferences, new Map(), teamNames));
+      setResult(sortTeams(selectedPlayers, teamCount, preferences));
       setLastTeamCount(teamCount);
       setStep('results');
     },
-    [selectedPlayers, preferences, teamNames],
+    [selectedPlayers, preferences],
   );
 
   function buildLocksMap(teams: Team[], reserves: Player[], locked: Set<number>): PlayerLocks {
@@ -86,8 +86,8 @@ export default function TeamSorterPage() {
 
   const handleResort = useCallback(() => {
     const locks = result ? buildLocksMap(result.teams, result.reserves, lockedIds) : new Map();
-    setResult(sortTeams(selectedPlayers, lastTeamCount, preferences, locks, teamNames));
-  }, [selectedPlayers, lastTeamCount, preferences, result, lockedIds, teamNames]);
+    setResult(sortTeams(selectedPlayers, lastTeamCount, preferences, locks));
+  }, [selectedPlayers, lastTeamCount, preferences, result, lockedIds]);
 
   const handleTeamsChange = useCallback(
     (teams: Team[], reserves: Player[]) => {

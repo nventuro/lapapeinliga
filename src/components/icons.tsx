@@ -21,6 +21,7 @@ import {
   IconGenderFemale,
   IconShirtFilled,
   IconBrandWhatsapp,
+  IconArrowsShuffle,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -115,6 +116,10 @@ export function ShirtIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function WhatsAppIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconBrandWhatsapp className={className} stroke={STROKE} />;
+}
+
+export function ShuffleIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconArrowsShuffle className={className} stroke={STROKE} />;
 }
 
 // Official Google "G" logo — paths from Firebase Auth UI (Copyright 2016 Google Inc.)
