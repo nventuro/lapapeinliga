@@ -103,11 +103,11 @@ export function InstagramIcon({ className = 'w-7 h-7' }: IconProps) {
 }
 
 export function GenderMaleIcon({ className = 'w-4 h-4' }: IconProps) {
-  return <IconGenderMale className={className} stroke={STROKE} />;
+  return <IconGenderMale className={`text-gender-male ${className}`} stroke={STROKE} />;
 }
 
 export function GenderFemaleIcon({ className = 'w-4 h-4' }: IconProps) {
-  return <IconGenderFemale className={className} stroke={STROKE} />;
+  return <IconGenderFemale className={`text-gender-female ${className}`} stroke={STROKE} />;
 }
 
 export function ShirtIcon({ className = 'w-4 h-4' }: IconProps) {

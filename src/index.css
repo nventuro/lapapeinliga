@@ -36,6 +36,10 @@
   --color-gold: #d4a017;
   --color-gold-subtle: #fef3c7;
 
+  /* Gender icon colors */
+  --color-gender-male: #93c5fd;
+  --color-gender-female: #f9a8d4;
+
   /* Shirt colors */
   --color-shirt-light: #e2e5e9;
   --color-shirt-dark: #374151;

@@ -286,11 +286,11 @@ export default function TeamBuildingDisplay({
                 </span>
                 {' · '}
                 <span className={highlightClasses(maleHighlight)}>
-                  {maleCount}<GenderMaleIcon className={`w-4 h-4 inline ${maleHighlight ? '' : 'text-muted'}`} />
+                  {maleCount}<GenderMaleIcon className="w-4 h-4 inline" />
                 </span>
                 {' '}
                 <span className={highlightClasses(femaleHighlight)}>
-                  {femaleCount}<GenderFemaleIcon className={`w-4 h-4 inline ${femaleHighlight ? '' : 'text-muted'}`} />
+                  {femaleCount}<GenderFemaleIcon className="w-4 h-4 inline" />
                 </span>
               </div>
 

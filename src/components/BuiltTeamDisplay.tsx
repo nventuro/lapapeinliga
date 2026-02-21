@@ -71,11 +71,11 @@ export default function BuiltTeamDisplay({ team, isWinner, playerAwards }: Built
         <span>{team.players.length} jugador{team.players.length !== 1 ? 'es' : ''}</span>
         {' · '}
         <span>
-          {maleCount}<GenderMaleIcon className="w-4 h-4 inline text-muted" />
+          {maleCount}<GenderMaleIcon className="w-4 h-4 inline" />
         </span>
         {' '}
         <span>
-          {femaleCount}<GenderFemaleIcon className="w-4 h-4 inline text-muted" />
+          {femaleCount}<GenderFemaleIcon className="w-4 h-4 inline" />
         </span>
       </div>
     </div>
