@@ -2,20 +2,19 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { MatchdayWithDetails, Player, AwardType, Location, LocationSelection } from '../types';
-import { effectiveRating, isGuest, allParticipants, AWARD_LABELS, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
+import { isGuest, allParticipants, AWARD_LABELS, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { teamAverageRating } from '../utils/scoring';
-import { TrophyIcon, ShirtIcon, EditIcon, WhatsAppIcon } from './icons';
+import { TrophyIcon, EditIcon, WhatsAppIcon } from './icons';
 import { buildPreGameMessage, openWhatsAppShare } from '../utils/shareMessage';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import TimeInput from './TimeInput';
 import InvBadge from './InvBadge';
 import Tooltip from './Tooltip';
-import Confetti from './Confetti';
+import BuiltTeamDisplay from './BuiltTeamDisplay';
 import ConfettiBurst from './ConfettiBurst';
 import LocationPicker from './LocationPicker';
 
@@ -96,7 +95,7 @@ async function fetchMatchdayData(
 export default function MatchdayDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { players, isAdmin, showRatings, showCosts } = useAppContext();
+  const { players, isAdmin, showCosts } = useAppContext();
 
   const [matchday, setMatchday] = useState<MatchdayWithDetails | null>(null);
   const [matchdayNumber, setMatchdayNumber] = useState(0);
@@ -461,62 +460,14 @@ export default function MatchdayDetailPage() {
 
       {/* Teams */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-        {matchday.teams.map((team) => {
-          const isWinner = team.id === matchday.winning_team_id;
-          return (
-            <div
-              key={team.id}
-              className={`relative rounded-lg p-4 ${
-                isWinner ? 'border-2 border-gold bg-gold-subtle' : 'border border-border'
-              }`}
-            >
-              {isWinner && <Confetti />}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {isWinner && (
-                    <Tooltip label="Ganador">
-                      <TrophyIcon className="w-5 h-5 text-gold" />
-                    </Tooltip>
-                  )}
-                  <h3 className="font-bold text-lg">{team.name}</h3>
-                  <Tooltip label={team.shirt_color === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
-                    <ShirtIcon
-                      className={`w-5 h-5 ${team.shirt_color === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-                    />
-                  </Tooltip>
-                </div>
-                {isAdmin && showRatings && (
-                  <span className="text-sm text-muted">
-                    Promedio: {teamAverageRating(team).toFixed(1)}
-                  </span>
-                )}
-              </div>
-              <ul className="space-y-1">
-                {[...team.players].sort((a, b) => effectiveRating(b) - effectiveRating(a)).map((player) => {
-                  const awards = playerAwards.get(player.id);
-                  return (
-                    <li key={player.id} className="flex items-center gap-2 py-1 px-2">
-                      <GenderIcon gender={player.gender} />
-                      <span>{player.name}</span>
-                      {isGuest(player) && <InvBadge />}
-                      {awards?.map((award) => {
-                        const Icon = AWARD_ICONS[award];
-                        return (
-                          <Tooltip key={award} label={AWARD_LABELS[award]} className="text-gold">
-                            <Icon className="w-4 h-4" />
-                          </Tooltip>
-                        );
-                      })}
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="mt-2 pt-2 border-t border-border-subtle text-sm text-muted">
-                {team.players.length} jugador{team.players.length !== 1 ? 'es' : ''}
-              </p>
-            </div>
-          );
-        })}
+        {matchday.teams.map((team) => (
+          <BuiltTeamDisplay
+            key={team.id}
+            team={team}
+            isWinner={team.id === matchday.winning_team_id}
+            playerAwards={playerAwards}
+          />
+        ))}
       </div>
 
       {/* Reserves */}

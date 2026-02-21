@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Player, PlayerPreference, Team } from '../types';
-import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, effectiveRating, isGuest } from '../types';
+import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, isGuest, effectiveRating } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
@@ -56,7 +56,7 @@ function PlayerRow({ player, isSelected, isLocked, showRating, onTap, onToggleLo
   );
 }
 
-interface TeamDisplayProps {
+interface TeamBuildingDisplayProps {
   teams: Team[];
   reserves: Player[];
   preferences: PlayerPreference[];
@@ -67,7 +67,7 @@ interface TeamDisplayProps {
   onReset: () => void;
 }
 
-export default function TeamDisplay({
+export default function TeamBuildingDisplay({
   teams,
   reserves,
   preferences,
@@ -76,7 +76,7 @@ export default function TeamDisplay({
   onTeamsChange,
   onResort,
   onReset,
-}: TeamDisplayProps) {
+}: TeamBuildingDisplayProps) {
   const { isAdmin, showRatings } = useAppContext();
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);

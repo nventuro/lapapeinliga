@@ -55,6 +55,14 @@ export function effectiveRating(player: Player): number {
   return player.rating ?? DEFAULT_UNRATED_RATING;
 }
 
+const GENDER_ORDER: Record<Player['gender'], number> = { male: 0, female: 1 };
+
+export function comparePlayersByGenderThenName(a: Player, b: Player): number {
+  const genderDiff = GENDER_ORDER[a.gender] - GENDER_ORDER[b.gender];
+  if (genderDiff !== 0) return genderDiff;
+  return a.name.localeCompare(b.name);
+}
+
 export type PreferenceType = 'prefer_with' | 'strongly_prefer_with' | 'prefer_not_with';
 
 export interface PlayerPreference {

@@ -5,7 +5,7 @@ import { sortTeams } from '../utils/teamSorter';
 import { useAppContext } from '../context/appContext';
 import PlayerSelector from './PlayerSelector';
 import TeamConfigurator from './TeamConfigurator';
-import TeamDisplay from './TeamDisplay';
+import TeamBuildingDisplay from './TeamBuildingDisplay';
 import NoAccess from './NoAccess';
 import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 
@@ -160,7 +160,7 @@ export default function TeamSorterPage() {
       )}
 
       {step === 'results' && result && (
-        <TeamDisplay
+        <TeamBuildingDisplay
           teams={result.teams}
           reserves={result.reserves}
           preferences={preferences}
