@@ -36,3 +36,7 @@ Requires `.env` with `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD` (see `.en
 - `npm run db:link` — link local project to remote Supabase (run once)
 - `npm run db:push` — push pending migrations to remote database
 - `npm run db:migration:new <name>` — create a new migration file
+
+### Supabase security patterns
+
+- **`players_public` view uses `security_invoker = true`** — it runs with the caller's privileges, not the owner's. Non-admin roles can only read columns explicitly granted via `GRANT SELECT (col, …)` on the `players` table. When adding a new column to `players_public`, you must also add a column-level grant for it; omitting the grant causes a loud "permission denied" error (safe fail-closed).
