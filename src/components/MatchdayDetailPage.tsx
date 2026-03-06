@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { MatchdayWithDetails, Player, AwardType, Location, LocationSelection } from '../types';
 import { isGuest, allParticipants, AWARD_LABELS, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, orderMatchdays } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
@@ -63,11 +63,7 @@ async function fetchMatchdayData(
       .from('matchday_reserves')
       .select('player_id')
       .eq('matchday_id', matchdayId),
-    supabase
-      .from('matchdays')
-      .select('id')
-      .order('played_at', { ascending: true })
-      .order('id', { ascending: true }),
+    orderMatchdays(supabase.from('matchdays').select('id'), true),
   ]);
 
   const playerMap = new Map(players.map((p) => [p.id, p]));

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { Matchday } from '../types';
 import { COST_MARKUP_MULTIPLIER } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, orderMatchdays } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
@@ -27,10 +27,10 @@ export default function MatchdayListPage() {
 
   useEffect(() => {
     async function fetchMatchdays() {
-      const { data, error } = await supabase
+      const query = supabase
         .from('matchdays')
-        .select('*, teams:matchday_teams!matchday_teams_matchday_id_fkey(id, name, matchday_team_players(count)), matchday_reserves(count), location:locations(name)')
-        .order('played_at', { ascending: false });
+        .select('*, teams:matchday_teams!matchday_teams_matchday_id_fkey(id, name, matchday_team_players(count)), matchday_reserves(count), location:locations(name)');
+      const { data, error } = await orderMatchdays(query, false);
 
       if (error) {
         setError(error.message);
