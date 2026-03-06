@@ -4,7 +4,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config';
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /** Apply the canonical matchday ordering (played_at → played_at_time → id). */
-export function orderMatchdays<T>(query: { order: (column: string, opts: { ascending: boolean }) => T }, ascending: boolean): T {
+export function orderMatchdays<T extends { order: (column: string, opts: { ascending: boolean }) => T }>(query: T, ascending: boolean): T {
   return query
     .order('played_at', { ascending })
     .order('played_at_time', { ascending })
