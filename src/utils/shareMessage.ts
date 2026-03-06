@@ -5,7 +5,7 @@ import { perPlayerCost } from './costUtils';
 
 export function buildPreGameMessage(
   matchday: MatchdayWithDetails,
-  matchdayNumber: number,
+  matchdayNumber: string,
 ): string {
   const lines: string[] = [];
 

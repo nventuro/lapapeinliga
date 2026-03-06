@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { MatchdayWithDetails, Player, AwardType, Location, LocationSelection } from '../types';
 import { isGuest, allParticipants, AWARD_LABELS, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
-import { supabase, orderMatchdays } from '../lib/supabase';
+import { supabase, orderMatchdays, buildMatchdayLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
@@ -20,7 +20,7 @@ import LocationPicker from './LocationPicker';
 
 type MatchdayPageData = {
   matchday: MatchdayWithDetails;
-  matchdayNumber: number;
+  matchdayNumber: string;
 };
 
 async function fetchMatchdayData(
@@ -63,7 +63,7 @@ async function fetchMatchdayData(
       .from('matchday_reserves')
       .select('player_id')
       .eq('matchday_id', matchdayId),
-    orderMatchdays(supabase.from('matchdays').select('id'), true),
+    orderMatchdays(supabase.from('matchdays').select('id, played_at'), true),
   ]);
 
   const playerMap = new Map(players.map((p) => [p.id, p]));
@@ -80,7 +80,9 @@ async function fetchMatchdayData(
     .map((r) => playerMap.get(r.player_id))
     .filter((p): p is Player => p !== undefined);
 
-  const matchdayNumber = (allMatchdaysResult.data ?? []).findIndex((m) => m.id === matchdayId) + 1;
+  const allRows = (allMatchdaysResult.data ?? []) as { id: number; played_at: string }[];
+  const labels = buildMatchdayLabels(allRows);
+  const matchdayNumber = labels.get(matchdayId) ?? '?';
 
   return {
     matchday: { ...matchdayData, teams, reserves, location } as MatchdayWithDetails,
@@ -94,7 +96,7 @@ export default function MatchdayDetailPage() {
   const { players, isAdmin, showCosts } = useAppContext();
 
   const [matchday, setMatchday] = useState<MatchdayWithDetails | null>(null);
-  const [matchdayNumber, setMatchdayNumber] = useState(0);
+  const [matchdayNumber, setMatchdayNumber] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [glowingAwards, setGlowingAwards] = useState<Set<AwardType>>(new Set());
@@ -119,7 +121,7 @@ export default function MatchdayDetailPage() {
       const data = await fetchMatchdayData(id!, players);
       if (!cancelled) {
         setMatchday(data?.matchday ?? null);
-        setMatchdayNumber(data?.matchdayNumber ?? 0);
+        setMatchdayNumber(data?.matchdayNumber ?? '');
         // Initialize edit state from loaded data
         if (data?.matchday) {
           setEditTime(data.matchday.played_at_time ? formatTime(data.matchday.played_at_time) : '');

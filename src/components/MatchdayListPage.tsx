@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { Matchday } from '../types';
 import { COST_MARKUP_MULTIPLIER } from '../types';
-import { supabase, orderMatchdays } from '../lib/supabase';
+import { supabase, orderMatchdays, buildMatchdayLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
@@ -22,6 +22,7 @@ function totalParticipants(matchday: MatchdayRow): number {
 export default function MatchdayListPage() {
   const { isAdmin, showCosts } = useAppContext();
   const [matchdays, setMatchdays] = useState<MatchdayRow[]>([]);
+  const [labels, setLabels] = useState<Map<number, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +36,9 @@ export default function MatchdayListPage() {
       if (error) {
         setError(error.message);
       } else if (data) {
-        setMatchdays(data as MatchdayRow[]);
+        const rows = data as MatchdayRow[];
+        setMatchdays(rows);
+        setLabels(buildMatchdayLabels([...rows].reverse()));
       }
       setLoading(false);
     }
@@ -65,8 +68,8 @@ export default function MatchdayListPage() {
   return (
     <div>
       <div className="space-y-3">
-        {matchdays.map((matchday, index) => {
-          const matchdayNumber = matchdays.length - index;
+        {matchdays.map((matchday) => {
+          const matchdayLabel = labels.get(matchday.id) ?? '?';
           const winnerTeam = matchday.winning_team_id
             ? matchday.teams.find((t) => t.id === matchday.winning_team_id)
             : null;
@@ -78,7 +81,7 @@ export default function MatchdayListPage() {
               className="block border border-border rounded-xl p-4 hover:border-neutral-hover transition-colors"
             >
               <p className="font-medium">
-                #{matchdayNumber} — {formatDate(matchday.played_at)}
+                #{matchdayLabel} — {formatDate(matchday.played_at)}
               </p>
               {(matchday.location || matchday.played_at_time) && (
                 <p className="text-sm text-muted mt-1">
