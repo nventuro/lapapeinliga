@@ -3,7 +3,7 @@ import type { Player, AwardType } from '../types';
 import { AWARD_TYPES, AWARD_LABELS, LEADERBOARD_MIN_DISPLAY } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { TrophyIcon, SneakerIcon, MedalIcon } from './icons';
+import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import Tooltip from './Tooltip';
@@ -110,6 +110,7 @@ export default function StatsPage() {
   const [gamesPlayed, setGamesPlayed] = useState<Map<number, number>>(new Map());
   const [gamesWon, setGamesWon] = useState<Map<number, number>>(new Map());
   const [awardCounts, setAwardCounts] = useState<Map<AwardType, Map<number, number>>>(new Map());
+  const [matchdayParticipants, setMatchdayParticipants] = useState<number[][]>([]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -171,9 +172,25 @@ export default function StatsPage() {
         perCategory.set(award, counts);
       }
 
+      // Build per-matchday participant lists for gender ratio
+      const participantsByMatchday: number[][] = [];
+      for (const matchday of matchdays) {
+        const matchdayTeamIds = new Set(
+          teams.filter((t) => t.matchday_id === matchday.id).map((t) => t.id),
+        );
+        const playerIds = [
+          ...teamPlayers.filter((tp) => matchdayTeamIds.has(tp.matchday_team_id)).map((tp) => tp.player_id),
+          ...reserves.filter((r) => r.matchday_id === matchday.id).map((r) => r.player_id),
+        ];
+        if (playerIds.length > 0) {
+          participantsByMatchday.push(playerIds);
+        }
+      }
+
       setGamesPlayed(played);
       setGamesWon(won);
       setAwardCounts(perCategory);
+      setMatchdayParticipants(participantsByMatchday);
       setLoading(false);
     }
     fetchStats();
@@ -192,6 +209,29 @@ export default function StatsPage() {
   }
 
   const playerMap = new Map(players.map((p) => [p.id, p]));
+
+  // Compute average gender ratio across matchdays
+  const genderRatio = (() => {
+    if (matchdayParticipants.length === 0) return null;
+    let totalMales = 0;
+    let totalFemales = 0;
+    for (const playerIds of matchdayParticipants) {
+      for (const id of playerIds) {
+        const player = playerMap.get(id);
+        if (!player) continue;
+        if (player.gender === 'male') totalMales++;
+        else totalFemales++;
+      }
+    }
+    const total = totalMales + totalFemales;
+    if (total === 0) return null;
+    return {
+      malePercent: (totalMales / total) * 100,
+      femalePercent: (totalFemales / total) * 100,
+      avgMale: totalMales / matchdayParticipants.length,
+      avgFemale: totalFemales / matchdayParticipants.length,
+    };
+  })();
 
   function toEntries(counts: Map<number, number>): LeaderboardEntry[] {
     const entries: LeaderboardEntry[] = [];
@@ -230,6 +270,40 @@ export default function StatsPage() {
   return (
     <div>
       <div className="space-y-4">
+        {/* Gender ratio */}
+        {genderRatio && (
+          <div className="border border-border rounded-lg p-4">
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+              <UserGroupIcon className="w-5 h-5 text-muted" />
+              Cupo de género
+            </h3>
+            <div className="flex h-8 rounded-lg overflow-hidden text-sm font-medium">
+              <div
+                className="bg-gender-male flex items-center justify-center text-on-surface"
+                style={{ width: `${genderRatio.malePercent}%` }}
+              >
+                {genderRatio.malePercent >= 10 && `${genderRatio.malePercent % 1 === 0 ? genderRatio.malePercent.toFixed(0) : genderRatio.malePercent.toFixed(1)}%`}
+              </div>
+              <div
+                className="bg-gender-female flex items-center justify-center text-on-surface"
+                style={{ width: `${genderRatio.femalePercent}%` }}
+              >
+                {genderRatio.femalePercent >= 10 && `${genderRatio.femalePercent % 1 === 0 ? genderRatio.femalePercent.toFixed(0) : genderRatio.femalePercent.toFixed(1)}%`}
+              </div>
+            </div>
+            <div className="flex justify-between mt-2 text-sm text-muted">
+              <span className="flex items-center gap-1">
+                <GenderMaleIcon className="w-4 h-4" />
+                {genderRatio.avgMale.toFixed(1)} por fecha
+              </span>
+              <span className="flex items-center gap-1">
+                <GenderFemaleIcon className="w-4 h-4" />
+                {genderRatio.avgFemale.toFixed(1)} por fecha
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Total awards */}
         <LeaderboardSection
           title="Premios totales"
