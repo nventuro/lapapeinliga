@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import TeamSorterPage from './components/TeamSorterPage.tsx'
-import PlayerManagementPage from './components/PlayerManagementPage.tsx'
+import PlantelPage from './components/PlantelPage.tsx'
 import MatchdayListPage from './components/MatchdayListPage.tsx'
 import MatchdayDetailPage from './components/MatchdayDetailPage.tsx'
 import StatsPage from './components/StatsPage.tsx'
@@ -19,7 +19,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="fechas/:id" element={<MatchdayDetailPage />} />
           <Route path="estadisticas" element={<StatsPage />} />
           <Route path="armado" element={<TeamSorterPage />} />
-          <Route path="jugadores" element={<PlayerManagementPage />} />
+          <Route path="plantel" element={<PlantelPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

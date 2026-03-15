@@ -127,31 +127,29 @@ export default function MainLayout() {
               <ChartBarIcon className="w-3.5 h-3.5" />
               Estadísticas
             </Link>
+            <Link
+              to="/plantel"
+              className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                location.pathname === '/plantel'
+                  ? 'text-primary'
+                  : 'text-muted hover:text-muted-strong'
+              }`}
+            >
+              <UserGroupIcon className="w-3.5 h-3.5" />
+              Plantel
+            </Link>
             {isAdmin && (
-              <>
-                <Link
-                  to="/armado"
-                  className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    location.pathname === '/armado'
-                      ? 'text-primary'
-                      : 'text-muted hover:text-muted-strong'
-                  }`}
-                >
-                  <ClipboardIcon className="w-3.5 h-3.5" />
-                  Armado
-                </Link>
-                <Link
-                  to="/jugadores"
-                  className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    location.pathname === '/jugadores'
-                      ? 'text-primary'
-                      : 'text-muted hover:text-muted-strong'
-                  }`}
-                >
-                  <UserGroupIcon className="w-3.5 h-3.5" />
-                  Jugadores
-                </Link>
-              </>
+              <Link
+                to="/armado"
+                className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  location.pathname === '/armado'
+                    ? 'text-primary'
+                    : 'text-muted hover:text-muted-strong'
+                }`}
+              >
+                <ClipboardIcon className="w-3.5 h-3.5" />
+                Armado
+              </Link>
             )}
           </nav>
         </header>
