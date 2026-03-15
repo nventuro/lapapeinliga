@@ -3,7 +3,8 @@ import type { Player } from '../types';
 import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { EditIcon, TrashIcon } from './icons';
+import { useMatchdayStats, getLeaderIds } from '../hooks/useMatchdayStats';
+import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon } from './icons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
@@ -11,8 +12,12 @@ import Tooltip from './Tooltip';
 
 export default function PlantelPage() {
   const { players, isAdmin, showRatings, refetchData } = useAppContext();
+  const { gamesPlayed, gamesWon, loading: statsLoading } = useMatchdayStats();
   const [modalPlayer, setModalPlayer] = useState<Player | null | undefined>(undefined);
   // undefined = closed, null = creating, Player = editing
+
+  const mostWonIds = statsLoading ? new Set<number>() : getLeaderIds(gamesWon);
+  const mostPlayedIds = statsLoading ? new Set<number>() : getLeaderIds(gamesPlayed);
 
   async function handleDelete(player: Player) {
     if (!window.confirm(`¿Eliminar a ${player.name}? Esta acción no se puede deshacer.`)) {
@@ -64,6 +69,16 @@ export default function PlantelPage() {
                 >
                   <GenderIcon gender={player.gender} />
                   <span className="font-medium truncate">{player.name}</span>
+                  {mostWonIds.has(player.id) && (
+                    <Tooltip label={`Más partidos ganados (${gamesWon.get(player.id)})`}>
+                      <TrophyIcon className="w-4 h-4 text-gold" />
+                    </Tooltip>
+                  )}
+                  {mostPlayedIds.has(player.id) && (
+                    <Tooltip label={`Más partidos jugados (${gamesPlayed.get(player.id)})`}>
+                      <SneakerIcon className="w-4 h-4 text-gold" />
+                    </Tooltip>
+                  )}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
                   {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0 ml-auto">
