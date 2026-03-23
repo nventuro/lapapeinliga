@@ -116,12 +116,12 @@ export default function EventListPage() {
             >
               <Tooltip label={event.type === 'match' ? 'Partido' : 'Entrenamiento'}>
                 <div className="flex flex-col items-center justify-center gap-1 px-3 border-r border-border text-muted min-w-14">
+                  <span className="text-xs font-semibold">#{eventLabel}</span>
                   {event.type === 'match' ? (
                     <SoccerBallIcon className="w-5 h-5" />
                   ) : (
                     <BarbellIcon className="w-5 h-5" />
                   )}
-                  <span className="text-xs font-semibold">#{eventLabel}</span>
                 </div>
               </Tooltip>
               <div className="flex-1 p-4">
