@@ -179,6 +179,27 @@ export default function StatsPage() {
   return (
     <div>
       <div className="space-y-4">
+        {/* Games played */}
+        <LeaderboardSection
+          title="Partidos jugados"
+          icon={<SneakerIcon className="w-5 h-5 text-gold" />}
+          entries={toEntries(gamesPlayed)}
+        />
+
+        {/* Games won */}
+        <LeaderboardSection
+          title="Partidos ganados"
+          icon={<TrophyIcon className="w-5 h-5 text-gold" />}
+          entries={toEntries(gamesWon)}
+        />
+
+        {/* Total awards */}
+        <LeaderboardSection
+          title="Premios totales"
+          icon={<MedalIcon className="w-5 h-5 text-gold" />}
+          entries={toBreakdownEntries(awardCounts)}
+        />
+
         {/* Gender ratio */}
         {genderRatio && (
           <div className="border border-border rounded-lg p-4">
@@ -213,13 +234,6 @@ export default function StatsPage() {
           </div>
         )}
 
-        {/* Total awards */}
-        <LeaderboardSection
-          title="Premios totales"
-          icon={<MedalIcon className="w-5 h-5 text-gold" />}
-          entries={toBreakdownEntries(awardCounts)}
-        />
-
         {/* Awards per category */}
         {AWARD_TYPES.map((award) => {
           const Icon = AWARD_ICONS[award];
@@ -234,20 +248,6 @@ export default function StatsPage() {
             />
           );
         })}
-
-        {/* Games won */}
-        <LeaderboardSection
-          title="Partidos ganados"
-          icon={<TrophyIcon className="w-5 h-5 text-gold" />}
-          entries={toEntries(gamesWon)}
-        />
-
-        {/* Games played */}
-        <LeaderboardSection
-          title="Partidos jugados"
-          icon={<SneakerIcon className="w-5 h-5 text-gold" />}
-          entries={toEntries(gamesPlayed)}
-        />
       </div>
     </div>
   );
