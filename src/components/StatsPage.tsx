@@ -2,7 +2,7 @@ import type { Player, AwardType } from '../types';
 import { AWARD_TYPES, AWARD_LABELS, LEADERBOARD_MIN_DISPLAY } from '../types';
 import { useAppContext } from '../context/appContext';
 import { useEventStats } from '../hooks/useEventStats';
-import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, ConeIcon } from './icons';
+import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, SpeakerphoneIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import Tooltip from './Tooltip';
@@ -179,27 +179,6 @@ export default function StatsPage() {
   return (
     <div>
       <div className="space-y-4">
-        {/* Games played */}
-        <LeaderboardSection
-          title="Partidos jugados"
-          icon={<SneakerIcon className="w-5 h-5 text-gold" />}
-          entries={toEntries(gamesPlayed)}
-        />
-
-        {/* Games won */}
-        <LeaderboardSection
-          title="Partidos ganados"
-          icon={<TrophyIcon className="w-5 h-5 text-gold" />}
-          entries={toEntries(gamesWon)}
-        />
-
-        {/* Total awards */}
-        <LeaderboardSection
-          title="Premios totales"
-          icon={<MedalIcon className="w-5 h-5 text-gold" />}
-          entries={toBreakdownEntries(awardCounts)}
-        />
-
         {/* Gender ratio */}
         {genderRatio && (
           <div className="border border-border rounded-lg p-4">
@@ -234,6 +213,27 @@ export default function StatsPage() {
           </div>
         )}
 
+        {/* Games played */}
+        <LeaderboardSection
+          title="Partidos jugados"
+          icon={<SneakerIcon className="w-5 h-5 text-gold" />}
+          entries={toEntries(gamesPlayed)}
+        />
+
+        {/* Games won */}
+        <LeaderboardSection
+          title="Partidos ganados"
+          icon={<TrophyIcon className="w-5 h-5 text-gold" />}
+          entries={toEntries(gamesWon)}
+        />
+
+        {/* Total awards */}
+        <LeaderboardSection
+          title="Premios totales"
+          icon={<MedalIcon className="w-5 h-5 text-gold" />}
+          entries={toBreakdownEntries(awardCounts)}
+        />
+
         {/* Trainings attended */}
         <LeaderboardSection
           title="Entrenamientos asistidos"
@@ -244,7 +244,7 @@ export default function StatsPage() {
         {/* Trainings coached */}
         <LeaderboardSection
           title="Entrenamientos dirigidos"
-          icon={<ConeIcon className="w-5 h-5 text-gold" />}
+          icon={<SpeakerphoneIcon className="w-5 h-5 text-gold" />}
           entries={toEntries(trainingsCoached)}
         />
 

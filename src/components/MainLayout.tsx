@@ -148,7 +148,7 @@ export default function MainLayout() {
                 }`}
               >
                 <ClipboardIcon className="w-3.5 h-3.5" />
-                Armar evento
+                Armado
               </Link>
             )}
           </nav>

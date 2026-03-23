@@ -7,7 +7,7 @@ import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, ConeIcon } from './icons';
+import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, BarbellIcon } from './icons';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
@@ -369,7 +369,7 @@ export default function EventDetailPage() {
     return players.find((p) => p.id === playerId)?.name ?? '';
   }
 
-  const TypeIcon = event.type === 'match' ? SoccerBallIcon : ConeIcon;
+  const TypeIcon = event.type === 'match' ? SoccerBallIcon : BarbellIcon;
   const typeLabel = event.type === 'match' ? 'Partido' : 'Entrenamiento';
 
   return (

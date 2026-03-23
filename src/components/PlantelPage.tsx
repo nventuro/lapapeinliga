@@ -4,7 +4,7 @@ import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
-import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, ConeIcon } from './icons';
+import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon } from './icons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
@@ -88,7 +88,7 @@ export default function PlantelPage() {
                   )}
                   {mostCoachedIds.has(player.id) && (
                     <Tooltip label={`Más entrenamientos dirigidos (${trainingsCoached.get(player.id)})`}>
-                      <ConeIcon className="w-4 h-4 text-gold" />
+                      <SpeakerphoneIcon className="w-4 h-4 text-gold" />
                     </Tooltip>
                   )}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}

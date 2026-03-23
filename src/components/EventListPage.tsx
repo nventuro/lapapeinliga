@@ -6,7 +6,7 @@ import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { SoccerBallIcon, ConeIcon } from './icons';
+import { SoccerBallIcon, BarbellIcon } from './icons';
 
 interface MatchSubRow {
   id: number;
@@ -61,7 +61,7 @@ export default function EventListPage() {
         .from('events')
         .select(`
           *,
-          matches(id, winning_team_id, match_teams(id, name, match_team_players(count)), match_reserves(count)),
+          matches(id, winning_team_id, match_teams!match_teams_match_id_fkey(id, name, match_team_players(count)), match_reserves(count)),
           trainings(id, training_attendees(count), training_coaches(count)),
           location:locations(name)
         `);
@@ -121,7 +121,7 @@ export default function EventListPage() {
                 {event.type === 'match' ? (
                   <SoccerBallIcon className="w-4 h-4 text-muted" />
                 ) : (
-                  <ConeIcon className="w-4 h-4 text-muted" />
+                  <BarbellIcon className="w-4 h-4 text-muted" />
                 )}
                 <span className="text-muted text-sm">
                   {event.type === 'match' ? 'Partido' : 'Entrenamiento'}

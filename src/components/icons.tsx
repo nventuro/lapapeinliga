@@ -22,8 +22,8 @@ import {
   IconShirtFilled,
   IconBrandWhatsapp,
   IconArrowsShuffle,
-  IconCone,
   IconBarbell,
+  IconSpeakerphone,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -124,8 +124,8 @@ export function ShuffleIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconArrowsShuffle className={className} stroke={STROKE} />;
 }
 
-export function ConeIcon({ className = 'w-4 h-4' }: IconProps) {
-  return <IconCone className={className} stroke={STROKE} />;
+export function SpeakerphoneIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconSpeakerphone className={className} stroke={STROKE} />;
 }
 
 export function BarbellIcon({ className = 'w-4 h-4' }: IconProps) {

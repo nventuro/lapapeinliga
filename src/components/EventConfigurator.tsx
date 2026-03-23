@@ -1,6 +1,6 @@
 import { MIN_PLAYERS } from '../types';
 import { getValidTeamCounts } from '../utils/teamCalculator';
-import { ConeIcon } from './icons';
+import { BarbellIcon } from './icons';
 
 interface EventConfiguratorProps {
   selectedCount: number;
@@ -44,7 +44,7 @@ export default function EventConfigurator({
           onClick={onTraining}
           className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
         >
-          <ConeIcon className="w-5 h-5" />
+          <BarbellIcon className="w-5 h-5" />
           Entrenamiento
           <span className="font-normal ml-1">
             — {selectedCount} jugadores
