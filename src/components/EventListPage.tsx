@@ -7,6 +7,7 @@ import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
 import { SoccerBallIcon, BarbellIcon } from './icons';
+import Tooltip from './Tooltip';
 
 interface MatchSubRow {
   id: number;
@@ -111,50 +112,43 @@ export default function EventListPage() {
             <Link
               key={event.id}
               to={`/fechas/${event.short_id}`}
-              className="block border border-border rounded-xl p-4 hover:border-neutral-hover transition-colors"
+              className="flex border border-border rounded-xl hover:border-neutral-hover transition-colors"
             >
-              <p className="font-medium flex items-center gap-1.5">
-                #{eventLabel}
-                {event.name && (
-                  <>
-                    <span className="text-muted">·</span>
-                    <span>{event.name}</span>
-                  </>
+              <Tooltip label={event.type === 'match' ? 'Partido' : 'Entrenamiento'}>
+                <div className="flex items-center px-3 border-r border-border text-muted">
+                  {event.type === 'match' ? (
+                    <SoccerBallIcon className="w-5 h-5" />
+                  ) : (
+                    <BarbellIcon className="w-5 h-5" />
+                  )}
+                </div>
+              </Tooltip>
+              <div className="flex-1 p-4">
+                <p className="font-medium">
+                  #{eventLabel}{event.name ? ` · ${event.name}` : ''} — {formatDate(event.played_at)}
+                </p>
+                {(event.location || event.played_at_time) && (
+                  <p className="text-sm text-muted mt-1">
+                    {event.location?.name}
+                    {event.location && event.played_at_time && ' '}
+                    {event.played_at_time && formatTime(event.played_at_time)}
+                  </p>
                 )}
-                <span className="text-muted">—</span>
-                <span>{formatDate(event.played_at)}</span>
-                <span className="text-muted">·</span>
-                {event.type === 'match' ? (
-                  <SoccerBallIcon className="w-4 h-4 text-muted" />
-                ) : (
-                  <BarbellIcon className="w-4 h-4 text-muted" />
+                {event.type === 'match' && match && (
+                  <p className="text-xs text-muted mt-1.5">
+                    {match.match_teams.map((t) => t.name).join(' vs ')}
+                  </p>
                 )}
-                <span className="text-muted text-sm">
-                  {event.type === 'match' ? 'Partido' : 'Entrenamiento'}
-                </span>
-              </p>
-              {(event.location || event.played_at_time) && (
-                <p className="text-sm text-muted mt-1">
-                  {event.location?.name}
-                  {event.location && event.played_at_time && ' '}
-                  {event.played_at_time && formatTime(event.played_at_time)}
-                </p>
-              )}
-              {event.type === 'match' && match && (
-                <p className="text-xs text-muted mt-1.5">
-                  {match.match_teams.map((t) => t.name).join(' vs ')}
-                </p>
-              )}
-              {event.type === 'training' && (
-                <p className="text-xs text-muted mt-1.5">
-                  {totalParticipants(event)} participantes
-                </p>
-              )}
-              {winnerTeam && (
-                <p className="text-sm font-medium text-primary mt-1">
-                  Ganador: {winnerTeam.name}
-                </p>
-              )}
+                {event.type === 'training' && (
+                  <p className="text-xs text-muted mt-1.5">
+                    {totalParticipants(event)} participantes
+                  </p>
+                )}
+                {winnerTeam && (
+                  <p className="text-sm font-medium text-primary mt-1">
+                    Ganador: {winnerTeam.name}
+                  </p>
+                )}
               {isAdmin && showCosts && event.cost != null && (() => {
                 const inflated = event.cost * COST_MARKUP_MULTIPLIER;
                 const participants = totalParticipants(event);
@@ -169,6 +163,7 @@ export default function EventListPage() {
                   </p>
                 );
               })()}
+              </div>
             </Link>
           );
         })}

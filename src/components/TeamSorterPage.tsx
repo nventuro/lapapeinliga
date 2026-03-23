@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Player, PlayerLocks, Team, EventType } from '../types';
 import { MIN_TRAINING_PLAYERS, MIN_TEAMS } from '../types';
 import { sortTeams } from '../utils/teamSorter';
@@ -13,16 +13,34 @@ import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 
 type Step = 'select' | 'configure' | 'assign-coaches' | 'results';
 
+interface StateCache {
+  selectedIds: Set<number>;
+  result: { teams: Team[]; reserves: Player[] } | null;
+  lastTeamCount: number;
+  step: Step;
+  lockedIds: Set<number>;
+  eventType: EventType | null;
+  coachIds: Set<number>;
+}
+
+// Preserve state across navigations so switching tabs doesn't lose progress
+let stateCache: StateCache | null = null;
+
 export default function TeamSorterPage() {
   const { players, preferences, isAdmin } = useAppContext();
 
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
-  const [result, setResult] = useState<{ teams: Team[]; reserves: Player[] } | null>(null);
-  const [lastTeamCount, setLastTeamCount] = useState(MIN_TEAMS);
-  const [step, setStep] = useState<Step>('select');
-  const [lockedIds, setLockedIds] = useState<Set<number>>(() => new Set());
-  const [eventType, setEventType] = useState<EventType | null>(null);
-  const [coachIds, setCoachIds] = useState<Set<number>>(() => new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => stateCache?.selectedIds ?? new Set());
+  const [result, setResult] = useState<{ teams: Team[]; reserves: Player[] } | null>(() => stateCache?.result ?? null);
+  const [lastTeamCount, setLastTeamCount] = useState(() => stateCache?.lastTeamCount ?? MIN_TEAMS);
+  const [step, setStep] = useState<Step>(() => stateCache?.step ?? 'select');
+  const [lockedIds, setLockedIds] = useState<Set<number>>(() => stateCache?.lockedIds ?? new Set());
+  const [eventType, setEventType] = useState<EventType | null>(() => stateCache?.eventType ?? null);
+  const [coachIds, setCoachIds] = useState<Set<number>>(() => stateCache?.coachIds ?? new Set());
+
+  // Sync state to module-level cache so it's preserved across navigations
+  useEffect(() => {
+    stateCache = { selectedIds, result, lastTeamCount, step, lockedIds, eventType, coachIds };
+  }, [selectedIds, result, lastTeamCount, step, lockedIds, eventType, coachIds]);
 
   const handleToggle = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -129,6 +147,7 @@ export default function TeamSorterPage() {
     setEventType(null);
     setCoachIds(new Set());
     setStep('select');
+    stateCache = null;
   }, []);
 
   if (!isAdmin) {

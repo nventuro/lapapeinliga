@@ -375,14 +375,13 @@ export default function EventDetailPage() {
   return (
     <div>
       {glowingWinner && <ConfettiBurst />}
-      <h2 className="text-xl font-bold flex items-center gap-1.5">
-        #{eventNumber}
-        <span className="text-muted">·</span>
-        <TypeIcon className="w-5 h-5 text-muted" />
-        <span className="text-muted text-base font-normal">{typeLabel}</span>
-        {event.name && <span className="ml-1">{event.name}</span>}
-        <span className="ml-1">— {formatDate(event.played_at)}</span>
+      <h2 className="text-xl font-bold">
+        #{eventNumber}{event.name ? ` · ${event.name}` : ''} — {formatDate(event.played_at)}
       </h2>
+      <p className="flex items-center gap-1.5 text-sm text-muted mt-1">
+        <TypeIcon className="w-4 h-4" />
+        {typeLabel}
+      </p>
 
       {/* Event details box (display or edit mode) */}
       {editingDetails ? (
