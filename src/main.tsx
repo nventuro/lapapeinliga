@@ -5,8 +5,8 @@ import './index.css'
 import App from './App.tsx'
 import TeamSorterPage from './components/TeamSorterPage.tsx'
 import PlantelPage from './components/PlantelPage.tsx'
-import MatchdayListPage from './components/MatchdayListPage.tsx'
-import MatchdayDetailPage from './components/MatchdayDetailPage.tsx'
+import EventListPage from './components/EventListPage.tsx'
+import EventDetailPage from './components/EventDetailPage.tsx'
 import StatsPage from './components/StatsPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -15,8 +15,8 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route element={<App />}>
           <Route index element={<Navigate to="/fechas" replace />} />
-          <Route path="fechas" element={<MatchdayListPage />} />
-          <Route path="fechas/:id" element={<MatchdayDetailPage />} />
+          <Route path="fechas" element={<EventListPage />} />
+          <Route path="fechas/:id" element={<EventDetailPage />} />
           <Route path="estadisticas" element={<StatsPage />} />
           <Route path="armado" element={<TeamSorterPage />} />
           <Route path="plantel" element={<PlantelPage />} />

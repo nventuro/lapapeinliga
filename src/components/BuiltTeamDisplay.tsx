@@ -1,4 +1,4 @@
-import type { MatchdayTeam, AwardType } from '../types';
+import type { MatchTeam, AwardType } from '../types';
 import { isGuest, comparePlayersByGenderThenName, AWARD_LABELS } from '../types';
 import { teamAverageRating } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
@@ -10,7 +10,7 @@ import Tooltip from './Tooltip';
 import Confetti from './Confetti';
 
 interface BuiltTeamDisplayProps {
-  team: MatchdayTeam;
+  team: MatchTeam;
   isWinner: boolean;
   playerAwards: Map<number, AwardType[]>;
 }

@@ -3,6 +3,7 @@ export const MAX_TEAM_SIZE = 9;
 export const MIN_TEAMS = 2;
 export const MIN_GENDER_PER_TEAM = 1;
 export const MIN_PLAYERS = MIN_TEAM_SIZE * MIN_TEAMS;
+export const MIN_TRAINING_PLAYERS = 2;
 export const MIN_RATING = 1;
 export const MAX_RATING = 10;
 export const MAX_RATING_SPREAD = 0.75;
@@ -105,15 +106,23 @@ export function isNewLocationComplete(selection: LocationSelection): boolean {
 export const COST_MARKUP_MULTIPLIER = 1.2;
 export const COST_ROUNDING_NEAREST = 100;
 
-export type Matchday = {
+export type EventType = 'match' | 'training';
+
+export type Event = {
   id: number;
   short_id: string;
   name: string | null;
+  type: EventType;
   played_at: string;
   played_at_time: string | null;
   location_id: number | null;
   cost: number | null;
   payee_alias_cbu: string | null;
+};
+
+export type Match = {
+  id: number;
+  event_id: number;
   winning_team_id: number | null;
   top_scorer_id: number | null;
   best_defense_id: number | null;
@@ -122,22 +131,42 @@ export type Matchday = {
   most_effort_id: number | null;
 };
 
-export type MatchdayTeam = {
+export type Training = {
   id: number;
-  matchday_id: number;
+  event_id: number;
+};
+
+export type MatchTeam = {
+  id: number;
+  match_id: number;
   name: string;
   shirt_color: ShirtColor;
   players: Player[];
 };
 
-export type MatchdayWithDetails = Matchday & {
-  teams: MatchdayTeam[];
+export type MatchWithDetails = Event & {
+  type: 'match';
+  match: Match;
+  teams: MatchTeam[];
   reserves: Player[];
   location: Location | null;
 };
 
-export function allParticipants(matchday: MatchdayWithDetails): Player[] {
-  return [...matchday.teams.flatMap((t) => t.players), ...matchday.reserves];
+export type TrainingWithDetails = Event & {
+  type: 'training';
+  training: Training;
+  attendees: Player[];
+  coaches: Player[];
+  location: Location | null;
+};
+
+export type EventWithDetails = MatchWithDetails | TrainingWithDetails;
+
+export function allParticipants(event: EventWithDetails): Player[] {
+  if (event.type === 'match') {
+    return [...event.teams.flatMap((t) => t.players), ...event.reserves];
+  }
+  return [...event.attendees, ...event.coaches];
 }
 
 export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort';

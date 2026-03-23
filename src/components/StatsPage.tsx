@@ -1,8 +1,8 @@
 import type { Player, AwardType } from '../types';
 import { AWARD_TYPES, AWARD_LABELS, LEADERBOARD_MIN_DISPLAY } from '../types';
 import { useAppContext } from '../context/appContext';
-import { useMatchdayStats } from '../hooks/useMatchdayStats';
-import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon } from './icons';
+import { useEventStats } from '../hooks/useEventStats';
+import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, ConeIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import Tooltip from './Tooltip';
@@ -103,7 +103,7 @@ function LeaderboardSection({
 
 export default function StatsPage() {
   const { players } = useAppContext();
-  const { gamesPlayed, gamesWon, awardCounts, matchdayParticipants, loading, error } = useMatchdayStats();
+  const { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, eventParticipants, loading, error } = useEventStats();
 
   if (loading) {
     return <p className="text-muted text-center py-8">Cargando estadísticas...</p>;
@@ -121,10 +121,10 @@ export default function StatsPage() {
 
   // Compute average gender ratio across matchdays
   const genderRatio = (() => {
-    if (matchdayParticipants.length === 0) return null;
+    if (eventParticipants.length === 0) return null;
     let totalMales = 0;
     let totalFemales = 0;
-    for (const playerIds of matchdayParticipants) {
+    for (const playerIds of eventParticipants) {
       for (const id of playerIds) {
         const player = playerMap.get(id);
         if (!player) continue;
@@ -137,8 +137,8 @@ export default function StatsPage() {
     return {
       malePercent: (totalMales / total) * 100,
       femalePercent: (totalFemales / total) * 100,
-      avgMale: totalMales / matchdayParticipants.length,
-      avgFemale: totalFemales / matchdayParticipants.length,
+      avgMale: totalMales / eventParticipants.length,
+      avgFemale: totalFemales / eventParticipants.length,
     };
   })();
 
@@ -233,6 +233,20 @@ export default function StatsPage() {
             </div>
           </div>
         )}
+
+        {/* Trainings attended */}
+        <LeaderboardSection
+          title="Entrenamientos asistidos"
+          icon={<BarbellIcon className="w-5 h-5 text-gold" />}
+          entries={toEntries(trainingsAttended)}
+        />
+
+        {/* Trainings coached */}
+        <LeaderboardSection
+          title="Entrenamientos dirigidos"
+          icon={<ConeIcon className="w-5 h-5 text-gold" />}
+          entries={toEntries(trainingsCoached)}
+        />
 
         {/* Awards per category */}
         {AWARD_TYPES.map((award) => {

@@ -3,8 +3,8 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/** Apply the canonical matchday ordering (played_at → played_at_time → id). */
-export function orderMatchdays<T extends { order: (column: string, opts: { ascending: boolean }) => T }>(query: T, ascending: boolean): T {
+/** Apply the canonical event ordering (played_at → played_at_time → id). */
+export function orderEvents<T extends { order: (column: string, opts: { ascending: boolean }) => T }>(query: T, ascending: boolean): T {
   return query
     .order('played_at', { ascending })
     .order('played_at_time', { ascending })
@@ -12,11 +12,11 @@ export function orderMatchdays<T extends { order: (column: string, opts: { ascen
 }
 
 /**
- * Build a label for each matchday based on chronological date order.
- * Matchdays on the same date share a number and get a letter suffix (e.g. "3.a", "3.b").
+ * Build a label for each event based on chronological date order.
+ * Events on the same date share a number and get a letter suffix (e.g. "3a", "3b").
  * Rows must be sorted ascending by the canonical ordering.
  */
-export function buildMatchdayLabels(rows: { id: number; played_at: string }[]): Map<number, string> {
+export function buildEventLabels(rows: { id: number; played_at: string }[]): Map<number, string> {
   const labels = new Map<number, string>();
 
   let dateNumber = 0;

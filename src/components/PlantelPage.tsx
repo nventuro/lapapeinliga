@@ -3,8 +3,8 @@ import type { Player } from '../types';
 import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { useMatchdayStats, getLeaderIds } from '../hooks/useMatchdayStats';
-import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon } from './icons';
+import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
+import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, ConeIcon } from './icons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
@@ -12,12 +12,14 @@ import Tooltip from './Tooltip';
 
 export default function PlantelPage() {
   const { players, isAdmin, showRatings, refetchData } = useAppContext();
-  const { gamesPlayed, gamesWon, loading: statsLoading } = useMatchdayStats();
+  const { gamesPlayed, gamesWon, trainingsAttended, trainingsCoached, loading: statsLoading } = useEventStats();
   const [modalPlayer, setModalPlayer] = useState<Player | null | undefined>(undefined);
   // undefined = closed, null = creating, Player = editing
 
   const mostWonIds = statsLoading ? new Set<number>() : getLeaderIds(gamesWon);
   const mostPlayedIds = statsLoading ? new Set<number>() : getLeaderIds(gamesPlayed);
+  const mostTrainedIds = statsLoading ? new Set<number>() : getLeaderIds(trainingsAttended);
+  const mostCoachedIds = statsLoading ? new Set<number>() : getLeaderIds(trainingsCoached);
 
   async function handleDelete(player: Player) {
     if (!window.confirm(`¿Eliminar a ${player.name}? Esta acción no se puede deshacer.`)) {
@@ -77,6 +79,16 @@ export default function PlantelPage() {
                   {mostPlayedIds.has(player.id) && (
                     <Tooltip label={`Más partidos jugados (${gamesPlayed.get(player.id)})`}>
                       <SneakerIcon className="w-4 h-4 text-gold" />
+                    </Tooltip>
+                  )}
+                  {mostTrainedIds.has(player.id) && (
+                    <Tooltip label={`Más entrenamientos asistidos (${trainingsAttended.get(player.id)})`}>
+                      <BarbellIcon className="w-4 h-4 text-gold" />
+                    </Tooltip>
+                  )}
+                  {mostCoachedIds.has(player.id) && (
+                    <Tooltip label={`Más entrenamientos dirigidos (${trainingsCoached.get(player.id)})`}>
+                      <ConeIcon className="w-4 h-4 text-gold" />
                     </Tooltip>
                   )}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}

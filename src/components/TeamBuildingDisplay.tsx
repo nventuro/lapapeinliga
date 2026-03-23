@@ -9,7 +9,7 @@ import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
 import InvBadge from './InvBadge';
 import Tooltip from './Tooltip';
-import SaveMatchdayDialog from './SaveMatchdayDialog';
+import SaveEventDialog from './SaveEventDialog';
 
 type HighlightLevel = 'error' | 'warning' | null;
 
@@ -377,7 +377,8 @@ export default function TeamBuildingDisplay({
       </div>
 
       {showSaveDialog && (
-        <SaveMatchdayDialog
+        <SaveEventDialog
+          type="match"
           teams={teams}
           reserves={reserves}
           onClose={() => setShowSaveDialog(false)}

@@ -1,15 +1,17 @@
 import { useState, useCallback } from 'react';
-import type { Player, PlayerLocks, Team } from '../types';
-import { MIN_PLAYERS, MIN_TEAMS } from '../types';
+import type { Player, PlayerLocks, Team, EventType } from '../types';
+import { MIN_TRAINING_PLAYERS, MIN_TEAMS } from '../types';
 import { sortTeams } from '../utils/teamSorter';
 import { useAppContext } from '../context/appContext';
 import PlayerSelector from './PlayerSelector';
-import TeamConfigurator from './TeamConfigurator';
+import EventConfigurator from './EventConfigurator';
+import CoachAssignment from './CoachAssignment';
 import TeamBuildingDisplay from './TeamBuildingDisplay';
+import TrainingPreview from './TrainingPreview';
 import NoAccess from './NoAccess';
 import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 
-type Step = 'select' | 'configure' | 'results';
+type Step = 'select' | 'configure' | 'assign-coaches' | 'results';
 
 export default function TeamSorterPage() {
   const { players, preferences, isAdmin } = useAppContext();
@@ -19,6 +21,8 @@ export default function TeamSorterPage() {
   const [lastTeamCount, setLastTeamCount] = useState(MIN_TEAMS);
   const [step, setStep] = useState<Step>('select');
   const [lockedIds, setLockedIds] = useState<Set<number>>(() => new Set());
+  const [eventType, setEventType] = useState<EventType | null>(null);
+  const [coachIds, setCoachIds] = useState<Set<number>>(() => new Set());
 
   const handleToggle = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -66,10 +70,33 @@ export default function TeamSorterPage() {
     (teamCount: number) => {
       setResult(sortTeams(selectedPlayers, teamCount, preferences));
       setLastTeamCount(teamCount);
+      setEventType('match');
       setStep('results');
     },
     [selectedPlayers, preferences],
   );
+
+  const handleTraining = useCallback(() => {
+    setEventType('training');
+    setCoachIds(new Set());
+    setStep('assign-coaches');
+  }, []);
+
+  const handleCoachConfirm = useCallback(() => {
+    setStep('results');
+  }, []);
+
+  const handleToggleCoach = useCallback((id: number) => {
+    setCoachIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   function buildLocksMap(teams: Team[], reserves: Player[], locked: Set<number>): PlayerLocks {
     const locks: PlayerLocks = new Map();
@@ -99,12 +126,17 @@ export default function TeamSorterPage() {
   const handleReset = useCallback(() => {
     setResult(null);
     setLockedIds(new Set());
+    setEventType(null);
+    setCoachIds(new Set());
     setStep('select');
   }, []);
 
   if (!isAdmin) {
     return <NoAccess />;
   }
+
+  const trainingAttendees = selectedPlayers.filter((p) => !coachIds.has(p.id));
+  const trainingCoaches = selectedPlayers.filter((p) => coachIds.has(p.id));
 
   return (
     <>
@@ -130,14 +162,14 @@ export default function TeamSorterPage() {
             </div>
             <button
               onClick={() => setStep('configure')}
-              disabled={selectedIds.size < MIN_PLAYERS}
+              disabled={selectedIds.size < MIN_TRAINING_PLAYERS}
               className="w-full py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
             >
               Siguiente
             </button>
-            {selectedIds.size < MIN_PLAYERS && (
+            {selectedIds.size < MIN_TRAINING_PLAYERS && (
               <p className="text-sm text-error mt-2">
-                Seleccioná al menos {MIN_PLAYERS} jugadores para continuar.
+                Seleccioná al menos {MIN_TRAINING_PLAYERS} jugadores para continuar.
               </p>
             )}
           </div>
@@ -146,9 +178,10 @@ export default function TeamSorterPage() {
 
       {step === 'configure' && (
         <>
-          <TeamConfigurator
+          <EventConfigurator
             selectedCount={selectedIds.size}
             onGenerate={generateTeams}
+            onTraining={handleTraining}
           />
           <button
             onClick={() => setStep('select')}
@@ -159,7 +192,17 @@ export default function TeamSorterPage() {
         </>
       )}
 
-      {step === 'results' && result && (
+      {step === 'assign-coaches' && (
+        <CoachAssignment
+          players={selectedPlayers}
+          coachIds={coachIds}
+          onToggleCoach={handleToggleCoach}
+          onConfirm={handleCoachConfirm}
+          onBack={() => setStep('configure')}
+        />
+      )}
+
+      {step === 'results' && eventType === 'match' && result && (
         <TeamBuildingDisplay
           teams={result.teams}
           reserves={result.reserves}
@@ -168,6 +211,14 @@ export default function TeamSorterPage() {
           onToggleLock={handleToggleLock}
           onTeamsChange={handleTeamsChange}
           onResort={handleResort}
+          onReset={handleReset}
+        />
+      )}
+
+      {step === 'results' && eventType === 'training' && (
+        <TrainingPreview
+          attendees={trainingAttendees}
+          coaches={trainingCoaches}
           onReset={handleReset}
         />
       )}

@@ -1,26 +1,47 @@
-import type { MatchdayWithDetails } from '../types';
+import type { MatchWithDetails, TrainingWithDetails, EventWithDetails } from '../types';
 import { allParticipants } from '../types';
 import { formatDateForShare, formatTime } from './dateUtils';
 import { perPlayerCost } from './costUtils';
 
-export function buildPreGameMessage(
-  matchday: MatchdayWithDetails,
-  matchdayNumber: string,
-): string {
+function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   const lines: string[] = [];
+  lines.push('*🏆 La Papeinliga*');
+  lines.push('');
 
-  const header = matchday.name
-    ? `⚽ La Papeinliga — Fecha ${matchdayNumber} ${matchday.name}`
-    : `⚽ La Papeinliga — Fecha ${matchdayNumber}`;
-  lines.push(header);
-  lines.push(`📅 ${formatDateForShare(matchday.played_at)}`);
+  const typeEmoji = event.type === 'match' ? '⚽' : '🏋️';
+  const typeLabel = event.type === 'match' ? 'Partido' : 'Entrenamiento';
+  const nameLabel = event.name ? ` ${event.name}` : '';
+  lines.push(`${typeEmoji} Fecha ${eventNumber} · ${typeLabel}${nameLabel}`);
+  lines.push(`📅 ${formatDateForShare(event.played_at)}`);
 
   // Time, location, and payee are guaranteed by the UI (share button is disabled without them)
-  lines.push(`🕐 ${formatTime(matchday.played_at_time!)}`);
-  lines.push(`📍 ${matchday.location!.name} (${matchday.location!.maps_url})`);
+  lines.push(`🕐 ${formatTime(event.played_at_time!)}`);
+  lines.push(`📍 ${event.location!.name} (${event.location!.maps_url})`);
 
+  return lines;
+}
 
-  for (const team of matchday.teams) {
+function buildCostFooter(event: EventWithDetails): string[] {
+  const lines: string[] = [];
+  if (event.cost != null) {
+    const playerCount = allParticipants(event).length;
+    if (playerCount > 0) {
+      const cost = perPlayerCost(event.cost, playerCount);
+      lines.push('');
+      lines.push(`*💰 $${cost} por persona*`);
+      lines.push(`Enviar a ${event.payee_alias_cbu!}`);
+    }
+  }
+
+  lines.push('');
+  lines.push('¡Nos vemos en la cancha! ✨🩵');
+  return lines;
+}
+
+function buildMatchShareMessage(event: MatchWithDetails, eventNumber: string): string {
+  const lines = buildHeader(event, eventNumber);
+
+  for (const team of event.teams) {
     const shirtLabel = team.shirt_color === 'dark' ? 'Oscuros ⚫' : 'Claros ⚪';
     lines.push('');
     lines.push(`${team.name} (${shirtLabel})`);
@@ -30,29 +51,43 @@ export function buildPreGameMessage(
     }
   }
 
-  if (matchday.reserves.length > 0) {
+  if (event.reserves.length > 0) {
     lines.push('');
     lines.push('🔄 Suplentes');
-    const sorted = [...matchday.reserves].sort((a, b) => a.name.localeCompare(b.name));
+    const sorted = [...event.reserves].sort((a, b) => a.name.localeCompare(b.name));
     for (const player of sorted) {
       lines.push(`- ${player.name}`);
     }
   }
 
-  if (matchday.cost != null) {
-    const playerCount = allParticipants(matchday).length;
-    if (playerCount > 0) {
-      const cost = perPlayerCost(matchday.cost, playerCount);
-      lines.push('');
-      lines.push(`*💰 $${cost} por persona*`);
-      lines.push(`Enviar a ${matchday.payee_alias_cbu!}`);
-    }
+  lines.push(...buildCostFooter(event));
+  return lines.join('\n');
+}
+
+function buildTrainingShareMessage(event: TrainingWithDetails, eventNumber: string): string {
+  const lines = buildHeader(event, eventNumber);
+
+  lines.push('');
+  lines.push('Jugadores');
+  const sortedAttendees = [...event.attendees].sort((a, b) => a.name.localeCompare(b.name));
+  for (const player of sortedAttendees) {
+    lines.push(`- ${player.name}`);
   }
 
   lines.push('');
-  lines.push('¡Nos vemos en la cancha! ✨🩵');
+  lines.push('Entrenadores');
+  const sortedCoaches = [...event.coaches].sort((a, b) => a.name.localeCompare(b.name));
+  for (const coach of sortedCoaches) {
+    lines.push(`- ${coach.name}`);
+  }
 
+  lines.push(...buildCostFooter(event));
   return lines.join('\n');
+}
+
+export function buildEventShareMessage(event: EventWithDetails, eventNumber: string): string {
+  if (event.type === 'match') return buildMatchShareMessage(event, eventNumber);
+  return buildTrainingShareMessage(event, eventNumber);
 }
 
 export function openWhatsAppShare(text: string): void {

@@ -1,33 +1,26 @@
 import { MIN_PLAYERS } from '../types';
 import { getValidTeamCounts } from '../utils/teamCalculator';
+import { ConeIcon } from './icons';
 
-interface TeamConfiguratorProps {
+interface EventConfiguratorProps {
   selectedCount: number;
   onGenerate: (teamCount: number) => void;
+  onTraining: () => void;
 }
 
-export default function TeamConfigurator({
+export default function EventConfigurator({
   selectedCount,
   onGenerate,
-}: TeamConfiguratorProps) {
-  if (selectedCount < MIN_PLAYERS) {
-    return (
-      <div>
-        <h2 className="text-xl font-bold mb-4">Armar equipos</h2>
-        <p className="text-muted">
-          Se necesitan al menos {MIN_PLAYERS} jugadores para armar equipos. Tenés {selectedCount} seleccionados.
-        </p>
-      </div>
-    );
-  }
-
-  const options = getValidTeamCounts(selectedCount);
+  onTraining,
+}: EventConfiguratorProps) {
+  const canBuildTeams = selectedCount >= MIN_PLAYERS;
+  const options = canBuildTeams ? getValidTeamCounts(selectedCount) : [];
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">Armar equipos</h2>
+      <h2 className="text-xl font-bold mb-4">Armar evento</h2>
       <p className="text-sm text-muted mb-4">
-        {selectedCount} jugadores seleccionados. Elegí cómo armar los equipos:
+        {selectedCount} jugadores seleccionados. Elegí el tipo de evento:
       </p>
 
       <div className="flex flex-col gap-3">
@@ -46,6 +39,17 @@ export default function TeamConfigurator({
             </span>
           </button>
         ))}
+
+        <button
+          onClick={onTraining}
+          className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
+        >
+          <ConeIcon className="w-5 h-5" />
+          Entrenamiento
+          <span className="font-normal ml-1">
+            — {selectedCount} jugadores
+          </span>
+        </button>
       </div>
     </div>
   );

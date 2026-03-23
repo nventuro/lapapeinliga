@@ -15,18 +15,18 @@ import Tooltip from './Tooltip';
 function nextSaturday(): string {
   const today = new Date();
   const day = today.getDay();
-  // Days until Saturday: (6 - day) % 7, but if today is Saturday use today
   const diff = (6 - day + 7) % 7;
   const sat = new Date(today);
   sat.setDate(today.getDate() + (diff === 0 ? 0 : diff));
   return sat.toISOString().slice(0, 10);
 }
 
-interface SaveMatchdayDialogProps {
-  teams: Team[];
-  reserves: Player[];
+type SaveEventDialogProps = {
   onClose: () => void;
-}
+} & (
+  | { type: 'match'; teams: Team[]; reserves: Player[] }
+  | { type: 'training'; attendees: Player[]; coaches: Player[] }
+);
 
 function initialTeamNames(count: number, suggestedNames: string[]): string[] {
   const shuffled = shuffle(suggestedNames);
@@ -35,7 +35,8 @@ function initialTeamNames(count: number, suggestedNames: string[]): string[] {
   );
 }
 
-export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMatchdayDialogProps) {
+export default function SaveEventDialog(props: SaveEventDialogProps) {
+  const { onClose } = props;
   const navigate = useNavigate();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { teamNames: suggestedTeamNames } = useAppContext();
@@ -47,9 +48,11 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
   const [locations, setLocations] = useState<Location[]>([]);
   const [cost, setCost] = useState('');
   const [payee, setPayee] = useState('');
-  const [teamNames, setTeamNames] = useState(() => initialTeamNames(teams.length, suggestedTeamNames));
+  const [teamNames, setTeamNames] = useState(() =>
+    props.type === 'match' ? initialTeamNames(props.teams.length, suggestedTeamNames) : [],
+  );
   const [shirtColors, setShirtColors] = useState<ShirtColor[]>(() =>
-    teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')),
+    props.type === 'match' ? props.teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')) : [],
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,10 +109,12 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
     e.preventDefault();
     setError(null);
 
-    const trimmedNames = teamNames.map((n) => n.trim());
-    if (trimmedNames.some((n) => n === '')) {
-      setError('Todos los equipos deben tener un nombre.');
-      return;
+    if (props.type === 'match') {
+      const trimmedNames = teamNames.map((n) => n.trim());
+      if (trimmedNames.some((n) => n === '')) {
+        setError('Todos los equipos deben tener un nombre.');
+        return;
+      }
     }
 
     setSaving(true);
@@ -138,11 +143,12 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       locationId = newLoc.id;
     }
 
-    // 2. Insert matchday
-    const { data: matchday, error: matchdayError } = await supabase
-      .from('matchdays')
+    // 2. Insert event
+    const { data: event, error: eventError } = await supabase
+      .from('events')
       .insert({
         name: name.trim() || null,
+        type: props.type,
         played_at: date,
         played_at_time: time || null,
         location_id: locationId,
@@ -152,69 +158,135 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       .select('id, short_id')
       .single();
 
-    if (matchdayError || !matchday) {
-      setError(matchdayError?.message ?? 'Error al crear la fecha.');
+    if (eventError || !event) {
+      setError(eventError?.message ?? 'Error al crear la fecha.');
       setSaving(false);
       return;
     }
 
-    // 3. Insert teams
-    const teamInserts = trimmedNames.map((name, i) => ({
-      matchday_id: matchday.id,
-      name,
-      shirt_color: shirtColors[i],
-    }));
+    if (props.type === 'match') {
+      // 3. Insert match
+      const { data: match, error: matchError } = await supabase
+        .from('matches')
+        .insert({ event_id: event.id })
+        .select('id')
+        .single();
 
-    const { data: insertedTeams, error: teamsError } = await supabase
-      .from('matchday_teams')
-      .insert(teamInserts)
-      .select('id');
-
-    if (teamsError || !insertedTeams) {
-      setError(teamsError?.message ?? 'Error al crear los equipos.');
-      setSaving(false);
-      return;
-    }
-
-    // 4. Insert team players
-    const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
-      teams[i].players.map((p) => ({
-        matchday_team_id: dbTeam.id,
-        player_id: p.id,
-      })),
-    );
-
-    if (playerInserts.length > 0) {
-      const { error: playersError } = await supabase
-        .from('matchday_team_players')
-        .insert(playerInserts);
-
-      if (playersError) {
-        setError(playersError.message);
+      if (matchError || !match) {
+        setError(matchError?.message ?? 'Error al crear el partido.');
         setSaving(false);
         return;
       }
-    }
 
-    // 5. Insert reserves
-    if (reserves.length > 0) {
-      const reserveInserts = reserves.map((p) => ({
-        matchday_id: matchday.id,
-        player_id: p.id,
+      // 4. Insert teams
+      const trimmedNames = teamNames.map((n) => n.trim());
+      const teamInserts = trimmedNames.map((teamName, i) => ({
+        match_id: match.id,
+        name: teamName,
+        shirt_color: shirtColors[i],
       }));
 
-      const { error: reservesError } = await supabase
-        .from('matchday_reserves')
-        .insert(reserveInserts);
+      const { data: insertedTeams, error: teamsError } = await supabase
+        .from('match_teams')
+        .insert(teamInserts)
+        .select('id');
 
-      if (reservesError) {
-        setError(reservesError.message);
+      if (teamsError || !insertedTeams) {
+        setError(teamsError?.message ?? 'Error al crear los equipos.');
         setSaving(false);
         return;
       }
+
+      // 5. Insert team players
+      const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
+        props.teams[i].players.map((p) => ({
+          match_team_id: dbTeam.id,
+          player_id: p.id,
+        })),
+      );
+
+      if (playerInserts.length > 0) {
+        const { error: playersError } = await supabase
+          .from('match_team_players')
+          .insert(playerInserts);
+
+        if (playersError) {
+          setError(playersError.message);
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 6. Insert reserves
+      if (props.reserves.length > 0) {
+        const reserveInserts = props.reserves.map((p) => ({
+          match_id: match.id,
+          player_id: p.id,
+        }));
+
+        const { error: reservesError } = await supabase
+          .from('match_reserves')
+          .insert(reserveInserts);
+
+        if (reservesError) {
+          setError(reservesError.message);
+          setSaving(false);
+          return;
+        }
+      }
+    } else {
+      // Training flow
+      // 3. Insert training
+      const { data: training, error: trainingError } = await supabase
+        .from('trainings')
+        .insert({ event_id: event.id })
+        .select('id')
+        .single();
+
+      if (trainingError || !training) {
+        setError(trainingError?.message ?? 'Error al crear el entrenamiento.');
+        setSaving(false);
+        return;
+      }
+
+      // 4. Insert attendees
+      if (props.attendees.length > 0) {
+        const attendeeInserts = props.attendees.map((p) => ({
+          training_id: training.id,
+          player_id: p.id,
+        }));
+
+        const { error: attendeesError } = await supabase
+          .from('training_attendees')
+          .insert(attendeeInserts);
+
+        if (attendeesError) {
+          setError(attendeesError.message);
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 5. Insert coaches
+      if (props.coaches.length > 0) {
+        const coachInserts = props.coaches.map((p) => ({
+          training_id: training.id,
+          player_id: p.id,
+        }));
+
+        const { error: coachesError } = await supabase
+          .from('training_coaches')
+          .insert(coachInserts);
+
+        if (coachesError) {
+          setError(coachesError.message);
+          setSaving(false);
+          return;
+        }
+      }
     }
 
-    navigate(`/fechas/${matchday.short_id}`);
+    navigate(`/fechas/${event.short_id}`);
   }
 
   return (
@@ -222,11 +294,13 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
       ref={dialogRef}
       className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50"
       onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
+        if (e.target === dialogRef.current) props.onClose();
       }}
     >
       <form onSubmit={handleSave} className="p-6">
-        <h2 className="text-xl font-bold mb-4">Guardar fecha</h2>
+        <h2 className="text-xl font-bold mb-4">
+          {props.type === 'match' ? 'Guardar partido' : 'Guardar entrenamiento'}
+        </h2>
 
         <div className="space-y-4">
           <div>
@@ -293,12 +367,12 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
             />
           </div>
 
-          {teamNames.map((name, i) => (
+          {props.type === 'match' && teamNames.map((teamName, i) => (
             <div key={i} className="border border-border rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={name}
+                  value={teamName}
                   onChange={(e) => handleTeamNameChange(i, e.target.value)}
                   required
                   className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-medium"
@@ -327,12 +401,33 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
                 </Tooltip>
               </div>
               <ul className="mt-2 text-sm text-muted space-y-0.5">
-                {teams[i].players.map((p) => (
+                {props.teams[i].players.map((p) => (
                   <li key={p.id}>{p.name}</li>
                 ))}
               </ul>
             </div>
           ))}
+
+          {props.type === 'training' && (
+            <>
+              <div className="border border-border rounded-lg p-3">
+                <h3 className="text-sm font-medium mb-2">Jugadores ({props.attendees.length})</h3>
+                <ul className="text-sm text-muted space-y-0.5">
+                  {[...props.attendees].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+                    <li key={p.id}>{p.name}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="border border-border rounded-lg p-3">
+                <h3 className="text-sm font-medium mb-2">Entrenadores ({props.coaches.length})</h3>
+                <ul className="text-sm text-muted space-y-0.5">
+                  {[...props.coaches].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+                    <li key={p.id}>{p.name}</li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </div>
 
         {error && (
@@ -342,7 +437,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
         <div className="flex gap-3 mt-6">
           <button
             type="button"
-            onClick={onClose}
+            onClick={props.onClose}
             className="flex-1 py-2 rounded-lg font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
           >
             Cancelar
