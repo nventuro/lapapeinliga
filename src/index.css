@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --font-display: 'Bungee', sans-serif;
+
   /* Primary action color (buttons, accents) */
   --color-primary: #38bdf8;
   --color-primary-hover: #0ea5e9;

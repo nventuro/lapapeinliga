@@ -35,7 +35,7 @@ export default function MainLayout() {
       <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col min-h-dvh">
         <header className="mb-8">
           <div className="flex items-center justify-between">
-            <Link to="/fechas" className="text-3xl font-bold hover:opacity-80 transition-opacity">
+            <Link to="/fechas" className="text-3xl font-display hover:opacity-80 transition-opacity">
               La Papeinliga
             </Link>
             {session ? (
