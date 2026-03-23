@@ -97,10 +97,9 @@ export default function MainLayout() {
             ) : (
               <button
                 onClick={signIn}
-                className="px-3 py-1.5 rounded-full border border-border hover:border-neutral-hover text-sm text-muted hover:text-muted-strong transition-colors flex items-center gap-1.5"
+                className="p-1.5 rounded-full border border-border hover:border-neutral-hover text-muted hover:text-muted-strong transition-colors"
               >
                 <GoogleIcon className="w-4 h-4" />
-                Iniciar sesión
               </button>
             )}
           </div>
