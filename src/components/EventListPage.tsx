@@ -31,21 +31,19 @@ interface EventRow {
   cost: number | null;
   payee_alias_cbu: string | null;
   location: { name: string } | null;
-  matches: MatchSubRow[];
-  trainings: TrainingSubRow[];
+  matches: MatchSubRow | null;
+  trainings: TrainingSubRow | null;
 }
 
 function totalParticipants(event: EventRow): number {
   if (event.type === 'match') {
-    const match = event.matches[0];
-    if (!match) return 0;
-    const teamPlayers = match.match_teams.reduce((sum, t) => sum + (t.match_team_players[0]?.count ?? 0), 0);
-    const reserves = match.match_reserves[0]?.count ?? 0;
+    if (!event.matches) return 0;
+    const teamPlayers = event.matches.match_teams.reduce((sum, t) => sum + (t.match_team_players[0]?.count ?? 0), 0);
+    const reserves = event.matches.match_reserves[0]?.count ?? 0;
     return teamPlayers + reserves;
   }
-  const training = event.trainings[0];
-  if (!training) return 0;
-  return (training.training_attendees[0]?.count ?? 0) + (training.training_coaches[0]?.count ?? 0);
+  if (!event.trainings) return 0;
+  return (event.trainings.training_attendees[0]?.count ?? 0) + (event.trainings.training_coaches[0]?.count ?? 0);
 }
 
 export default function EventListPage() {
@@ -104,7 +102,7 @@ export default function EventListPage() {
       <div className="space-y-3">
         {events.map((event) => {
           const eventLabel = labels.get(event.id) ?? '?';
-          const match = event.type === 'match' ? event.matches[0] : null;
+          const match = event.type === 'match' ? event.matches : null;
           const winnerTeam = match?.winning_team_id
             ? match.match_teams.find((t) => t.id === match.winning_team_id)
             : null;
@@ -117,6 +115,14 @@ export default function EventListPage() {
             >
               <p className="font-medium flex items-center gap-1.5">
                 #{eventLabel}
+                {event.name && (
+                  <>
+                    <span className="text-muted">·</span>
+                    <span>{event.name}</span>
+                  </>
+                )}
+                <span className="text-muted">—</span>
+                <span>{formatDate(event.played_at)}</span>
                 <span className="text-muted">·</span>
                 {event.type === 'match' ? (
                   <SoccerBallIcon className="w-4 h-4 text-muted" />
@@ -126,8 +132,6 @@ export default function EventListPage() {
                 <span className="text-muted text-sm">
                   {event.type === 'match' ? 'Partido' : 'Entrenamiento'}
                 </span>
-                {event.name && <span className="ml-1">{event.name}</span>}
-                <span className="ml-1">— {formatDate(event.played_at)}</span>
               </p>
               {(event.location || event.played_at_time) && (
                 <p className="text-sm text-muted mt-1">

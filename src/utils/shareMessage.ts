@@ -10,8 +10,8 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
 
   const typeEmoji = event.type === 'match' ? '⚽' : '🏋️';
   const typeLabel = event.type === 'match' ? 'Partido' : 'Entrenamiento';
-  const nameLabel = event.name ? ` ${event.name}` : '';
-  lines.push(`${typeEmoji} Fecha ${eventNumber} · ${typeLabel}${nameLabel}`);
+  const namePart = event.name ? ` · ${event.name}` : '';
+  lines.push(`Fecha ${eventNumber}${namePart} · ${typeEmoji} ${typeLabel}`);
   lines.push(`📅 ${formatDateForShare(event.played_at)}`);
 
   // Time, location, and payee are guaranteed by the UI (share button is disabled without them)
