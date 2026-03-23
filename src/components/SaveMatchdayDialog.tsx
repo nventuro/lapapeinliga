@@ -40,6 +40,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { teamNames: suggestedTeamNames } = useAppContext();
 
+  const [name, setName] = useState('');
   const [date, setDate] = useState(nextSaturday);
   const [time, setTime] = useState('');
   const [locationSelection, setLocationSelection] = useState<LocationSelection>({ type: 'none' });
@@ -141,6 +142,7 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
     const { data: matchday, error: matchdayError } = await supabase
       .from('matchdays')
       .insert({
+        name: name.trim() || null,
         played_at: date,
         played_at_time: time || null,
         location_id: locationId,
@@ -227,6 +229,17 @@ export default function SaveMatchdayDialog({ teams, reserves, onClose }: SaveMat
         <h2 className="text-xl font-bold mb-4">Guardar fecha</h2>
 
         <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nombre (opcional)</label>
+            <input
+              type="text"
+              placeholder="Ej: Copa de Verano"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">Fecha</label>
             <div className="relative">

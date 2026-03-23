@@ -9,7 +9,10 @@ export function buildPreGameMessage(
 ): string {
   const lines: string[] = [];
 
-  lines.push(`⚽ La Papeinliga — Fecha ${matchdayNumber}`);
+  const header = matchday.name
+    ? `⚽ La Papeinliga — Fecha ${matchdayNumber} ${matchday.name}`
+    : `⚽ La Papeinliga — Fecha ${matchdayNumber}`;
+  lines.push(header);
   lines.push(`📅 ${formatDateForShare(matchday.played_at)}`);
 
   // Time, location, and payee are guaranteed by the UI (share button is disabled without them)

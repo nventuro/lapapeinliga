@@ -108,6 +108,7 @@ export const COST_ROUNDING_NEAREST = 100;
 export type Matchday = {
   id: number;
   short_id: string;
+  name: string | null;
   played_at: string;
   played_at_time: string | null;
   location_id: number | null;

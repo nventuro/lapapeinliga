@@ -105,6 +105,7 @@ export default function MatchdayDetailPage() {
   // Details editing state (time, location, cost, payee)
   const [editingDetails, setEditingDetails] = useState(false);
   const [closingDetails, setClosingDetails] = useState(false);
+  const [editName, setEditName] = useState('');
   const [editTime, setEditTime] = useState('');
   const [editCost, setEditCost] = useState('');
   const [editPayee, setEditPayee] = useState('');
@@ -159,6 +160,7 @@ export default function MatchdayDetailPage() {
 
   function openDetailsEditor() {
     if (!matchday) return;
+    setEditName(matchday.name ?? '');
     setEditTime(matchday.played_at_time ? matchday.played_at_time.slice(0, 5) : '');
     setEditCost(matchday.cost != null ? String(matchday.cost) : '');
     setEditPayee(matchday.payee_alias_cbu ?? '');
@@ -208,16 +210,17 @@ export default function MatchdayDetailPage() {
       setAllLocations((prev) => [...prev, location!].sort((a, b) => a.name.localeCompare(b.name)));
     }
 
+    const nameValue = editName.trim() || null;
     const costValue = editCost.trim() ? parseInt(editCost.trim(), 10) : null;
     const payeeValue = editPayee.trim() || null;
 
     const { error } = await supabase
       .from('matchdays')
-      .update({ played_at_time: timeValue, location_id: locationId, cost: costValue, payee_alias_cbu: payeeValue })
+      .update({ name: nameValue, played_at_time: timeValue, location_id: locationId, cost: costValue, payee_alias_cbu: payeeValue })
       .eq('id', matchday.id);
 
     if (!error) {
-      setMatchday({ ...matchday, played_at_time: timeValue, location_id: locationId, location, cost: costValue, payee_alias_cbu: payeeValue });
+      setMatchday({ ...matchday, name: nameValue, played_at_time: timeValue, location_id: locationId, location, cost: costValue, payee_alias_cbu: payeeValue });
       closeDetailsEditor();
     }
     setSaving(false);
@@ -320,7 +323,7 @@ export default function MatchdayDetailPage() {
     <div>
       {glowingWinner && <ConfettiBurst />}
       <h2 className="text-xl font-bold">
-        #{matchdayNumber} — {formatDate(matchday.played_at)}
+        #{matchdayNumber}{matchday.name ? ` ${matchday.name}` : ''} — {formatDate(matchday.played_at)}
       </h2>
       {/* Matchday details box (display or edit mode) */}
       {editingDetails ? (
@@ -328,6 +331,17 @@ export default function MatchdayDetailPage() {
           className={`border border-border rounded-lg p-4 mt-3 space-y-3 ${closingDetails ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
           onAnimationEnd={handleEditorAnimationEnd}
         >
+          <div>
+            <label className="block text-sm font-medium mb-1">Nombre (opcional)</label>
+            <input
+              type="text"
+              placeholder="Ej: Copa de Verano"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              disabled={saving}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">Horario</label>
             <TimeInput value={editTime} onChange={setEditTime} disabled={saving} />
@@ -428,6 +442,15 @@ export default function MatchdayDetailPage() {
                 const canShare = missing.length === 0;
                 return (
                   <div className="flex items-center gap-1 shrink-0 self-start">
+                    <Tooltip label="Editar detalles">
+                      <button
+                        type="button"
+                        onClick={openDetailsEditor}
+                        className="p-1 rounded text-muted hover:text-on-surface transition-colors"
+                      >
+                        <EditIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
                     <Tooltip label={canShare ? 'Compartir por WhatsApp' : `Completá ${missing.join(', ')} para compartir`}>
                       <button
                         type="button"
@@ -437,15 +460,6 @@ export default function MatchdayDetailPage() {
                       >
                         Compartir
                         <WhatsAppIcon className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                    <Tooltip label="Editar detalles">
-                      <button
-                        type="button"
-                        onClick={openDetailsEditor}
-                        className="p-1 rounded text-muted hover:text-on-surface transition-colors"
-                      >
-                        <EditIcon className="w-4 h-4" />
                       </button>
                     </Tooltip>
                   </div>

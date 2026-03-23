@@ -81,7 +81,7 @@ export default function MatchdayListPage() {
               className="block border border-border rounded-xl p-4 hover:border-neutral-hover transition-colors"
             >
               <p className="font-medium">
-                #{matchdayLabel} — {formatDate(matchday.played_at)}
+                #{matchdayLabel}{matchday.name ? ` ${matchday.name}` : ''} — {formatDate(matchday.played_at)}
               </p>
               {(matchday.location || matchday.played_at_time) && (
                 <p className="text-sm text-muted mt-1">
