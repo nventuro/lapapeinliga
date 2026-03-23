@@ -322,7 +322,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary opacity-0 absolute inset-0"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary opacity-0 absolute inset-0 z-10"
               />
               <div className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer">
                 {formatDateShort(date)}
