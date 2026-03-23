@@ -376,11 +376,11 @@ export default function EventDetailPage() {
     <div>
       {glowingWinner && <ConfettiBurst />}
       <h2 className="text-xl font-bold">
-        #{eventNumber}{event.name ? ` · ${event.name}` : ''} — {formatDate(event.played_at)}
+        Fecha #{eventNumber}{event.name ? ` · ${event.name}` : ''}
       </h2>
       <p className="flex items-center gap-1.5 text-sm text-muted mt-1">
         <TypeIcon className="w-4 h-4" />
-        {typeLabel}
+        {typeLabel} — {formatDate(event.played_at)}
       </p>
 
       {/* Event details box (display or edit mode) */}

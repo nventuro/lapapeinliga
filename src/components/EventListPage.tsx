@@ -115,18 +115,24 @@ export default function EventListPage() {
               className="flex border border-border rounded-xl hover:border-neutral-hover transition-colors"
             >
               <Tooltip label={event.type === 'match' ? 'Partido' : 'Entrenamiento'}>
-                <div className="flex items-center px-3 border-r border-border text-muted">
+                <div className="flex flex-col items-center justify-center gap-1 px-3 border-r border-border text-muted min-w-14">
                   {event.type === 'match' ? (
                     <SoccerBallIcon className="w-5 h-5" />
                   ) : (
                     <BarbellIcon className="w-5 h-5" />
                   )}
+                  <span className="text-xs font-semibold">#{eventLabel}</span>
                 </div>
               </Tooltip>
               <div className="flex-1 p-4">
                 <p className="font-medium">
-                  #{eventLabel}{event.name ? ` · ${event.name}` : ''} — {formatDate(event.played_at)}
+                  {event.name ?? formatDate(event.played_at)}
                 </p>
+                {event.name && (
+                  <p className="text-sm text-muted mt-0.5">
+                    {formatDate(event.played_at)}
+                  </p>
+                )}
                 {(event.location || event.played_at_time) && (
                   <p className="text-sm text-muted mt-1">
                     {event.location?.name}
