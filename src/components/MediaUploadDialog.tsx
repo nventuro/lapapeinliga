@@ -235,7 +235,8 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
           if (tagError) throw new Error(tagError.message);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al subir');
+        const message = err instanceof Error ? err.message : String(err);
+        setError(`Error subiendo archivo ${i + 1}: ${message}`);
         setUploading(false);
         return;
       }
