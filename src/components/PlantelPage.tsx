@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import type { Player } from '../types';
-import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
+import type { Player, AwardType } from '../types';
+import { PLAYER_TIERS, TIER_GROUP_LABELS, AWARD_TYPES, AWARD_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
 import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon } from './icons';
+import { AWARD_ICONS } from './awardIcons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
 import GenderIcon from './GenderIcon';
@@ -12,7 +13,7 @@ import Tooltip from './Tooltip';
 
 export default function PlantelPage() {
   const { players, isAdmin, showRatings, refetchData } = useAppContext();
-  const { gamesPlayed, gamesWon, trainingsAttended, trainingsCoached, loading: statsLoading } = useEventStats();
+  const { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, loading: statsLoading } = useEventStats();
   const [modalPlayer, setModalPlayer] = useState<Player | null | undefined>(undefined);
   // undefined = closed, null = creating, Player = editing
 
@@ -20,6 +21,10 @@ export default function PlantelPage() {
   const mostPlayedIds = statsLoading ? new Set<number>() : getLeaderIds(gamesPlayed);
   const mostTrainedIds = statsLoading ? new Set<number>() : getLeaderIds(trainingsAttended);
   const mostCoachedIds = statsLoading ? new Set<number>() : getLeaderIds(trainingsCoached);
+
+  const awardLeaders = statsLoading
+    ? new Map<AwardType, Set<number>>()
+    : new Map(AWARD_TYPES.map((a) => [a, getLeaderIds(awardCounts.get(a) ?? new Map())]));
 
   async function handleDelete(player: Player) {
     if (!window.confirm(`¿Eliminar a ${player.name}? Esta acción no se puede deshacer.`)) {
@@ -91,6 +96,17 @@ export default function PlantelPage() {
                       <SpeakerphoneIcon className="w-4 h-4 text-gold" />
                     </Tooltip>
                   )}
+                  {AWARD_TYPES.map((award) => {
+                    const leaders = awardLeaders.get(award);
+                    if (!leaders?.has(player.id)) return null;
+                    const Icon = AWARD_ICONS[award];
+                    const count = awardCounts.get(award)?.get(player.id);
+                    return (
+                      <Tooltip key={award} label={`Más veces ${AWARD_LABELS[award]} (${count})`}>
+                        <Icon className="w-4 h-4 text-gold" />
+                      </Tooltip>
+                    );
+                  })}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
                   {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0 ml-auto">
