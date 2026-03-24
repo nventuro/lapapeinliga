@@ -24,6 +24,9 @@ import {
   IconArrowsShuffle,
   IconBarbell,
   IconSpeakerphone,
+  IconPhoto,
+  IconUpload,
+  IconShare,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -130,6 +133,18 @@ export function SpeakerphoneIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function BarbellIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconBarbell className={className} stroke={STROKE} />;
+}
+
+export function PhotosIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconPhoto className={className} stroke={STROKE} />;
+}
+
+export function UploadIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconUpload className={className} stroke={STROKE} />;
+}
+
+export function ShareIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconShare className={className} stroke={STROKE} />;
 }
 
 // Official Google "G" logo — paths from Firebase Auth UI (Copyright 2016 Google Inc.)

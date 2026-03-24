@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { CalendarIcon, ChartBarIcon, ClipboardIcon, CogIcon, GoogleIcon, UserGroupIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, ClipboardIcon, CogIcon, GoogleIcon, PhotosIcon, UserGroupIcon } from './icons';
 import ToggleSwitch from './ToggleSwitch';
 import Footer from './Footer';
 
@@ -103,7 +103,7 @@ export default function MainLayout() {
               </button>
             )}
           </div>
-          <nav className="flex gap-4 mt-3 border-b border-border pb-2">
+          <nav className="flex gap-4 mt-3 border-b border-border pb-2 overflow-x-auto scrollbar-hide">
             <Link
               to="/fechas"
               className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
@@ -150,6 +150,17 @@ export default function MainLayout() {
                 Armado
               </Link>
             )}
+            <Link
+              to="/galeria"
+              className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                location.pathname.startsWith('/galeria')
+                  ? 'text-primary'
+                  : 'text-muted hover:text-muted-strong'
+              }`}
+            >
+              <PhotosIcon className="w-3.5 h-3.5" />
+              Galería
+            </Link>
           </nav>
         </header>
 

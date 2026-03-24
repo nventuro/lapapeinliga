@@ -181,6 +181,33 @@ export const AWARD_LABELS: Record<AwardType, string> = {
   most_effort: 'Mas Huevo',
 };
 
+// Media gallery constants
+export const THUMBNAIL_MAX_WIDTH = 400;
+export const FULL_IMAGE_MAX_WIDTH = 1600;
+export const GALLERY_COLUMNS_MOBILE = 2;
+export const GALLERY_COLUMNS_SM = 3;
+
+export type MediaType = 'image' | 'video';
+
+export type MediaItem = {
+  id: number;
+  event_id: number | null;
+  storage_path: string;
+  thumbnail_path: string;
+  caption: string | null;
+  taken_at: string;
+  media_type: MediaType;
+};
+
+export type MediaTag = {
+  id: number;
+  name: string;
+};
+
+export type MediaItemWithTags = MediaItem & {
+  tags: MediaTag[];
+};
+
 export interface ScoreBreakdown {
   rating: { raw: number; weighted: number };
   gender: { raw: number; weighted: number };

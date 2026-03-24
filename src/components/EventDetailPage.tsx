@@ -17,6 +17,7 @@ import Tooltip from './Tooltip';
 import BuiltTeamDisplay from './BuiltTeamDisplay';
 import ConfettiBurst from './ConfettiBurst';
 import LocationPicker from './LocationPicker';
+import EventMediaStrip from './EventMediaStrip';
 
 type EventPageData = {
   event: EventWithDetails;
@@ -694,6 +695,8 @@ export default function EventDetailPage() {
           </div>
         </div>
       )}
+
+      <EventMediaStrip eventId={event.id} />
 
       {isAdmin && (
         <ConfirmAction
