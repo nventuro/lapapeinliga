@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/appContext';
 import type { Event, MediaItemWithTags, MediaTag } from '../types';
@@ -22,7 +22,7 @@ export default function GalleryPage() {
   const mediaIdParam = searchParams.get('media');
 
   const eventId = eventIdParam ? Number(eventIdParam) : null;
-  const tagNames = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
+  const tagNames = useMemo(() => tagsParam ? tagsParam.split(',').filter(Boolean) : [], [tagsParam]);
   const openMediaId = mediaIdParam ? Number(mediaIdParam) : null;
 
   const { items, loading, refetch } = useGalleryMedia({ eventId, tagNames });
@@ -141,6 +141,11 @@ export default function GalleryPage() {
   }, [openItem, refetch]);
 
   const selectedEventLabel = eventId ? eventLabels.get(eventId) : null;
+  const eventShortIds = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const e of events) map.set(e.id, e.short_id);
+    return map;
+  }, [events]);
 
   if (loading) {
     return (
@@ -210,7 +215,7 @@ export default function GalleryPage() {
         {/* Back link when filtered by event */}
         {selectedEventLabel && (
           <button
-            onClick={() => navigate(`/fechas/${eventId}`)}
+            onClick={() => navigate(`/fechas/${eventShortIds.get(eventId!) ?? eventId}`)}
             className="text-sm text-primary hover:text-primary-hover transition-colors"
           >
             ← Volver a Fecha {selectedEventLabel}
@@ -243,7 +248,7 @@ export default function GalleryPage() {
           onNext={openIndex < items.length - 1 ? () => goToMedia(openIndex + 1) : null}
           onDelete={isAdmin ? handleDelete : undefined}
           eventLabel={openItem.event_id ? `Fecha ${eventLabels.get(openItem.event_id) ?? ''}` : null}
-          onEventClick={openItem.event_id ? () => navigate(`/fechas/${openItem.event_id}`) : undefined}
+          onEventClick={openItem.event_id ? () => navigate(`/fechas/${eventShortIds.get(openItem.event_id!) ?? openItem.event_id}`) : undefined}
         />
       )}
       {showUpload && (

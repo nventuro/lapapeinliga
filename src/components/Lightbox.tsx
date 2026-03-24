@@ -1,8 +1,11 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import type { MediaItemWithTags } from '../types';
 import { formatDateShort } from '../utils/dateUtils';
 import { ShareIcon } from './icons';
 import Tooltip from './Tooltip';
+import ConfirmAction from './ConfirmAction';
+
+const SWIPE_THRESHOLD = 50;
 
 interface LightboxProps {
   item: MediaItemWithTags;
@@ -16,6 +19,7 @@ interface LightboxProps {
 
 export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick }: LightboxProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -41,32 +45,51 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  function handleBackdropClick(e: React.MouseEvent<HTMLDialogElement>) {
-    if (e.target === dialogRef.current) {
-      onClose();
-    }
+  // Swipe handling
+  function handleTouchStart(e: React.TouchEvent) {
+    setTouchStartX(e.touches[0].clientX);
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX;
+    if (delta > SWIPE_THRESHOLD && onPrev) onPrev();
+    if (delta < -SWIPE_THRESHOLD && onNext) onNext();
+    setTouchStartX(null);
   }
 
   async function handleShare() {
-    const url = item.storage_path;
     if (navigator.share) {
       try {
-        await navigator.share({ url });
+        // Try sharing the actual file
+        const response = await fetch(item.storage_path);
+        const blob = await response.blob();
+        const ext = item.media_type === 'video' ? 'webm' : 'jpg';
+        const file = new File([blob], `foto.${ext}`, { type: blob.type });
+
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file] });
+        } else {
+          await navigator.share({ url: item.storage_path });
+        }
       } catch {
-        // User cancelled share — ignore
+        // User cancelled or share failed — ignore
       }
     } else {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(item.storage_path);
     }
   }
 
   return (
     <dialog
       ref={dialogRef}
-      onClick={handleBackdropClick}
       className="fixed inset-0 w-full h-full max-w-none max-h-none m-0 p-0 bg-on-surface/90 backdrop:bg-transparent"
     >
-      <div className="flex flex-col h-full">
+      <div
+        className="flex flex-col h-full"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-3 shrink-0">
           <button
@@ -85,18 +108,20 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
               </button>
             </Tooltip>
             {onDelete && (
-              <button
-                onClick={onDelete}
-                className="text-error/80 hover:text-error text-sm font-medium px-2 py-1 transition-colors"
-              >
-                Eliminar
-              </button>
+              <ConfirmAction
+                label="Eliminar"
+                message="¿Eliminar esta foto? Esta acción no se puede deshacer."
+                onConfirm={onDelete}
+              />
             )}
           </div>
         </div>
 
-        {/* Media content */}
-        <div className="flex-1 flex items-center justify-center relative min-h-0 px-2">
+        {/* Media content — click outside the image/video closes */}
+        <div
+          className="flex-1 flex items-center justify-center relative min-h-0 px-2"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
           {/* Prev button */}
           {onPrev && (
             <button
@@ -141,11 +166,11 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
         </div>
 
         {/* Info footer */}
-        <div className="p-4 shrink-0 text-on-primary/90 space-y-1 max-w-2xl mx-auto w-full">
+        <div className="p-4 shrink-0 text-on-primary/90 space-y-2 max-w-2xl mx-auto w-full text-center">
           {item.caption && (
-            <p className="text-sm">{item.caption}</p>
+            <p className="text-lg">{item.caption}</p>
           )}
-          <div className="flex items-center gap-3 text-xs text-on-primary/60">
+          <div className="flex items-center justify-center gap-3 text-sm text-on-primary/60">
             <span>{formatDateShort(item.taken_at)}</span>
             {eventLabel && onEventClick && (
               <button
@@ -157,9 +182,9 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
             )}
           </div>
           {item.tags.length > 0 && (
-            <div className="flex gap-1.5 flex-wrap pt-1">
+            <div className="flex gap-2 flex-wrap justify-center pt-1">
               {item.tags.map((tag) => (
-                <span key={tag.id} className="text-xs px-2 py-0.5 bg-on-primary/10 rounded-full">
+                <span key={tag.id} className="text-sm px-3 py-1 bg-on-primary/10 rounded-full">
                   {tag.name}
                 </span>
               ))}

@@ -252,29 +252,19 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
             )}
           </div>
 
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Fecha</label>
-            <div className="relative">
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary opacity-0 absolute inset-0 z-10"
-              />
-              <div className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer">
-                {formatDateShort(date)}
-              </div>
-            </div>
-          </div>
-
           {/* Event dropdown */}
           <div>
-            <label className="block text-sm font-medium mb-1">Fecha (opcional)</label>
+            <label className="block text-sm font-medium mb-1">Evento (opcional)</label>
             <select
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedEventId(val);
+                if (val) {
+                  const event = events.find((ev) => String(ev.id) === val);
+                  if (event) setDate(event.played_at);
+                }
+              }}
               className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface text-on-surface"
             >
               <option value="">Sin evento asociado</option>
@@ -285,6 +275,25 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
               ))}
             </select>
           </div>
+
+          {/* Date — only shown when no event is selected */}
+          {!selectedEventId && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Fecha</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary opacity-0 absolute inset-0 z-20 cursor-pointer"
+                />
+                <div className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer">
+                  {formatDateShort(date)}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Next button */}
           <button

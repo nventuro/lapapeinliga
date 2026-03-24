@@ -34,19 +34,26 @@ function getS3Client(): S3Client {
   });
 }
 
-async function verifyAdmin(authHeader: string | null): Promise<boolean> {
-  if (!authHeader) return false;
+async function verifyAdmin(authHeader: string | null): Promise<{ isAdmin: boolean; debug: string }> {
+  if (!authHeader) return { isAdmin: false, debug: "No auth header" };
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseKey) {
+    return { isAdmin: false, debug: `Missing env: URL=${!!supabaseUrl}, KEY=${!!supabaseKey}` };
+  }
+
   const supabase = createClient(supabaseUrl, supabaseKey, {
     global: { headers: { Authorization: authHeader } },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return !!user?.email && ADMIN_EMAILS.includes(user.email);
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) return { isAdmin: false, debug: `getUser error: ${error.message}` };
+  if (!user?.email) return { isAdmin: false, debug: "No email in user" };
+  if (!ADMIN_EMAILS.includes(user.email)) {
+    return { isAdmin: false, debug: `Email ${user.email} not in admin list` };
+  }
+  return { isAdmin: true, debug: "ok" };
 }
 
 Deno.serve(async (req) => {
@@ -56,9 +63,9 @@ Deno.serve(async (req) => {
   }
 
   // Verify admin
-  const isAdmin = await verifyAdmin(req.headers.get("Authorization"));
+  const { isAdmin, debug } = await verifyAdmin(req.headers.get("Authorization"));
   if (!isAdmin) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    return new Response(JSON.stringify({ error: "Unauthorized", debug }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

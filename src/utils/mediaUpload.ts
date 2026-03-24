@@ -6,6 +6,22 @@ interface PresignedUrl {
   publicUrl: string;
 }
 
+async function extractError(error: unknown): Promise<string> {
+  if (error && typeof error === 'object' && 'context' in error) {
+    const ctx = (error as { context: unknown }).context;
+    if (ctx instanceof Response) {
+      try {
+        const body = await ctx.json();
+        return body.error ?? body.message ?? ctx.statusText;
+      } catch {
+        return ctx.statusText;
+      }
+    }
+  }
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 /**
  * Request presigned R2 upload URLs from the Edge Function.
  */
@@ -17,7 +33,7 @@ export async function getUploadUrls(
     body: { files },
   });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(await extractError(error));
   return data.urls;
 }
 
@@ -45,7 +61,7 @@ export async function deleteFromR2(keys: string[]): Promise<void> {
     body: { keys },
   });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(await extractError(error));
 }
 
 /**

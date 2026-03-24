@@ -98,12 +98,12 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {items.map((item) => (
           <button
             key={item.id}
             onClick={() => handleItemClick(item)}
-            className="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-border-subtle"
+            className="aspect-square rounded-lg overflow-hidden bg-border-subtle"
           >
             {item.media_type === 'video' ? (
               <video
