@@ -1,17 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config';
-
-const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/media-upload`;
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Not authenticated');
-  return {
-    Authorization: `Bearer ${session.access_token}`,
-    apikey: SUPABASE_ANON_KEY,
-    'Content-Type': 'application/json',
-  };
-}
 
 interface PresignedUrl {
   key: string;
@@ -25,20 +12,13 @@ interface PresignedUrl {
 export async function getUploadUrls(
   files: { key: string; contentType: string }[],
 ): Promise<PresignedUrl[]> {
-  const headers = await getAuthHeaders();
-  const res = await fetch(FUNCTION_URL, {
+  const { data, error } = await supabase.functions.invoke('media-upload', {
     method: 'POST',
-    headers,
-    body: JSON.stringify({ files }),
+    body: { files },
   });
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Upload URL request failed: ${res.status}`);
-  }
-
-  const { urls } = await res.json();
-  return urls;
+  if (error) throw new Error(error.message);
+  return data.urls;
 }
 
 /**
@@ -60,17 +40,12 @@ export async function uploadToR2(uploadUrl: string, blob: Blob, contentType: str
  * Delete objects from R2 via the Edge Function.
  */
 export async function deleteFromR2(keys: string[]): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await fetch(FUNCTION_URL, {
+  const { error } = await supabase.functions.invoke('media-upload', {
     method: 'DELETE',
-    headers,
-    body: JSON.stringify({ keys }),
+    body: { keys },
   });
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `R2 delete failed: ${res.status}`);
-  }
+  if (error) throw new Error(error.message);
 }
 
 /**
