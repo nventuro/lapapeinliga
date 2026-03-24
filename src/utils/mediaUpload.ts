@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { SUPABASE_URL } from '../config';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config';
 
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/media-upload`;
 
@@ -8,6 +8,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   if (!session) throw new Error('Not authenticated');
   return {
     Authorization: `Bearer ${session.access_token}`,
+    apikey: SUPABASE_ANON_KEY,
     'Content-Type': 'application/json',
   };
 }

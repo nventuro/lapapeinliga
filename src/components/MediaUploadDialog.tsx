@@ -228,7 +228,7 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
   return (
     <dialog
       ref={dialogRef}
-      className="w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-xl backdrop:bg-on-surface/50"
+      className="fixed m-auto w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-xl backdrop:bg-on-surface/50"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold">Subir fotos</h3>
