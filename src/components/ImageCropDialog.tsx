@@ -1,27 +1,35 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import Cropper from 'react-easy-crop';
-import type { Area } from 'react-easy-crop';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import ReactCrop from 'react-image-crop';
+import type { Crop, PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface ImageCropDialogProps {
   src: string;
   onClose: () => void;
   onCrop: (croppedBlob: Blob) => void;
+  onSkip: () => void;
 }
 
-async function getCroppedBlob(imageSrc: string, crop: Area): Promise<Blob> {
-  const image = new Image();
-  image.crossOrigin = 'anonymous';
-  await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = reject;
-    image.src = imageSrc;
-  });
+function getCroppedBlob(image: HTMLImageElement, crop: PixelCrop): Promise<Blob> {
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
 
   const canvas = document.createElement('canvas');
-  canvas.width = crop.width;
-  canvas.height = crop.height;
+  canvas.width = crop.width * scaleX;
+  canvas.height = crop.height * scaleY;
   const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -32,11 +40,10 @@ async function getCroppedBlob(imageSrc: string, crop: Area): Promise<Blob> {
   });
 }
 
-export default function ImageCropDialog({ src, onClose, onCrop }: ImageCropDialogProps) {
+export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageCropDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [crop, setCrop] = useState<Crop>();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,15 +58,31 @@ export default function ImageCropDialog({ src, onClose, onCrop }: ImageCropDialo
     return () => dialog?.removeEventListener('cancel', handleCancel);
   }, [onClose]);
 
-  const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
-    setCroppedArea(croppedAreaPixels);
+  // Initialize crop to full image once it loads
+  const onImageLoad = useCallback(() => {
+    setCrop({ unit: '%', x: 0, y: 0, width: 100, height: 100 });
   }, []);
 
   async function handleSave() {
-    if (!croppedArea) return;
+    if (!crop || !imgRef.current) return;
+
+    // Convert percentage crop to pixels for the blob extraction
+    const image = imgRef.current;
+    const pixelCrop: PixelCrop = crop.unit === '%'
+      ? {
+          unit: 'px',
+          x: (crop.x / 100) * image.width,
+          y: (crop.y / 100) * image.height,
+          width: (crop.width / 100) * image.width,
+          height: (crop.height / 100) * image.height,
+        }
+      : { ...crop, unit: 'px' };
+
+    if (pixelCrop.width < 1 || pixelCrop.height < 1) return;
+
     setSaving(true);
     try {
-      const blob = await getCroppedBlob(src, croppedArea);
+      const blob = await getCroppedBlob(image, pixelCrop);
       onCrop(blob);
     } finally {
       setSaving(false);
@@ -76,30 +99,31 @@ export default function ImageCropDialog({ src, onClose, onCrop }: ImageCropDialo
         <button onClick={onClose} className="text-muted hover:text-muted-strong text-xl leading-none transition-colors">&times;</button>
       </div>
 
-      <div className="relative w-full aspect-square bg-on-surface rounded-lg overflow-hidden">
-        <Cropper
-          image={src}
-          crop={crop}
-          zoom={zoom}
-          onCropChange={setCrop}
-          onZoomChange={setZoom}
-          onCropComplete={onCropComplete}
-        />
+      <div className="max-h-[60vh] overflow-auto rounded-lg bg-on-surface flex items-center justify-center">
+        <ReactCrop crop={crop} onChange={setCrop}>
+          <img
+            ref={imgRef}
+            src={src}
+            alt=""
+            onLoad={onImageLoad}
+            className="max-w-full max-h-[60vh] block"
+          />
+        </ReactCrop>
       </div>
 
       <div className="flex gap-3 mt-4">
         <button
-          onClick={onClose}
+          onClick={onSkip}
           className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
         >
-          Cancelar
+          Subir original
         </button>
         <button
           onClick={handleSave}
           disabled={saving}
           className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
         >
-          {saving ? 'Recortando...' : 'Aplicar'}
+          {saving ? 'Recortando...' : 'Aplicar recorte'}
         </button>
       </div>
     </dialog>

@@ -419,6 +419,7 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
         src={files[croppingIndex].preview}
         onClose={() => setCroppingIndex(null)}
         onCrop={(blob) => handleCropResult(croppingIndex, blob)}
+        onSkip={() => setCroppingIndex(null)}
       />
     )}
   </>
