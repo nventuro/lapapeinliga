@@ -10,6 +10,7 @@ import MasonryGrid from './MasonryGrid';
 import Lightbox from './Lightbox';
 import MediaUploadDialog from './MediaUploadDialog';
 import Tooltip from './Tooltip';
+import EventSelect from './EventSelect';
 import { deleteFromR2, keyFromPublicUrl } from '../utils/mediaUpload';
 
 export default function GalleryPage() {
@@ -177,18 +178,12 @@ export default function GalleryPage() {
       {/* Filters */}
       <div className="space-y-3 mb-6">
         {/* Event dropdown */}
-        <select
+        <EventSelect
+          events={events}
+          eventLabels={eventLabels}
           value={eventIdParam ?? ''}
-          onChange={(e) => handleEventFilter(e.target.value)}
-          className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface text-on-surface"
-        >
-          <option value="">Todas las fechas</option>
-          {events.map((event) => (
-            <option key={event.id} value={event.id}>
-              Fecha {eventLabels.get(event.id) ?? event.id} — {event.played_at}
-            </option>
-          ))}
-        </select>
+          onChange={handleEventFilter}
+        />
 
         {/* Tag chips */}
         {allTags.length > 0 && (
@@ -218,7 +213,7 @@ export default function GalleryPage() {
             onClick={() => navigate(`/fechas/${eventShortIds.get(eventId!) ?? eventId}`)}
             className="text-sm text-primary hover:text-primary-hover transition-colors"
           >
-            ← Volver a Fecha {selectedEventLabel}
+            ← Ir a Fecha {selectedEventLabel}
           </button>
         )}
       </div>
@@ -247,7 +242,11 @@ export default function GalleryPage() {
           onPrev={openIndex > 0 ? () => goToMedia(openIndex - 1) : null}
           onNext={openIndex < items.length - 1 ? () => goToMedia(openIndex + 1) : null}
           onDelete={isAdmin ? handleDelete : undefined}
-          eventLabel={openItem.event_id ? `Fecha ${eventLabels.get(openItem.event_id) ?? ''}` : null}
+          eventLabel={openItem.event_id ? (() => {
+            const evt = events.find((e) => e.id === openItem.event_id);
+            const label = eventLabels.get(openItem.event_id!) ?? '';
+            return `Fecha ${label}${evt?.name ? ` — ${evt.name}` : ''}`;
+          })() : null}
           onEventClick={openItem.event_id ? () => navigate(`/fechas/${eventShortIds.get(openItem.event_id!) ?? openItem.event_id}`) : undefined}
         />
       )}

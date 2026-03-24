@@ -3,7 +3,6 @@ import type { MediaItemWithTags } from '../types';
 import { formatDateShort } from '../utils/dateUtils';
 import { ShareIcon } from './icons';
 import Tooltip from './Tooltip';
-import ConfirmAction from './ConfirmAction';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -20,6 +19,7 @@ interface LightboxProps {
 export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick }: LightboxProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -32,7 +32,14 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
       onClose();
     };
     dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
+
+    // Lock body scroll while lightbox is open
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      dialog?.removeEventListener('cancel', handleCancel);
+      document.body.style.overflow = '';
+    };
   }, [onClose]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -108,11 +115,12 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
               </button>
             </Tooltip>
             {onDelete && (
-              <ConfirmAction
-                label="Eliminar"
-                message="¿Eliminar esta foto? Esta acción no se puede deshacer."
-                onConfirm={onDelete}
-              />
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                className="text-error/80 hover:text-error text-sm font-medium px-3 py-1.5 transition-colors"
+              >
+                Eliminar
+              </button>
             )}
           </div>
         </div>
@@ -192,6 +200,29 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
           )}
         </div>
       </div>
+
+      {/* Delete confirmation overlay */}
+      {confirmingDelete && (
+        <div className="absolute inset-0 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-xl border border-error p-6 mx-4 max-w-sm w-full shadow-xl">
+            <p className="text-sm text-on-surface mb-4">¿Eliminar esta foto? Esta acción no se puede deshacer.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmingDelete(false)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setConfirmingDelete(false); onDelete?.(); }}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-error text-on-primary hover:bg-error/80 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </dialog>
   );
 }

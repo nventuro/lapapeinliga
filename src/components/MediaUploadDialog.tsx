@@ -8,6 +8,8 @@ import { extractFirstFrame } from '../utils/videoProcessing';
 import { getUploadUrls, uploadToR2 } from '../utils/mediaUpload';
 import TagInput from './TagInput';
 import VideoTrimEditor from './VideoTrimEditor';
+import EventSelect from './EventSelect';
+import ImageCropDialog from './ImageCropDialog';
 
 interface FileEntry {
   file: File;
@@ -40,6 +42,7 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
 
   // Step 2: per-file metadata
   const [step, setStep] = useState<1 | 2>(1);
+  const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -73,11 +76,16 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
         const evts = eventsResult.data as AppEvent[];
         setEventLabels(buildEventLabels(evts));
         setEvents([...evts].reverse());
+        // Set date from prefilled event
+        if (prefilledEventId) {
+          const prefilled = evts.find((e) => e.id === prefilledEventId);
+          if (prefilled) setDate(prefilled.played_at);
+        }
       }
       if (tagsResult.data) setAllTags(tagsResult.data as MediaTag[]);
     }
     fetchData();
-  }, []);
+  }, [prefilledEventId]);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files;
@@ -109,6 +117,18 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
       next[index] = { ...next[index], caption };
       return next;
     });
+  }
+
+  function handleCropResult(index: number, blob: Blob) {
+    const newPreview = URL.createObjectURL(blob);
+    const croppedFile = new File([blob], files[index].file.name, { type: 'image/jpeg' });
+    setFiles((prev) => {
+      const next = [...prev];
+      URL.revokeObjectURL(next[index].preview);
+      next[index] = { ...next[index], file: croppedFile, preview: newPreview };
+      return next;
+    });
+    setCroppingIndex(null);
   }
 
   function updateTags(index: number, tags: MediaTag[]) {
@@ -226,6 +246,7 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
   }
 
   return (
+    <>
     <dialog
       ref={dialogRef}
       className="fixed m-auto w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-xl backdrop:bg-on-surface/50"
@@ -255,25 +276,19 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
           {/* Event dropdown */}
           <div>
             <label className="block text-sm font-medium mb-1">Evento (opcional)</label>
-            <select
+            <EventSelect
+              events={events}
+              eventLabels={eventLabels}
               value={selectedEventId}
-              onChange={(e) => {
-                const val = e.target.value;
+              onChange={(val) => {
                 setSelectedEventId(val);
                 if (val) {
                   const event = events.find((ev) => String(ev.id) === val);
                   if (event) setDate(event.played_at);
                 }
               }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface text-on-surface"
-            >
-              <option value="">Sin evento asociado</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  Fecha {eventLabels.get(event.id) ?? event.id} — {event.played_at}
-                </option>
-              ))}
-            </select>
+              emptyLabel="Sin evento asociado"
+            />
           </div>
 
           {/* Date — only shown when no event is selected */}
@@ -313,7 +328,10 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
             {files.map((entry, i) => (
               <div key={i} className="p-3 border border-border rounded-lg space-y-3">
                 <div className="flex gap-3">
-                  <div className="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-border-subtle">
+                  <div
+                    className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-border-subtle ${!entry.isVideo ? 'cursor-pointer hover:ring-2 hover:ring-primary' : ''}`}
+                    onClick={() => { if (!entry.isVideo) setCroppingIndex(i); }}
+                  >
                     {entry.isVideo ? (
                       <video src={entry.preview} className="w-full h-full object-cover" muted />
                     ) : (
@@ -395,5 +413,14 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
         </div>
       )}
     </dialog>
+
+    {croppingIndex !== null && files[croppingIndex] && !files[croppingIndex].isVideo && (
+      <ImageCropDialog
+        src={files[croppingIndex].preview}
+        onClose={() => setCroppingIndex(null)}
+        onCrop={(blob) => handleCropResult(croppingIndex, blob)}
+      />
+    )}
+  </>
   );
 }
