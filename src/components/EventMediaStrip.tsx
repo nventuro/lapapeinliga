@@ -51,10 +51,11 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
   if (loading) return null;
 
   // Empty state: show upload button for admins, nothing for non-admins
-  if (items.length === 0) {
-    if (!isAdmin) return null;
-    return (
-      <div className="mt-4">
+  if (items.length === 0 && !isAdmin) return null;
+
+  return (
+    <div className="mt-4">
+      {items.length === 0 ? (
         <button
           onClick={() => setShowUpload(true)}
           className="w-full py-3 border border-dashed border-border rounded-lg text-sm text-muted hover:text-primary hover:border-primary flex items-center justify-center gap-2 transition-colors"
@@ -62,68 +63,59 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
           <PhotosIcon className="w-4 h-4" />
           Subir fotos
         </button>
-        {showUpload && (
-          <MediaUploadDialog
-            onClose={() => { setShowUpload(false); refetchMedia(); }}
-            onItemUploaded={() => refetchMedia()}
-            prefilledEventId={eventId}
-          />
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-sm text-muted">Fotos</h3>
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Tooltip label="Subir fotos">
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-sm text-muted">Fotos</h3>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Tooltip label="Subir fotos">
+                  <button
+                    onClick={() => setShowUpload(true)}
+                    className="text-muted hover:text-primary transition-colors"
+                  >
+                    <UploadIcon className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+              )}
               <button
-                onClick={() => setShowUpload(true)}
-                className="text-muted hover:text-primary transition-colors"
+                onClick={() => navigate(`/galeria?event=${eventId}`)}
+                className="text-xs text-primary hover:text-primary-hover transition-colors"
               >
-                <UploadIcon className="w-4 h-4" />
+                Ver todas ({items.length})
               </button>
-            </Tooltip>
-          )}
-          <button
-            onClick={() => navigate(`/galeria?event=${eventId}`)}
-            className="text-xs text-primary hover:text-primary-hover transition-colors"
-          >
-            Ver todas ({items.length})
-          </button>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleItemClick(item)}
-            className="aspect-square rounded-lg overflow-hidden bg-border-subtle"
-          >
-            {item.media_type === 'video' ? (
-              <video
-                src={item.thumbnail_path}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <img
-                src={item.thumbnail_path}
-                alt={item.caption ?? ''}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            )}
-          </button>
-        ))}
-      </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleItemClick(item)}
+                className="aspect-square rounded-lg overflow-hidden bg-border-subtle"
+              >
+                {item.media_type === 'video' ? (
+                  <video
+                    src={item.thumbnail_path}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <img
+                    src={item.thumbnail_path}
+                    alt={item.caption ?? ''}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {showUpload && (
         <MediaUploadDialog
