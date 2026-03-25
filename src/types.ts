@@ -184,8 +184,6 @@ export const AWARD_LABELS: Record<AwardType, string> = {
 // Media gallery constants
 export const THUMBNAIL_MAX_WIDTH = 400;
 export const FULL_IMAGE_MAX_WIDTH = 1600;
-export const GALLERY_COLUMNS_MOBILE = 2;
-export const GALLERY_COLUMNS_SM = 3;
 
 export type MediaType = 'image' | 'video';
 
@@ -197,6 +195,7 @@ export type MediaItem = {
   caption: string | null;
   taken_at: string;
   media_type: MediaType;
+  aspect_ratio: number;
 };
 
 export type MediaTag = {

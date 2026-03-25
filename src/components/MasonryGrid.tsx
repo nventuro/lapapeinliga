@@ -1,41 +1,78 @@
+import { useMemo } from 'react';
 import type { MediaItemWithTags } from '../types';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
-// Tailwind needs literal class names for JIT scanning.
-// These correspond to GALLERY_COLUMNS_MOBILE (2) and GALLERY_COLUMNS_SM (3) from types.ts.
-const GRID_CLASSES = 'columns-2 sm:columns-3';
+/** Tailwind's `sm` breakpoint in pixels. */
+const SM_BREAKPOINT = 640;
+const COLUMNS_MOBILE = 2;
+const COLUMNS_SM = 3;
 
 interface MasonryGridProps {
   items: MediaItemWithTags[];
   onItemClick: (item: MediaItemWithTags) => void;
 }
 
+/**
+ * Distribute items into columns using a shortest-column-first strategy.
+ * Each item's height contribution is 1 / aspectRatio (since all columns
+ * have equal width, relative height is inversely proportional to aspect ratio).
+ */
+function distributeItems(items: MediaItemWithTags[], columnCount: number): MediaItemWithTags[][] {
+  const columns: MediaItemWithTags[][] = Array.from({ length: columnCount }, () => []);
+  const heights = new Array<number>(columnCount).fill(0);
+
+  for (const item of items) {
+    // Find the shortest column
+    let minIdx = 0;
+    for (let c = 1; c < columnCount; c++) {
+      if (heights[c] < heights[minIdx]) minIdx = c;
+    }
+    columns[minIdx].push(item);
+    heights[minIdx] += 1 / item.aspect_ratio;
+  }
+
+  return columns;
+}
+
 export default function MasonryGrid({ items, onItemClick }: MasonryGridProps) {
+  const width = useWindowWidth();
+  const columnCount = width < SM_BREAKPOINT ? COLUMNS_MOBILE : COLUMNS_SM;
+
+  const columns = useMemo(
+    () => distributeItems(items, columnCount),
+    [items, columnCount],
+  );
+
   return (
-    <div className={`${GRID_CLASSES} gap-2`}>
-      {items.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onItemClick(item)}
-          className="break-inside-avoid mb-2 w-full rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer block"
-        >
-          {item.media_type === 'video' ? (
-            <video
-              src={item.thumbnail_path}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full"
-            />
-          ) : (
-            <img
-              src={item.thumbnail_path}
-              alt={item.caption ?? ''}
-              className="w-full"
-              loading="lazy"
-            />
-          )}
-        </button>
+    <div className="flex gap-2">
+      {columns.map((column, colIdx) => (
+        <div key={colIdx} className="flex-1 flex flex-col gap-2">
+          {column.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onItemClick(item)}
+              className="w-full rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer block"
+            >
+              {item.media_type === 'video' ? (
+                <video
+                  src={item.thumbnail_path}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full block"
+                />
+              ) : (
+                <img
+                  src={item.thumbnail_path}
+                  alt={item.caption ?? ''}
+                  className="w-full block"
+                  loading="lazy"
+                />
+              )}
+            </button>
+          ))}
+        </div>
       ))}
     </div>
   );

@@ -1,4 +1,27 @@
 /**
+ * Get the aspect ratio (width / height) of a video file.
+ */
+export function getVideoAspectRatio(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.videoWidth / video.videoHeight);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error('Failed to load video metadata'));
+    };
+
+    video.src = URL.createObjectURL(file);
+  });
+}
+
+/**
  * Extract the first frame of a video as a JPEG blob (for thumbnails).
  */
 export function extractFirstFrame(file: File): Promise<Blob> {

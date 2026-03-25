@@ -40,11 +40,25 @@ function getCroppedBlob(image: HTMLImageElement, crop: PixelCrop): Promise<Blob>
   });
 }
 
+/** Check whether the crop selection covers the full image (i.e. no actual crop). */
+function isFullImage(crop: Crop | undefined): boolean {
+  if (!crop) return true;
+  if (crop.unit === '%') {
+    return crop.x === 0 && crop.y === 0 && crop.width >= 99.9 && crop.height >= 99.9;
+  }
+  return false;
+}
+
 export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageCropDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
-  const [saving, setSaving] = useState(false);
+  const [cropping, setCropping] = useState(false);
+
+  // The current image being shown — starts as the original, updated after each crop
+  const [currentSrc, setCurrentSrc] = useState(src);
+  // The blob from the most recent crop (null = no crops applied yet)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -58,15 +72,20 @@ export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageC
     return () => dialog?.removeEventListener('cancel', handleCancel);
   }, [onClose]);
 
-  // Initialize crop to full image once it loads
+  // Clean up object URLs we create
+  useEffect(() => {
+    return () => {
+      if (currentSrc !== src) URL.revokeObjectURL(currentSrc);
+    };
+  }, [currentSrc, src]);
+
   const onImageLoad = useCallback(() => {
     setCrop({ unit: '%', x: 0, y: 0, width: 100, height: 100 });
   }, []);
 
-  async function handleSave() {
+  async function handleApplyCrop() {
     if (!crop || !imgRef.current) return;
 
-    // Convert percentage crop to pixels for the blob extraction
     const image = imgRef.current;
     const pixelCrop: PixelCrop = crop.unit === '%'
       ? {
@@ -80,14 +99,33 @@ export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageC
 
     if (pixelCrop.width < 1 || pixelCrop.height < 1) return;
 
-    setSaving(true);
+    setCropping(true);
     try {
       const blob = await getCroppedBlob(image, pixelCrop);
-      onCrop(blob);
+      setCroppedBlob(blob);
+      // Replace the displayed image with the cropped result
+      if (currentSrc !== src) URL.revokeObjectURL(currentSrc);
+      setCurrentSrc(URL.createObjectURL(blob));
     } finally {
-      setSaving(false);
+      setCropping(false);
     }
   }
+
+  function handleCancel() {
+    // Discard any crops, revert to original
+    onSkip();
+  }
+
+  function handleConfirm() {
+    if (croppedBlob) {
+      onCrop(croppedBlob);
+    } else {
+      // No crop was applied — same as skip
+      onSkip();
+    }
+  }
+
+  const hasCropSelection = !isFullImage(crop);
 
   return (
     <dialog
@@ -103,7 +141,7 @@ export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageC
         <ReactCrop crop={crop} onChange={setCrop}>
           <img
             ref={imgRef}
-            src={src}
+            src={currentSrc}
             alt=""
             onLoad={onImageLoad}
             className="max-w-full max-h-[60vh] block"
@@ -113,18 +151,27 @@ export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageC
 
       <div className="flex gap-3 mt-4">
         <button
-          onClick={onSkip}
+          onClick={handleCancel}
           className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
         >
-          Subir original
+          Cancelar
         </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
-        >
-          {saving ? 'Recortando...' : 'Aplicar recorte'}
-        </button>
+        {hasCropSelection ? (
+          <button
+            onClick={handleApplyCrop}
+            disabled={cropping}
+            className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
+          >
+            {cropping ? 'Recortando...' : 'Aplicar recorte'}
+          </button>
+        ) : (
+          <button
+            onClick={handleConfirm}
+            className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover transition-colors"
+          >
+            Confirmar
+          </button>
+        )}
       </div>
     </dialog>
   );

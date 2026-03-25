@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { orderEvents, buildEventLabels } from '../lib/supabase';
 import { formatDateShort } from '../utils/dateUtils';
 import { compressImage } from '../utils/imageCompression';
-import { extractFirstFrame } from '../utils/videoProcessing';
+import { extractFirstFrame, getVideoAspectRatio } from '../utils/videoProcessing';
 import { getUploadUrls, uploadToR2 } from '../utils/mediaUpload';
 import TagInput from './TagInput';
 import VideoTrimEditor from './VideoTrimEditor';
@@ -175,6 +175,7 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
         let fullBlob: Blob;
         let thumbBlob: Blob;
         let fullContentType: string;
+        let aspectRatio: number;
         const thumbContentType = 'image/jpeg';
 
         if (entry.isVideo) {
@@ -182,10 +183,12 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
           fullBlob = entry.processedBlob ?? entry.file;
           fullContentType = 'video/webm';
           thumbBlob = await extractFirstFrame(entry.file);
+          aspectRatio = await getVideoAspectRatio(entry.file);
         } else {
           const compressed = await compressImage(entry.file);
           fullBlob = compressed.full;
           thumbBlob = compressed.thumbnail;
+          aspectRatio = compressed.aspectRatio;
           fullContentType = 'image/jpeg';
         }
 
@@ -217,6 +220,7 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
             caption: entry.caption || null,
             taken_at: date,
             media_type: entry.isVideo ? 'video' : 'image',
+            aspect_ratio: aspectRatio,
           })
           .select()
           .single();

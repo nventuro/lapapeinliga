@@ -187,14 +187,14 @@ export default function GalleryPage() {
 
         {/* Tag chips */}
         {allTags.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+          <div className="flex flex-wrap gap-2">
             {allTags.map((tag) => {
               const isActive = tagNames.includes(tag.name);
               return (
                 <button
                   key={tag.id}
                   onClick={() => toggleTag(tag.name)}
-                  className={`shrink-0 px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-primary text-on-primary'
                       : 'bg-border-subtle text-muted hover:text-muted-strong'
