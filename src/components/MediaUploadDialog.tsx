@@ -246,9 +246,9 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  // Track preview load failures so we can surface them instead of showing a blank area
-  const [previewError, setPreviewError] = useState(false);
-  useEffect(() => { setPreviewError(false); }, [previewUrl]);
+  // Track preview load state so we surface errors instead of showing a blank area
+  const [previewState, setPreviewState] = useState<'loading' | 'loaded' | 'error'>('loading');
+  useEffect(() => { setPreviewState('loading'); }, [previewUrl]);
 
   const isLastPending = currentFile ? findNextPending(currentIndex) === null : true;
   const canSubmitCurrent = currentFile && (!currentFile.isVideo || currentFile.processedBlob);
@@ -357,10 +357,10 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
         <div className="flex-1 min-h-0 flex flex-col gap-3 px-6 pb-6">
           {/* Preview (shrinks to fit viewport) */}
           <div
-            className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${!currentFile.isVideo && !previewError ? 'cursor-pointer' : ''}`}
-            onClick={() => { if (!currentFile.isVideo && !previewError) setCroppingIndex(currentIndex); }}
+            className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${!currentFile.isVideo && previewState === 'loaded' ? 'cursor-pointer' : ''}`}
+            onClick={() => { if (!currentFile.isVideo && previewState === 'loaded') setCroppingIndex(currentIndex); }}
           >
-            {previewError ? (
+            {previewState === 'error' ? (
               <p className="text-error text-sm px-4 text-center">
                 No se pudo cargar la vista previa. Probá saltando este archivo.
               </p>
@@ -369,7 +369,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
                 src={previewUrl}
                 className="max-w-full max-h-full object-contain"
                 muted
-                onError={() => setPreviewError(true)}
+                onError={() => setPreviewState('error')}
               />
             ) : (
               <>
@@ -378,11 +378,17 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
                   src={previewUrl}
                   alt=""
                   className="max-w-full max-h-full object-contain"
-                  onError={() => setPreviewError(true)}
+                  onLoad={() => setPreviewState('loaded')}
+                  onError={() => setPreviewState('error')}
                 />
-                <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-on-surface/60 text-surface px-2 py-0.5 rounded-full pointer-events-none">
-                  Tocá para recortar
-                </span>
+                {previewState === 'loading' && (
+                  <span className="text-muted text-sm">Cargando...</span>
+                )}
+                {previewState === 'loaded' && (
+                  <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-on-surface/60 text-surface px-2 py-0.5 rounded-full pointer-events-none">
+                    Tocá para recortar
+                  </span>
+                )}
               </>
             )}
           </div>
