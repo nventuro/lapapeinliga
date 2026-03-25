@@ -355,7 +355,9 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
       {/* ── Step 2: One-at-a-time editor ── */}
       {step === 2 && currentFile && (
         <div className="flex-1 min-h-0 flex flex-col gap-3 px-6 pb-6">
-          {/* Preview (shrinks to fit viewport) */}
+          {/* Preview (shrinks to fit viewport) — uses absolute positioning
+              so image size doesn't depend on percentage height resolution,
+              which some browsers fail at inside flex-grown containers. */}
           <div
             className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${!currentFile.isVideo && previewState === 'loaded' ? 'cursor-pointer' : ''}`}
             onClick={() => { if (!currentFile.isVideo && previewState === 'loaded') setCroppingIndex(currentIndex); }}
@@ -367,7 +369,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
             ) : currentFile.isVideo ? (
               <video
                 src={previewUrl}
-                className="max-w-full max-h-full object-contain"
+                className="absolute inset-0 w-full h-full object-contain"
                 muted
                 onError={() => setPreviewState('error')}
               />
@@ -377,7 +379,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
                   key={currentFile.id}
                   src={previewUrl}
                   alt=""
-                  className="max-w-full max-h-full object-contain"
+                  className="absolute inset-0 w-full h-full object-contain"
                   onLoad={() => setPreviewState('loaded')}
                   onError={() => setPreviewState('error')}
                 />
