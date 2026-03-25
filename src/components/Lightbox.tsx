@@ -1,9 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import type { MediaItemWithTags } from '../types';
+import type { MediaItemWithTags, Player, TaggedPlayer } from '../types';
 import { formatDateShort } from '../utils/dateUtils';
-import { ShareIcon } from './icons';
+import { ShareIcon, UserGroupIcon } from './icons';
 import Tooltip from './Tooltip';
+import PlayerTagInput from './PlayerTagInput';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -15,13 +16,23 @@ interface LightboxProps {
   onDelete?: () => void;
   eventLabel?: string | null;
   onEventClick?: () => void;
+  onPlayerClick?: (playerId: number) => void;
+  // Admin tagging
+  isAdmin?: boolean;
+  tagCandidates?: Player[];
+  tagCandidatesLoading?: boolean;
+  onTogglePlayerTag?: (player: TaggedPlayer, tagged: boolean) => void;
 }
 
-export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick }: LightboxProps) {
+export default function Lightbox({
+  item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick,
+  onPlayerClick, isAdmin, tagCandidates, tagCandidatesLoading, onTogglePlayerTag,
+}: LightboxProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useBodyScrollLock();
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showTagEditor, setShowTagEditor] = useState(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -85,6 +96,28 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
     }
   }
 
+  function handleTagToggle(players: TaggedPlayer[]) {
+    if (!onTogglePlayerTag) return;
+
+    // Determine which player was added or removed
+    const currentIds = new Set(item.taggedPlayers.map((p) => p.id));
+    const newIds = new Set(players.map((p) => p.id));
+
+    for (const player of players) {
+      if (!currentIds.has(player.id)) {
+        onTogglePlayerTag(player, true);
+        return;
+      }
+    }
+
+    for (const player of item.taggedPlayers) {
+      if (!newIds.has(player.id)) {
+        onTogglePlayerTag(player, false);
+        return;
+      }
+    }
+  }
+
   return (
     <dialog
       ref={dialogRef}
@@ -104,6 +137,20 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
             &times;
           </button>
           <div className="flex items-center gap-2">
+            {isAdmin && onTogglePlayerTag && (
+              <Tooltip label="Etiquetar personas">
+                <button
+                  onClick={() => setShowTagEditor((v) => !v)}
+                  className={`p-1.5 transition-colors ${
+                    showTagEditor
+                      ? 'text-primary'
+                      : 'text-on-primary/80 hover:text-on-primary'
+                  }`}
+                >
+                  <UserGroupIcon className="w-5 h-5" />
+                </button>
+              </Tooltip>
+            )}
             <Tooltip label="Compartir">
               <button
                 onClick={handleShare}
@@ -196,7 +243,33 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
               ))}
             </div>
           )}
+          {/* Tagged players */}
+          {item.taggedPlayers.length > 0 && (
+            <div className="flex gap-2 flex-wrap justify-center pt-1">
+              {item.taggedPlayers.map((player) => (
+                <button
+                  key={player.id}
+                  onClick={() => onPlayerClick?.(player.id)}
+                  className="text-sm px-3 py-1 bg-on-primary/20 rounded-full hover:bg-on-primary/30 transition-colors"
+                >
+                  {player.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Admin tag editor panel */}
+        {showTagEditor && tagCandidates && (
+          <div className="shrink-0 border-t border-on-primary/20 p-4 max-w-2xl mx-auto w-full">
+            <PlayerTagInput
+              candidates={tagCandidates}
+              selected={item.taggedPlayers}
+              onChange={handleTagToggle}
+              loading={tagCandidatesLoading}
+            />
+          </div>
+        )}
       </div>
 
       {/* Delete confirmation overlay */}

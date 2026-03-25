@@ -203,8 +203,11 @@ export type MediaTag = {
   name: string;
 };
 
+export type TaggedPlayer = Pick<Player, 'id' | 'name'>;
+
 export type MediaItemWithTags = MediaItem & {
   tags: MediaTag[];
+  taggedPlayers: TaggedPlayer[];
 };
 
 export interface ScoreBreakdown {

@@ -1,4 +1,4 @@
-import type { MediaTag } from '../types';
+import type { MediaTag, TaggedPlayer } from '../types';
 import { supabase } from '../lib/supabase';
 import { compressImage } from './imageCompression';
 import { extractFirstFrame, getVideoAspectRatio } from './videoProcessing';
@@ -15,6 +15,7 @@ export interface UploadFileEntry {
   preview: string;
   caption: string;
   tags: MediaTag[];
+  taggedPlayers: TaggedPlayer[];
   isVideo: boolean;
   processedBlob: Blob | null;
 }
@@ -170,5 +171,16 @@ export async function uploadSingleFile(
       .from('media_tag_assignments')
       .insert(assignments);
     if (tagError) throw new Error(tagError.message);
+  }
+
+  if (entry.taggedPlayers.length > 0 && mediaRow) {
+    const playerAssignments = entry.taggedPlayers.map((player) => ({
+      media_id: mediaRow.id,
+      player_id: player.id,
+    }));
+    const { error: playerTagError } = await supabase
+      .from('media_player_tags')
+      .insert(playerAssignments);
+    if (playerTagError) throw new Error(playerTagError.message);
   }
 }

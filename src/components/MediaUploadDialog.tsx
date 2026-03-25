@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useUploadQueue } from '../hooks/useUploadQueue';
-import type { Event as AppEvent, MediaTag } from '../types';
+import type { Event as AppEvent, MediaTag, TaggedPlayer } from '../types';
 import type { UploadFileEntry } from '../utils/mediaUpload';
 import { supabase } from '../lib/supabase';
 import { orderEvents, buildEventLabels } from '../lib/supabase';
@@ -10,6 +10,8 @@ import TagInput from './TagInput';
 import VideoTrimEditor from './VideoTrimEditor';
 import EventSelect from './EventSelect';
 import ImageCropDialog from './ImageCropDialog';
+import PlayerTagInput from './PlayerTagInput';
+import { useEventParticipants } from '../hooks/useEventParticipants';
 
 interface MediaUploadDialogProps {
   onClose: () => void;
@@ -46,6 +48,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   const [allTags, setAllTags] = useState<MediaTag[]>([]);
 
   const eventId = selectedEventId ? Number(selectedEventId) : null;
+  const { participants, loading: participantsLoading } = useEventParticipants(eventId);
   const queue = useUploadQueue({ eventId, date, onItemUploaded });
 
   useEffect(() => {
@@ -91,6 +94,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
       preview: URL.createObjectURL(file),
       caption: '',
       tags: [],
+      taggedPlayers: [],
       isVideo: file.type.startsWith('video/'),
       processedBlob: null,
     }));
@@ -122,6 +126,14 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     setFiles((prev) => {
       const next = [...prev];
       next[currentIndex] = { ...next[currentIndex], tags };
+      return next;
+    });
+  }
+
+  function updateTaggedPlayers(taggedPlayers: TaggedPlayer[]) {
+    setFiles((prev) => {
+      const next = [...prev];
+      next[currentIndex] = { ...next[currentIndex], taggedPlayers };
       return next;
     });
   }
@@ -361,6 +373,14 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
             selectedTags={currentFile.tags}
             onChange={(tags) => updateTags(tags)}
             onCreateTag={handleCreateTag}
+          />
+
+          {/* Player tags */}
+          <PlayerTagInput
+            candidates={participants}
+            selected={currentFile.taggedPlayers}
+            onChange={updateTaggedPlayers}
+            loading={participantsLoading}
           />
 
           {/* Actions */}

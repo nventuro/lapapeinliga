@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/appContext';
-import type { Event, MediaItemWithTags, MediaTag } from '../types';
+import type { Event, MediaItemWithTags, MediaTag, TaggedPlayer } from '../types';
 import { useGalleryMedia } from '../hooks/useGalleryMedia';
+import { useEventParticipants } from '../hooks/useEventParticipants';
 import { supabase } from '../lib/supabase';
 import { orderEvents, buildEventLabels } from '../lib/supabase';
 import { PhotosIcon, UploadIcon } from './icons';
@@ -11,6 +12,7 @@ import Lightbox from './Lightbox';
 import MediaUploadDialog from './MediaUploadDialog';
 import Tooltip from './Tooltip';
 import EventSelect from './EventSelect';
+import PlayerSearchFilter from './PlayerSearchFilter';
 import { deleteFromR2, keyFromPublicUrl } from '../utils/mediaUpload';
 
 export default function GalleryPage() {
@@ -21,12 +23,14 @@ export default function GalleryPage() {
   const eventIdParam = searchParams.get('event');
   const tagsParam = searchParams.get('tags');
   const mediaIdParam = searchParams.get('media');
+  const playerIdParam = searchParams.get('player');
 
   const eventId = eventIdParam ? Number(eventIdParam) : null;
   const tagNames = useMemo(() => tagsParam ? tagsParam.split(',').filter(Boolean) : [], [tagsParam]);
   const openMediaId = mediaIdParam ? Number(mediaIdParam) : null;
+  const playerId = playerIdParam ? Number(playerIdParam) : null;
 
-  const { items, loading, refetch } = useGalleryMedia({ eventId, tagNames });
+  const { items, loading, refetch } = useGalleryMedia({ eventId, tagNames, playerId });
 
   const [showUpload, setShowUpload] = useState(false);
 
@@ -36,14 +40,12 @@ export default function GalleryPage() {
 
   useEffect(() => {
     async function fetchEvents() {
-      // Fetch ascending for label building
       const { data: ascRows } = await orderEvents(
         supabase.from('events').select('*'),
         true,
       );
       if (ascRows) {
         setEventLabels(buildEventLabels(ascRows as Event[]));
-        // Reverse for dropdown display (newest first)
         setEvents([...(ascRows as Event[])].reverse());
       }
     }
@@ -60,6 +62,37 @@ export default function GalleryPage() {
     }
     fetchTags();
   }, []);
+
+  // Fetch players that have at least one tagged photo (for the search filter candidates)
+  const [taggedPlayerIds, setTaggedPlayerIds] = useState<Set<number>>(new Set());
+  const { players } = useAppContext();
+
+  useEffect(() => {
+    async function fetchTaggedPlayers() {
+      const { data } = await supabase
+        .from('media_player_tags')
+        .select('player_id');
+      if (data) {
+        setTaggedPlayerIds(new Set(data.map((r: { player_id: number }) => r.player_id)));
+      }
+    }
+    fetchTaggedPlayers();
+  }, []);
+
+  const taggedPlayers = useMemo(
+    () => players
+      .filter((p) => taggedPlayerIds.has(p.id))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [players, taggedPlayerIds],
+  );
+
+  // Lightbox admin tagging: get candidates for the open item's event
+  const lightboxEventId = openMediaId
+    ? (items.find((i) => i.id === openMediaId)?.event_id ?? null)
+    : null;
+  const { participants: tagCandidates, loading: tagCandidatesLoading } = useEventParticipants(
+    isAdmin ? lightboxEventId : null,
+  );
 
   const openItem = openMediaId ? items.find((i) => i.id === openMediaId) ?? null : null;
   const openIndex = openItem ? items.indexOf(openItem) : -1;
@@ -104,6 +137,19 @@ export default function GalleryPage() {
     });
   }
 
+  function handlePlayerFilter(selectedPlayerId: number | null) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (selectedPlayerId !== null) {
+        next.set('player', String(selectedPlayerId));
+      } else {
+        next.delete('player');
+      }
+      next.delete('media');
+      return next;
+    });
+  }
+
   function toggleTag(tagName: string) {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -121,10 +167,37 @@ export default function GalleryPage() {
     });
   }
 
+  // Lightbox: admin toggle player tag (auto-save)
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+
+  const handleTogglePlayerTag = useCallback(async (player: TaggedPlayer, tagged: boolean) => {
+    if (!openItem) return;
+
+    if (tagged) {
+      await supabase
+        .from('media_player_tags')
+        .insert({ media_id: openItem.id, player_id: player.id });
+    } else {
+      await supabase
+        .from('media_player_tags')
+        .delete()
+        .eq('media_id', openItem.id)
+        .eq('player_id', player.id);
+    }
+
+    refetchRef.current();
+  }, [openItem]);
+
+  // Lightbox: navigate to player's filtered gallery on chip tap
+  function handlePlayerClick(clickedPlayerId: number) {
+    closeLightbox();
+    handlePlayerFilter(clickedPlayerId);
+  }
+
   const handleDelete = useCallback(async () => {
     if (!openItem) return;
 
-    // Delete from R2
     const keys = [openItem.storage_path, openItem.thumbnail_path]
       .map(keyFromPublicUrl)
       .filter((k): k is string => k !== null);
@@ -132,7 +205,6 @@ export default function GalleryPage() {
       try { await deleteFromR2(keys); } catch { /* R2 delete is best-effort */ }
     }
 
-    // Delete from DB
     const { error } = await supabase.from('media').delete().eq('id', openItem.id);
     if (!error) {
       closeLightbox();
@@ -147,6 +219,10 @@ export default function GalleryPage() {
     for (const e of events) map.set(e.id, e.short_id);
     return map;
   }, [events]);
+
+  const selectedPlayerName = playerId
+    ? players.find((p) => p.id === playerId)?.name ?? null
+    : null;
 
   if (loading) {
     return (
@@ -185,6 +261,15 @@ export default function GalleryPage() {
           onChange={handleEventFilter}
         />
 
+        {/* Player search filter */}
+        {taggedPlayers.length > 0 && (
+          <PlayerSearchFilter
+            players={taggedPlayers}
+            selectedPlayerId={playerId}
+            onChange={handlePlayerFilter}
+          />
+        )}
+
         {/* Tag chips */}
         {allTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -207,14 +292,26 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* Back link when filtered by event */}
-        {selectedEventLabel && (
-          <button
-            onClick={() => navigate(`/fechas/${eventShortIds.get(eventId!) ?? eventId}`)}
-            className="text-sm text-primary hover:text-primary-hover transition-colors"
-          >
-            ← Ir a Fecha {selectedEventLabel}
-          </button>
+        {/* Active filter indicators */}
+        {(selectedEventLabel || selectedPlayerName) && (
+          <div className="flex flex-wrap gap-2">
+            {selectedEventLabel && (
+              <button
+                onClick={() => navigate(`/fechas/${eventShortIds.get(eventId!) ?? eventId}`)}
+                className="text-sm text-primary hover:text-primary-hover transition-colors"
+              >
+                ← Ir a Fecha {selectedEventLabel}
+              </button>
+            )}
+            {selectedPlayerName && (
+              <button
+                onClick={() => handlePlayerFilter(null)}
+                className="text-sm text-muted hover:text-muted-strong transition-colors"
+              >
+                ✕ {selectedPlayerName}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -237,6 +334,7 @@ export default function GalleryPage() {
 
       {openItem && (
         <Lightbox
+          key={openItem.id}
           item={openItem}
           onClose={closeLightbox}
           onPrev={openIndex > 0 ? () => goToMedia(openIndex - 1) : null}
@@ -248,6 +346,11 @@ export default function GalleryPage() {
             return `Fecha ${label}${evt?.name ? ` — ${evt.name}` : ''}`;
           })() : null}
           onEventClick={openItem.event_id ? () => navigate(`/fechas/${eventShortIds.get(openItem.event_id!) ?? openItem.event_id}`) : undefined}
+          onPlayerClick={handlePlayerClick}
+          isAdmin={isAdmin}
+          tagCandidates={tagCandidates}
+          tagCandidatesLoading={tagCandidatesLoading}
+          onTogglePlayerTag={isAdmin ? handleTogglePlayerTag : undefined}
         />
       )}
       {showUpload && (

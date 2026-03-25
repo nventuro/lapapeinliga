@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Player, AwardType } from '../types';
 import { PLAYER_TIERS, TIER_GROUP_LABELS, AWARD_TYPES, AWARD_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
-import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon } from './icons';
+import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon, PhotosIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
@@ -18,6 +18,21 @@ export default function PlantelPage() {
   const { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, loading: statsLoading } = useEventStats();
   const [modalPlayer, setModalPlayer] = useState<Player | null | undefined>(undefined);
   // undefined = closed, null = creating, Player = editing
+
+  // Players who have at least one tagged photo
+  const [playersWithPhotos, setPlayersWithPhotos] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    async function fetchTaggedPlayers() {
+      const { data } = await supabase
+        .from('media_player_tags')
+        .select('player_id');
+      if (data) {
+        setPlayersWithPhotos(new Set(data.map((r: { player_id: number }) => r.player_id)));
+      }
+    }
+    fetchTaggedPlayers();
+  }, []);
 
   const mostWonIds = statsLoading ? new Set<number>() : getLeaderIds(gamesWon);
   const mostPlayedIds = statsLoading ? new Set<number>() : getLeaderIds(gamesPlayed);
@@ -115,6 +130,16 @@ export default function PlantelPage() {
                       </Tooltip>
                     );
                   })}
+                  {playersWithPhotos.has(player.id) && (
+                    <Tooltip label="Ver fotos">
+                      <button
+                        onClick={() => navigate(`/galeria?player=${player.id}`)}
+                        className="text-muted hover:text-primary transition-colors p-1"
+                      >
+                        <PhotosIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
                   {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0 ml-auto">
