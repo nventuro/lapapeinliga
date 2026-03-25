@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { Event as AppEvent, MediaTag } from '../types';
 import { supabase } from '../lib/supabase';
 import { orderEvents, buildEventLabels } from '../lib/supabase';
@@ -32,6 +33,7 @@ function todayISO(): string {
 
 export default function MediaUploadDialog({ onClose, onComplete, prefilledEventId }: MediaUploadDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useBodyScrollLock();
 
   // Step 1: batch metadata
   const [date, setDate] = useState(todayISO);

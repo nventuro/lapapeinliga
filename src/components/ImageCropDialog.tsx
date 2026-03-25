@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import ReactCrop from 'react-image-crop';
 import type { Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -51,6 +52,7 @@ function isFullImage(crop: Crop | undefined): boolean {
 
 export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageCropDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useBodyScrollLock();
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
   const [cropping, setCropping] = useState(false);

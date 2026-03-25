@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { Player, PlayerPreference, PreferenceType, PlayerTier } from '../types';
 import { MIN_RATING, MAX_RATING, DEFAULT_UNRATED_RATING, PLAYER_TIERS, TIER_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
@@ -31,6 +32,7 @@ interface PendingPreference {
 export default function PlayerModal({ player, onClose }: PlayerModalProps) {
   const { players, preferences, refetchData } = useAppContext();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useBodyScrollLock();
 
   const [name, setName] = useState(player?.name ?? '');
   const [gender, setGender] = useState<'male' | 'female'>(player?.gender ?? 'male');

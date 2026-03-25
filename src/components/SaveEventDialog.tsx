@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useNavigate } from 'react-router-dom';
 import type { Team, Player, ShirtColor, Location, LocationSelection } from '../types';
 import { isNewLocationComplete } from '../types';
@@ -39,6 +40,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   const { onClose } = props;
   const navigate = useNavigate();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useBodyScrollLock();
   const { teamNames: suggestedTeamNames } = useAppContext();
 
   const [name, setName] = useState('');

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { MediaItemWithTags } from '../types';
 import { formatDateShort } from '../utils/dateUtils';
 import { ShareIcon } from './icons';
@@ -18,6 +19,7 @@ interface LightboxProps {
 
 export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick }: LightboxProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useBodyScrollLock();
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -33,12 +35,8 @@ export default function Lightbox({ item, onClose, onPrev, onNext, onDelete, even
     };
     dialog?.addEventListener('cancel', handleCancel);
 
-    // Lock body scroll while lightbox is open
-    document.body.style.overflow = 'hidden';
-
     return () => {
       dialog?.removeEventListener('cancel', handleCancel);
-      document.body.style.overflow = '';
     };
   }, [onClose]);
 
