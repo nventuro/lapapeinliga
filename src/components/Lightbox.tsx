@@ -20,13 +20,14 @@ interface LightboxProps {
   // Admin tagging
   isAdmin?: boolean;
   tagCandidates?: Player[];
+  allPlayers?: Player[];
   tagCandidatesLoading?: boolean;
   onTogglePlayerTag?: (player: TaggedPlayer, tagged: boolean) => void;
 }
 
 export default function Lightbox({
   item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick,
-  onPlayerClick, isAdmin, tagCandidates, tagCandidatesLoading, onTogglePlayerTag,
+  onPlayerClick, isAdmin, tagCandidates, allPlayers, tagCandidatesLoading, onTogglePlayerTag,
 }: LightboxProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useBodyScrollLock();
@@ -264,6 +265,7 @@ export default function Lightbox({
           <div className="shrink-0 border-t border-on-primary/20 p-4 max-w-2xl mx-auto w-full">
             <PlayerTagInput
               candidates={tagCandidates}
+              allPlayers={allPlayers ?? []}
               selected={item.taggedPlayers}
               onChange={handleTagToggle}
               loading={tagCandidatesLoading}

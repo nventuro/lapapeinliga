@@ -16,7 +16,7 @@ import PlayerSearchFilter from './PlayerSearchFilter';
 import { deleteFromR2, keyFromPublicUrl } from '../utils/mediaUpload';
 
 export default function GalleryPage() {
-  const { isAdmin } = useAppContext();
+  const { isAdmin, players: allPlayers } = useAppContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -349,6 +349,7 @@ export default function GalleryPage() {
           onPlayerClick={handlePlayerClick}
           isAdmin={isAdmin}
           tagCandidates={tagCandidates}
+          allPlayers={allPlayers}
           tagCandidatesLoading={tagCandidatesLoading}
           onTogglePlayerTag={isAdmin ? handleTogglePlayerTag : undefined}
         />

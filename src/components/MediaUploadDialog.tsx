@@ -13,6 +13,7 @@ import EventSelect from './EventSelect';
 import ImageCropDialog from './ImageCropDialog';
 import PlayerTagInput from './PlayerTagInput';
 import { useEventParticipants } from '../hooks/useEventParticipants';
+import { useAppContext } from '../context/appContext';
 
 interface MediaUploadDialogProps {
   onClose: () => void;
@@ -48,6 +49,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   // All tags for autocomplete
   const [allTags, setAllTags] = useState<MediaTag[]>([]);
 
+  const { players: allPlayers } = useAppContext();
   const eventId = selectedEventId ? Number(selectedEventId) : null;
   const { participants, loading: participantsLoading } = useEventParticipants(eventId);
   const queue = useUploadQueue({ eventId, date, onItemUploaded });
@@ -397,6 +399,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
             {/* Player tags */}
             <PlayerTagInput
               candidates={participants}
+              allPlayers={allPlayers}
               selected={currentFile.taggedPlayers}
               onChange={updateTaggedPlayers}
               loading={participantsLoading}
