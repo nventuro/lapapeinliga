@@ -87,19 +87,28 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     fetchData();
   }, [prefilledEventId]);
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files;
     if (!selected) return;
 
-    const entries: UploadFileEntry[] = Array.from(selected).map((file) => ({
-      id: crypto.randomUUID(),
-      file,
-      caption: '',
-      tags: [],
-      taggedPlayers: [],
-      isVideo: file.type.startsWith('video/'),
-      processedBlob: null,
-    }));
+    // Read file data into memory immediately. On mobile browsers (especially
+    // iOS Safari), File objects from the photo picker are backed by temporary
+    // file handles that can be invalidated before we get to process them.
+    const entries: UploadFileEntry[] = await Promise.all(
+      Array.from(selected).map(async (file) => {
+        const buffer = await file.arrayBuffer();
+        const memFile = new File([buffer], file.name, { type: file.type });
+        return {
+          id: crypto.randomUUID(),
+          file: memFile,
+          caption: '',
+          tags: [],
+          taggedPlayers: [],
+          isVideo: file.type.startsWith('video/'),
+          processedBlob: null,
+        };
+      }),
+    );
     setFiles((prev) => [...prev, ...entries]);
   }
 
