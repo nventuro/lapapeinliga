@@ -252,8 +252,8 @@ export default function GalleryPage() {
       )}
       {showUpload && (
         <MediaUploadDialog
-          onClose={() => setShowUpload(false)}
-          onComplete={() => { setShowUpload(false); refetch(); }}
+          onClose={() => { setShowUpload(false); refetch(); }}
+          onItemUploaded={() => refetch()}
           prefilledEventId={eventId}
         />
       )}

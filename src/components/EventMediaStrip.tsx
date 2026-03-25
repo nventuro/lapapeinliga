@@ -32,8 +32,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
     fetchMedia();
   }, [eventId]);
 
-  function handleRefetch() {
-    setShowUpload(false);
+  function refetchMedia() {
     supabase
       .from('media')
       .select('*')
@@ -65,8 +64,8 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
         </button>
         {showUpload && (
           <MediaUploadDialog
-            onClose={() => setShowUpload(false)}
-            onComplete={handleRefetch}
+            onClose={() => { setShowUpload(false); refetchMedia(); }}
+            onItemUploaded={() => refetchMedia()}
             prefilledEventId={eventId}
           />
         )}
@@ -128,8 +127,8 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
 
       {showUpload && (
         <MediaUploadDialog
-          onClose={() => setShowUpload(false)}
-          onComplete={handleRefetch}
+          onClose={() => { setShowUpload(false); refetchMedia(); }}
+          onItemUploaded={() => refetchMedia()}
           prefilledEventId={eventId}
         />
       )}

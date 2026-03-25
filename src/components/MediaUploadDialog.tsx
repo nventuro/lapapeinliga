@@ -1,29 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useUploadQueue } from '../hooks/useUploadQueue';
 import type { Event as AppEvent, MediaTag } from '../types';
+import type { UploadFileEntry } from '../utils/mediaUpload';
 import { supabase } from '../lib/supabase';
 import { orderEvents, buildEventLabels } from '../lib/supabase';
 import { formatDateShort } from '../utils/dateUtils';
-import { compressImage } from '../utils/imageCompression';
-import { extractFirstFrame, getVideoAspectRatio } from '../utils/videoProcessing';
-import { getUploadUrls, uploadToR2 } from '../utils/mediaUpload';
 import TagInput from './TagInput';
 import VideoTrimEditor from './VideoTrimEditor';
 import EventSelect from './EventSelect';
 import ImageCropDialog from './ImageCropDialog';
 
-interface FileEntry {
-  file: File;
-  preview: string;
-  caption: string;
-  tags: MediaTag[];
-  isVideo: boolean;
-  processedBlob: Blob | null; // For videos: the boomerang result
-}
-
 interface MediaUploadDialogProps {
   onClose: () => void;
-  onComplete: () => void;
+  onItemUploaded: () => void;
   prefilledEventId?: number | null;
 }
 
@@ -31,7 +21,7 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function MediaUploadDialog({ onClose, onComplete, prefilledEventId }: MediaUploadDialogProps) {
+export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEventId }: MediaUploadDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useBodyScrollLock();
 
@@ -40,14 +30,13 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
   const [selectedEventId, setSelectedEventId] = useState<string>(
     prefilledEventId ? String(prefilledEventId) : '',
   );
-  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [files, setFiles] = useState<UploadFileEntry[]>([]);
 
-  // Step 2: per-file metadata
-  const [step, setStep] = useState<1 | 2>(1);
+  // Flow control
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   // Events for dropdown
   const [events, setEvents] = useState<AppEvent[]>([]);
@@ -56,17 +45,21 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
   // All tags for autocomplete
   const [allTags, setAllTags] = useState<MediaTag[]>([]);
 
+  const eventId = selectedEventId ? Number(selectedEventId) : null;
+  const queue = useUploadQueue({ eventId, date, onItemUploaded });
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
 
     const handleCancel = (e: Event) => {
       e.preventDefault();
-      onClose();
+      handleClose();
     };
     dialog?.addEventListener('cancel', handleCancel);
     return () => dialog?.removeEventListener('cancel', handleCancel);
-  }, [onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -78,7 +71,6 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
         const evts = eventsResult.data as AppEvent[];
         setEventLabels(buildEventLabels(evts));
         setEvents([...evts].reverse());
-        // Set date from prefilled event
         if (prefilledEventId) {
           const prefilled = evts.find((e) => e.id === prefilledEventId);
           if (prefilled) setDate(prefilled.played_at);
@@ -93,7 +85,8 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
     const selected = e.target.files;
     if (!selected) return;
 
-    const entries: FileEntry[] = Array.from(selected).map((file) => ({
+    const entries: UploadFileEntry[] = Array.from(selected).map((file) => ({
+      id: crypto.randomUUID(),
       file,
       preview: URL.createObjectURL(file),
       caption: '',
@@ -104,24 +97,16 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
     setFiles((prev) => [...prev, ...entries]);
   }
 
-  function removeFile(index: number) {
+  function updateCaption(caption: string) {
     setFiles((prev) => {
       const next = [...prev];
-      URL.revokeObjectURL(next[index].preview);
-      next.splice(index, 1);
+      next[currentIndex] = { ...next[currentIndex], caption };
       return next;
     });
   }
 
-  function updateCaption(index: number, caption: string) {
-    setFiles((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], caption };
-      return next;
-    });
-  }
-
-  function handleCropResult(index: number, blob: Blob) {
+  function handleCropResult(blob: Blob) {
+    const index = croppingIndex!;
     const newPreview = URL.createObjectURL(blob);
     const croppedFile = new File([blob], files[index].file.name, { type: 'image/jpeg' });
     setFiles((prev) => {
@@ -133,18 +118,18 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
     setCroppingIndex(null);
   }
 
-  function updateTags(index: number, tags: MediaTag[]) {
+  function updateTags(tags: MediaTag[]) {
     setFiles((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], tags };
+      next[currentIndex] = { ...next[currentIndex], tags };
       return next;
     });
   }
 
-  function setProcessedBlob(index: number, blob: Blob) {
+  function setProcessedBlob(blob: Blob) {
     setFiles((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], processedBlob: blob };
+      next[currentIndex] = { ...next[currentIndex], processedBlob: blob };
       return next;
     });
   }
@@ -161,95 +146,79 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
     return tag;
   }
 
-  async function handleUpload() {
-    setUploading(true);
-    setError(null);
-    setUploadProgress(0);
+  // Find the index of the next pending file after currentIndex
+  function findNextPending(afterIndex: number): number | null {
+    for (let i = afterIndex + 1; i < files.length; i++) {
+      if (!queue.statuses.has(files[i].id)) return i;
+    }
+    return null;
+  }
 
-    const eventId = selectedEventId ? Number(selectedEventId) : null;
+  function handleNext() {
+    const entry = files[currentIndex];
+    queue.enqueue(entry);
 
-    for (let i = 0; i < files.length; i++) {
-      const entry = files[i];
-      setUploadProgress(i);
+    const next = findNextPending(currentIndex);
+    if (next !== null) {
+      setCurrentIndex(next);
+    } else {
+      setStep(3);
+    }
+  }
 
-      try {
-        const id = crypto.randomUUID();
-        let fullBlob: Blob;
-        let thumbBlob: Blob;
-        let fullContentType: string;
-        let aspectRatio: number;
-        const thumbContentType = 'image/jpeg';
+  function handleSkip() {
+    // Remove this file from the list
+    const skippedId = files[currentIndex].id;
+    setFiles((prev) => {
+      const next = [...prev];
+      URL.revokeObjectURL(next[currentIndex].preview);
+      next.splice(currentIndex, 1);
+      return next;
+    });
 
-        if (entry.isVideo) {
-          // Use the processed boomerang blob, extract thumbnail
-          fullBlob = entry.processedBlob ?? entry.file;
-          fullContentType = 'video/webm';
-          thumbBlob = await extractFirstFrame(entry.file);
-          aspectRatio = await getVideoAspectRatio(entry.file);
-        } else {
-          const compressed = await compressImage(entry.file);
-          fullBlob = compressed.full;
-          thumbBlob = compressed.thumbnail;
-          aspectRatio = compressed.aspectRatio;
-          fullContentType = 'image/jpeg';
-        }
-
-        const fullKey = entry.isVideo ? `video/${id}.webm` : `full/${id}.jpg`;
-        const thumbKey = entry.isVideo ? `thumb/${id}.jpg` : `thumb/${id}.jpg`;
-
-        // Get presigned URLs from Edge Function
-        const urls = await getUploadUrls([
-          { key: fullKey, contentType: fullContentType },
-          { key: thumbKey, contentType: thumbContentType },
-        ]);
-
-        // Upload to R2
-        await Promise.all([
-          uploadToR2(urls[0].uploadUrl, fullBlob, fullContentType),
-          uploadToR2(urls[1].uploadUrl, thumbBlob, thumbContentType),
-        ]);
-
-        const storagePath = urls[0].publicUrl;
-        const thumbnailPath = urls[1].publicUrl;
-
-        // Insert media row
-        const { data: mediaRow, error: insertError } = await supabase
-          .from('media')
-          .insert({
-            event_id: eventId,
-            storage_path: storagePath,
-            thumbnail_path: thumbnailPath,
-            caption: entry.caption || null,
-            taken_at: date,
-            media_type: entry.isVideo ? 'video' : 'image',
-            aspect_ratio: aspectRatio,
-          })
-          .select()
-          .single();
-
-        if (insertError) throw new Error(insertError.message);
-
-        // Insert tag assignments
-        if (entry.tags.length > 0 && mediaRow) {
-          const assignments = entry.tags.map((tag) => ({
-            media_id: mediaRow.id,
-            tag_id: tag.id,
-          }));
-          const { error: tagError } = await supabase
-            .from('media_tag_assignments')
-            .insert(assignments);
-          if (tagError) throw new Error(tagError.message);
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        setError(`Error subiendo archivo ${i + 1}: ${message}`);
-        setUploading(false);
-        return;
+    // Find next file to edit. After splice, currentIndex might point to the next file already.
+    // But we need to recalculate since the array shifted.
+    const remaining = files.filter((f) => f.id !== skippedId && !queue.statuses.has(f.id));
+    if (remaining.length === 0) {
+      // No more files to edit
+      if (queue.doneCount > 0 || queue.activeCount > 0) {
+        setStep(3);
+      } else {
+        // Nothing uploaded and nothing left — just close
+        onClose();
       }
     }
+    // If there are remaining files, currentIndex now points to the next one
+    // (or needs adjustment if we were at the end)
+  }
 
-    setUploadProgress(files.length);
-    onComplete();
+  function handleClose() {
+    if (!queue.isIdle) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  }
+
+  function confirmClose() {
+    queue.abort();
+    onClose();
+  }
+
+  const currentFile = files[currentIndex];
+  const isLastPending = currentFile ? findNextPending(currentIndex) === null : true;
+  const canSubmitCurrent = currentFile && (!currentFile.isVideo || currentFile.processedBlob);
+
+  // Count how many files are still pending edit (not yet enqueued)
+  const pendingEditCount = files.filter((f) => !queue.statuses.has(f.id)).length;
+
+  // Build status line for step 2 header
+  function buildStatusLine(): string {
+    const parts: string[] = [];
+    if (queue.doneCount > 0) parts.push(`${queue.doneCount} subida${queue.doneCount !== 1 ? 's' : ''}`);
+    if (queue.activeCount > 0) parts.push(`${queue.activeCount} subiendo`);
+    if (queue.failedCount > 0) parts.push(`${queue.failedCount} con error`);
+    return parts.join(', ');
   }
 
   return (
@@ -258,14 +227,17 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
       ref={dialogRef}
       className="fixed m-auto w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-xl backdrop:bg-on-surface/50"
     >
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold">Subir fotos</h3>
-        <button onClick={onClose} className="text-muted hover:text-muted-strong text-xl leading-none transition-colors">&times;</button>
+        <h3 className="text-lg font-bold">
+          {step === 3 ? 'Subiendo archivos' : 'Subir fotos'}
+        </h3>
+        <button onClick={handleClose} className="text-muted hover:text-muted-strong text-xl leading-none transition-colors">&times;</button>
       </div>
 
+      {/* ── Step 1: Batch metadata ── */}
       {step === 1 && (
         <div className="space-y-4">
-          {/* File picker */}
           <div>
             <label className="block text-sm font-medium mb-1">Archivos</label>
             <input
@@ -280,7 +252,6 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
             )}
           </div>
 
-          {/* Event dropdown */}
           <div>
             <label className="block text-sm font-medium mb-1">Evento (opcional)</label>
             <EventSelect
@@ -298,7 +269,6 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
             />
           </div>
 
-          {/* Date — only shown when no event is selected */}
           {!selectedEventId && (
             <div>
               <label className="block text-sm font-medium mb-1">Fecha</label>
@@ -317,7 +287,6 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
             </div>
           )}
 
-          {/* Next button */}
           <button
             onClick={() => setStep(2)}
             disabled={files.length === 0}
@@ -328,93 +297,163 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
         </div>
       )}
 
-      {step === 2 && (
+      {/* ── Step 2: One-at-a-time editor ── */}
+      {step === 2 && currentFile && (
         <div className="space-y-4">
-          {/* Per-file cards */}
-          <div className="space-y-4 max-h-80 overflow-y-auto">
-            {files.map((entry, i) => (
-              <div key={i} className="p-3 border border-border rounded-lg space-y-3">
-                <div className="flex gap-3">
-                  <div
-                    className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-border-subtle ${!entry.isVideo ? 'cursor-pointer hover:ring-2 hover:ring-primary' : ''}`}
-                    onClick={() => { if (!entry.isVideo) setCroppingIndex(i); }}
-                  >
-                    {entry.isVideo ? (
-                      <video src={entry.preview} className="w-full h-full object-cover" muted />
-                    ) : (
-                      <img src={entry.preview} alt="" className="w-full h-full object-cover" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-muted truncate">{entry.file.name}</p>
-                      <button
-                        onClick={() => removeFile(i)}
-                        className="text-muted hover:text-error text-sm leading-none shrink-0 transition-colors"
-                      >
-                        &times;
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={entry.caption}
-                      onChange={(e) => updateCaption(i, e.target.value)}
-                      placeholder="Descripción (opcional)"
-                      className="w-full px-2 py-1 border border-border rounded text-sm bg-surface text-on-surface placeholder:text-muted"
-                    />
-                    <TagInput
-                      allTags={allTags}
-                      selectedTags={entry.tags}
-                      onChange={(tags) => updateTags(i, tags)}
-                      onCreateTag={handleCreateTag}
-                    />
-                  </div>
-                </div>
-
-                {/* Video trim editor */}
-                {entry.isVideo && !entry.processedBlob && (
-                  <VideoTrimEditor
-                    file={entry.file}
-                    onConfirm={(blob) => setProcessedBlob(i, blob)}
-                  />
-                )}
-                {entry.isVideo && entry.processedBlob && (
-                  <p className="text-xs text-primary">Boomerang listo</p>
-                )}
-              </div>
-            ))}
+          {/* Counter + status */}
+          <div className="text-sm text-muted">
+            <span className="font-medium text-on-surface">
+              {files.indexOf(currentFile) + 1} / {files.length}
+            </span>
+            {buildStatusLine() && (
+              <span> — {buildStatusLine()}</span>
+            )}
           </div>
 
-          {error && <p className="text-sm text-error">{error}</p>}
-
-          {/* Upload progress */}
-          {uploading && (
-            <div className="space-y-1">
-              <div className="w-full bg-border-subtle rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-primary h-full transition-all"
-                  style={{ width: `${(uploadProgress / files.length) * 100}%` }}
+          {/* Large preview */}
+          <div
+            className={`relative rounded-lg overflow-hidden bg-border-subtle ${!currentFile.isVideo ? 'cursor-pointer' : ''}`}
+            onClick={() => { if (!currentFile.isVideo) setCroppingIndex(currentIndex); }}
+          >
+            {currentFile.isVideo ? (
+              <video
+                src={currentFile.preview}
+                className="w-full max-h-[50vh] object-contain"
+                muted
+              />
+            ) : (
+              <>
+                <img
+                  src={currentFile.preview}
+                  alt=""
+                  className="w-full max-h-[50vh] object-contain"
                 />
-              </div>
-              <p className="text-xs text-muted text-center">{uploadProgress} / {files.length}</p>
-            </div>
+                <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-on-surface/60 text-surface px-2 py-0.5 rounded-full pointer-events-none">
+                  Tocá para recortar
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Video trim editor */}
+          {currentFile.isVideo && !currentFile.processedBlob && (
+            <VideoTrimEditor
+              file={currentFile.file}
+              onConfirm={(blob) => setProcessedBlob(blob)}
+            />
           )}
+          {currentFile.isVideo && currentFile.processedBlob && (
+            <p className="text-xs text-primary">Boomerang listo</p>
+          )}
+
+          {/* Caption */}
+          <input
+            type="text"
+            value={currentFile.caption}
+            onChange={(e) => updateCaption(e.target.value)}
+            placeholder="Descripción (opcional)"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface text-on-surface placeholder:text-muted"
+          />
+
+          {/* Tags */}
+          <TagInput
+            allTags={allTags}
+            selectedTags={currentFile.tags}
+            onChange={(tags) => updateTags(tags)}
+            onCreateTag={handleCreateTag}
+          />
 
           {/* Actions */}
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(1)}
-              disabled={uploading}
-              className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover disabled:opacity-50 transition-colors"
+              onClick={handleSkip}
+              className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
             >
-              Atrás
+              Saltar
             </button>
             <button
-              onClick={handleUpload}
-              disabled={uploading || files.length === 0 || files.some((f) => f.isVideo && !f.processedBlob)}
+              onClick={handleNext}
+              disabled={!canSubmitCurrent}
               className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
             >
-              {uploading ? 'Subiendo...' : 'Subir'}
+              {isLastPending ? 'Subir' : 'Siguiente'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 3: Summary / waiting ── */}
+      {step === 3 && (
+        <div className="space-y-4">
+          <div className="space-y-2 text-sm">
+            {queue.doneCount > 0 && (
+              <p className="text-on-surface">
+                <span className="text-primary">✓</span> {queue.doneCount} subida{queue.doneCount !== 1 ? 's' : ''}
+              </p>
+            )}
+            {queue.activeCount > 0 && (
+              <p className="text-muted animate-pulse">
+                ⟳ {queue.activeCount} subiendo...
+              </p>
+            )}
+            {queue.failedCount > 0 && (
+              <p className="text-error">
+                ✗ {queue.failedCount} con error
+              </p>
+            )}
+            {pendingEditCount > 0 && (
+              <p className="text-muted">
+                {pendingEditCount} pendiente{pendingEditCount !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+
+          {!queue.isIdle && (
+            <div className="w-full bg-border-subtle rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-primary h-full transition-all animate-pulse"
+                style={{ width: `${queue.doneCount + queue.failedCount > 0 ? ((queue.doneCount / (queue.doneCount + queue.activeCount + queue.failedCount)) * 100) : 0}%` }}
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            {queue.failedCount > 0 && (
+              <button
+                onClick={queue.retryFailed}
+                className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
+              >
+                Reintentar
+              </button>
+            )}
+            <button
+              onClick={handleClose}
+              className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover transition-colors"
+            >
+              {queue.isIdle ? 'Cerrar' : 'Cerrar de todos modos'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Close confirmation overlay */}
+      {showCloseConfirm && (
+        <div className="absolute inset-0 bg-surface/95 rounded-xl flex flex-col items-center justify-center p-6 space-y-4">
+          <p className="text-sm text-center">
+            Hay archivos subiendo. Si cerrás, las subidas en curso se van a cancelar.
+          </p>
+          <div className="flex gap-3 w-full">
+            <button
+              onClick={() => setShowCloseConfirm(false)}
+              className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmClose}
+              className="flex-1 py-2 rounded-lg text-sm font-medium bg-error text-on-primary hover:opacity-90 transition-colors"
+            >
+              Cerrar
             </button>
           </div>
         </div>
@@ -425,7 +464,7 @@ export default function MediaUploadDialog({ onClose, onComplete, prefilledEventI
       <ImageCropDialog
         src={files[croppingIndex].preview}
         onClose={() => setCroppingIndex(null)}
-        onCrop={(blob) => handleCropResult(croppingIndex, blob)}
+        onCrop={(blob) => handleCropResult(blob)}
         onSkip={() => setCroppingIndex(null)}
       />
     )}
