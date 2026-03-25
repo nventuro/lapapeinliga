@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useUploadQueue } from '../hooks/useUploadQueue';
 import { EQUIPO_TAG_NAME } from '../types';
@@ -94,7 +94,6 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     const entries: UploadFileEntry[] = Array.from(selected).map((file) => ({
       id: crypto.randomUUID(),
       file,
-      preview: URL.createObjectURL(file),
       caption: '',
       tags: [],
       taggedPlayers: [],
@@ -114,12 +113,10 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
   function handleCropResult(blob: Blob) {
     const index = croppingIndex!;
-    const newPreview = URL.createObjectURL(blob);
     const croppedFile = new File([blob], files[index].file.name, { type: 'image/jpeg' });
     setFiles((prev) => {
       const next = [...prev];
-      URL.revokeObjectURL(next[index].preview);
-      next[index] = { ...next[index], file: croppedFile, preview: newPreview };
+      next[index] = { ...next[index], file: croppedFile };
       return next;
     });
     setCroppingIndex(null);
@@ -201,7 +198,6 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     const skippedId = files[currentIndex].id;
     setFiles((prev) => {
       const next = [...prev];
-      URL.revokeObjectURL(next[currentIndex].preview);
       next.splice(currentIndex, 1);
       return next;
     });
@@ -236,6 +232,21 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   }
 
   const currentFile = files[currentIndex];
+
+  // Lazily create a single blob URL for the current file only.
+  // This avoids holding N blob URLs in memory simultaneously, which can cause
+  // mobile browsers to silently invalidate older URLs under memory pressure.
+  const currentFileObj = currentFile?.file ?? null;
+  const previewUrl = useMemo(() => {
+    if (!currentFileObj) return '';
+    return URL.createObjectURL(currentFileObj);
+  }, [currentFileObj]);
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
   const isLastPending = currentFile ? findNextPending(currentIndex) === null : true;
   const canSubmitCurrent = currentFile && (!currentFile.isVideo || currentFile.processedBlob);
 
@@ -348,14 +359,15 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
           >
             {currentFile.isVideo ? (
               <video
-                src={currentFile.preview}
+                src={previewUrl}
                 className="max-w-full max-h-full object-contain"
                 muted
               />
             ) : (
               <>
                 <img
-                  src={currentFile.preview}
+                  key={currentFile.id}
+                  src={previewUrl}
                   alt=""
                   className="max-w-full max-h-full object-contain"
                 />
@@ -506,7 +518,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
     {croppingIndex !== null && files[croppingIndex] && !files[croppingIndex].isVideo && (
       <ImageCropDialog
-        src={files[croppingIndex].preview}
+        src={previewUrl}
         onClose={() => setCroppingIndex(null)}
         onCrop={(blob) => handleCropResult(blob)}
         onSkip={() => setCroppingIndex(null)}

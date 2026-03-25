@@ -12,7 +12,6 @@ interface PresignedUrl {
 export interface UploadFileEntry {
   id: string;
   file: File;
-  preview: string;
   caption: string;
   tags: MediaTag[];
   taggedPlayers: TaggedPlayer[];
