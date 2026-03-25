@@ -162,7 +162,7 @@ export default function Lightbox({
             {onDelete && (
               <button
                 onClick={() => setConfirmingDelete(true)}
-                className="text-error/80 hover:text-error text-sm font-medium px-3 py-1.5 transition-colors"
+                className="text-sm font-medium px-3 py-1 rounded-full border border-error bg-surface text-error hover:bg-error hover:text-on-primary transition-colors"
               >
                 Eliminar
               </button>

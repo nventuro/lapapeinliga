@@ -237,19 +237,30 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     <>
     <dialog
       ref={dialogRef}
-      className="fixed m-auto w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-xl backdrop:bg-on-surface/50"
+      className="fixed m-auto w-full max-w-lg max-h-[100dvh] rounded-xl border border-border bg-surface shadow-xl backdrop:bg-on-surface/50 flex flex-col overflow-hidden"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold">
-          {step === 3 ? 'Subiendo archivos' : 'Subir fotos'}
-        </h3>
-        <button onClick={handleClose} className="text-muted hover:text-muted-strong text-xl leading-none transition-colors">&times;</button>
+      <div className="shrink-0 px-6 pt-6 pb-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">
+            {step === 2 && currentFile
+              ? `Subir fotos (${files.indexOf(currentFile) + 1}/${files.length})`
+              : step === 3
+                ? (queue.isIdle
+                  ? (queue.failedCount > 0 ? 'Subida con errores' : 'Listo')
+                  : 'Subiendo...')
+                : 'Subir fotos'}
+          </h3>
+          <button onClick={handleClose} className="text-muted hover:text-muted-strong text-xl leading-none transition-colors">&times;</button>
+        </div>
+        {step === 2 && buildStatusLine() && (
+          <p className="text-xs text-muted mt-1">{buildStatusLine()}</p>
+        )}
       </div>
 
       {/* ── Step 1: Batch metadata ── */}
       {step === 1 && (
-        <div className="space-y-4">
+        <div className="px-6 pb-6 space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Archivos</label>
             <input
@@ -311,26 +322,16 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
       {/* ── Step 2: One-at-a-time editor ── */}
       {step === 2 && currentFile && (
-        <div className="space-y-4">
-          {/* Counter + status */}
-          <div className="text-sm text-muted">
-            <span className="font-medium text-on-surface">
-              {files.indexOf(currentFile) + 1} / {files.length}
-            </span>
-            {buildStatusLine() && (
-              <span> — {buildStatusLine()}</span>
-            )}
-          </div>
-
-          {/* Large preview */}
+        <div className="flex-1 min-h-0 flex flex-col gap-3 px-6 pb-6">
+          {/* Preview (shrinks to fit viewport) */}
           <div
-            className={`relative rounded-lg overflow-hidden bg-border-subtle ${!currentFile.isVideo ? 'cursor-pointer' : ''}`}
+            className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${!currentFile.isVideo ? 'cursor-pointer' : ''}`}
             onClick={() => { if (!currentFile.isVideo) setCroppingIndex(currentIndex); }}
           >
             {currentFile.isVideo ? (
               <video
                 src={currentFile.preview}
-                className="w-full max-h-[50vh] object-contain"
+                className="max-w-full max-h-full object-contain"
                 muted
               />
             ) : (
@@ -338,7 +339,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
                 <img
                   src={currentFile.preview}
                   alt=""
-                  className="w-full max-h-[50vh] object-contain"
+                  className="max-w-full max-h-full object-contain"
                 />
                 <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-on-surface/60 text-surface px-2 py-0.5 rounded-full pointer-events-none">
                   Tocá para recortar
@@ -347,64 +348,67 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
             )}
           </div>
 
-          {/* Video trim editor */}
-          {currentFile.isVideo && !currentFile.processedBlob && (
-            <VideoTrimEditor
-              file={currentFile.file}
-              onConfirm={(blob) => setProcessedBlob(blob)}
+          {/* Controls (fixed size, never shrink) */}
+          <div className="shrink-0 space-y-3">
+            {/* Video trim editor */}
+            {currentFile.isVideo && !currentFile.processedBlob && (
+              <VideoTrimEditor
+                file={currentFile.file}
+                onConfirm={(blob) => setProcessedBlob(blob)}
+              />
+            )}
+            {currentFile.isVideo && currentFile.processedBlob && (
+              <p className="text-xs text-primary">Boomerang listo</p>
+            )}
+
+            {/* Caption */}
+            <input
+              type="text"
+              value={currentFile.caption}
+              onChange={(e) => updateCaption(e.target.value)}
+              placeholder="Descripción (opcional)"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface text-on-surface placeholder:text-muted"
             />
-          )}
-          {currentFile.isVideo && currentFile.processedBlob && (
-            <p className="text-xs text-primary">Boomerang listo</p>
-          )}
 
-          {/* Caption */}
-          <input
-            type="text"
-            value={currentFile.caption}
-            onChange={(e) => updateCaption(e.target.value)}
-            placeholder="Descripción (opcional)"
-            className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface text-on-surface placeholder:text-muted"
-          />
+            {/* Tags */}
+            <TagInput
+              allTags={allTags}
+              selectedTags={currentFile.tags}
+              onChange={(tags) => updateTags(tags)}
+              onCreateTag={handleCreateTag}
+            />
 
-          {/* Tags */}
-          <TagInput
-            allTags={allTags}
-            selectedTags={currentFile.tags}
-            onChange={(tags) => updateTags(tags)}
-            onCreateTag={handleCreateTag}
-          />
+            {/* Player tags */}
+            <PlayerTagInput
+              candidates={participants}
+              selected={currentFile.taggedPlayers}
+              onChange={updateTaggedPlayers}
+              loading={participantsLoading}
+            />
 
-          {/* Player tags */}
-          <PlayerTagInput
-            candidates={participants}
-            selected={currentFile.taggedPlayers}
-            onChange={updateTaggedPlayers}
-            loading={participantsLoading}
-          />
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleSkip}
-              className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
-            >
-              Saltar
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!canSubmitCurrent}
-              className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
-            >
-              {isLastPending ? 'Subir' : 'Siguiente'}
-            </button>
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleSkip}
+                className="flex-1 py-2 rounded-lg text-sm font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
+              >
+                Saltar
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={!canSubmitCurrent}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
+              >
+                {isLastPending ? 'Subir' : 'Siguiente'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── Step 3: Summary / waiting ── */}
       {step === 3 && (
-        <div className="space-y-4">
+        <div className="px-6 pb-6 space-y-4">
           <div className="space-y-2 text-sm">
             {queue.doneCount > 0 && (
               <p className="text-on-surface">
@@ -447,10 +451,11 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
               </button>
             )}
             <button
-              onClick={handleClose}
-              className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover transition-colors"
+              onClick={onClose}
+              disabled={!queue.isIdle}
+              className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
             >
-              {queue.isIdle ? 'Cerrar' : 'Cerrar de todos modos'}
+              Cerrar
             </button>
           </div>
         </div>

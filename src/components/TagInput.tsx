@@ -11,6 +11,7 @@ interface TagInputProps {
 export default function TagInput({ allTags, selectedTags, onChange, onCreateTag }: TagInputProps) {
   const [newTagName, setNewTagName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showNewInput, setShowNewInput] = useState(false);
 
   const selectedIds = new Set(selectedTags.map((t) => t.id));
 
@@ -35,49 +36,48 @@ export default function TagInput({ allTags, selectedTags, onChange, onCreateTag 
   }
 
   return (
-    <div className="space-y-2">
-      {/* Tag chips */}
-      {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {allTags.map((tag) => {
-            const isActive = selectedIds.has(tag.id);
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary text-on-primary'
-                    : 'bg-border-subtle text-muted hover:text-muted-strong'
-                }`}
-              >
-                {tag.name}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* New tag input */}
-      <div className="flex gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
+      {allTags.map((tag) => {
+        const isActive = selectedIds.has(tag.id);
+        return (
+          <button
+            key={tag.id}
+            type="button"
+            onClick={() => toggleTag(tag)}
+            className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
+              isActive
+                ? 'bg-primary text-on-primary'
+                : 'bg-border-subtle text-muted hover:text-muted-strong'
+            }`}
+          >
+            {tag.name}
+          </button>
+        );
+      })}
+      {showNewInput ? (
         <input
           type="text"
           value={newTagName}
           onChange={(e) => setNewTagName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } }}
-          placeholder="Nueva etiqueta..."
-          className="flex-1 px-2 py-1 border border-border rounded text-xs bg-surface text-on-surface placeholder:text-muted"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
+            if (e.key === 'Escape') { setShowNewInput(false); setNewTagName(''); }
+          }}
+          placeholder="Nombre..."
+          autoFocus
+          disabled={creating}
+          onBlur={() => { if (!newTagName.trim()) { setShowNewInput(false); setNewTagName(''); } }}
+          className="w-24 px-2.5 py-0.5 rounded-full text-xs border border-border bg-surface text-on-surface placeholder:text-muted disabled:opacity-50"
         />
+      ) : (
         <button
           type="button"
-          onClick={handleCreate}
-          disabled={!newTagName.trim() || creating}
-          className="px-2 py-1 text-xs font-medium text-primary hover:text-primary-hover disabled:text-disabled transition-colors"
+          onClick={() => setShowNewInput(true)}
+          className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-border-subtle text-muted hover:text-muted-strong transition-colors"
         >
           +
         </button>
-      </div>
+      )}
     </div>
   );
 }
