@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { CalendarIcon, ChartBarIcon, ClipboardIcon, CogIcon, GoogleIcon, PhotosIcon, UserGroupIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, CogIcon, GoogleIcon, PhotosIcon, UserGroupIcon } from './icons';
 import ToggleSwitch from './ToggleSwitch';
 import Footer from './Footer';
 
@@ -129,7 +129,7 @@ export default function MainLayout() {
             <Link
               to="/plantel"
               className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                location.pathname === '/plantel'
+                location.pathname === '/plantel' || location.pathname === '/armado'
                   ? 'text-primary'
                   : 'text-muted hover:text-muted-strong'
               }`}
@@ -137,19 +137,6 @@ export default function MainLayout() {
               <UserGroupIcon className="w-3.5 h-3.5" />
               Plantel
             </Link>
-            {isAdmin && (
-              <Link
-                to="/armado"
-                className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  location.pathname === '/armado'
-                    ? 'text-primary'
-                    : 'text-muted hover:text-muted-strong'
-                }`}
-              >
-                <ClipboardIcon className="w-3.5 h-3.5" />
-                Armado
-              </Link>
-            )}
             <Link
               to="/galeria"
               className={`text-sm font-medium transition-colors flex items-center gap-1.5 ${

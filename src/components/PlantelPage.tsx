@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Player, AwardType } from '../types';
 import { PLAYER_TIERS, TIER_GROUP_LABELS, AWARD_TYPES, AWARD_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
@@ -12,6 +13,7 @@ import GenderIcon from './GenderIcon';
 import Tooltip from './Tooltip';
 
 export default function PlantelPage() {
+  const navigate = useNavigate();
   const { players, isAdmin, showRatings, refetchData } = useAppContext();
   const { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, loading: statsLoading } = useEventStats();
   const [modalPlayer, setModalPlayer] = useState<Player | null | undefined>(undefined);
@@ -47,12 +49,18 @@ export default function PlantelPage() {
   return (
     <div>
       {isAdmin && (
-        <div className="flex items-center justify-center mb-6">
+        <div className="flex items-center justify-center gap-3 mb-6">
           <button
             onClick={() => setModalPlayer(null)}
             className="px-4 py-2 rounded-lg font-medium text-sm border border-primary text-primary hover:bg-primary hover:text-on-primary transition-colors"
           >
             Agregar jugador
+          </button>
+          <button
+            onClick={() => navigate('/armado')}
+            className="px-4 py-2 rounded-lg font-medium text-sm border border-primary text-primary hover:bg-primary hover:text-on-primary transition-colors"
+          >
+            Armado
           </button>
         </div>
       )}
