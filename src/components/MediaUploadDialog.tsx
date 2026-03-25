@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useUploadQueue } from '../hooks/useUploadQueue';
+import { EQUIPO_TAG_NAME } from '../types';
 import type { Event as AppEvent, MediaTag, TaggedPlayer } from '../types';
 import type { UploadFileEntry } from '../utils/mediaUpload';
 import { supabase } from '../lib/supabase';
@@ -125,7 +126,22 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   function updateTags(tags: MediaTag[]) {
     setFiles((prev) => {
       const next = [...prev];
-      next[currentIndex] = { ...next[currentIndex], tags };
+      const oldEntry = prev[currentIndex];
+      const hadEquipo = oldEntry.tags.some((t) => t.name === EQUIPO_TAG_NAME);
+      const hasEquipo = tags.some((t) => t.name === EQUIPO_TAG_NAME);
+
+      let { taggedPlayers } = oldEntry;
+
+      // Auto-tag all event participants when "equipo" tag is added
+      if (!hadEquipo && hasEquipo && eventId !== null && participants.length > 0) {
+        const currentIds = new Set(taggedPlayers.map((p) => p.id));
+        const newPlayers: TaggedPlayer[] = participants
+          .filter((p) => !currentIds.has(p.id))
+          .map(({ id, name }) => ({ id, name }));
+        taggedPlayers = [...taggedPlayers, ...newPlayers];
+      }
+
+      next[currentIndex] = { ...oldEntry, tags, taggedPlayers };
       return next;
     });
   }

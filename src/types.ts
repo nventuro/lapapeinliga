@@ -182,6 +182,8 @@ export const AWARD_LABELS: Record<AwardType, string> = {
 };
 
 // Media gallery constants
+export const EQUIPO_TAG_NAME = 'equipo';
+
 export const THUMBNAIL_MAX_WIDTH = 400;
 export const FULL_IMAGE_MAX_WIDTH = 1600;
 
