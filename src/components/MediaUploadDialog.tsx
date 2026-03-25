@@ -87,28 +87,19 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     fetchData();
   }, [prefilledEventId]);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files;
     if (!selected) return;
 
-    // Read file data into memory immediately. On mobile browsers (especially
-    // iOS Safari), File objects from the photo picker are backed by temporary
-    // file handles that can be invalidated before we get to process them.
-    const entries: UploadFileEntry[] = await Promise.all(
-      Array.from(selected).map(async (file) => {
-        const buffer = await file.arrayBuffer();
-        const memFile = new File([buffer], file.name, { type: file.type });
-        return {
-          id: crypto.randomUUID(),
-          file: memFile,
-          caption: '',
-          tags: [],
-          taggedPlayers: [],
-          isVideo: file.type.startsWith('video/'),
-          processedBlob: null,
-        };
-      }),
-    );
+    const entries: UploadFileEntry[] = Array.from(selected).map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      caption: '',
+      tags: [],
+      taggedPlayers: [],
+      isVideo: file.type.startsWith('video/'),
+      processedBlob: null,
+    }));
     setFiles((prev) => [...prev, ...entries]);
   }
 
@@ -242,9 +233,8 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
   const currentFile = files[currentIndex];
 
-  // Lazily create a single blob URL for the current file only.
-  // This avoids holding N blob URLs in memory simultaneously, which can cause
-  // mobile browsers to silently invalidate older URLs under memory pressure.
+  // Lazily create a single blob URL for the current file only, revoked
+  // automatically when the file changes or the component unmounts.
   const currentFileObj = currentFile?.file ?? null;
   const previewUrl = useMemo(() => {
     if (!currentFileObj) return '';
@@ -255,6 +245,10 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     if (!previewUrl) return;
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+
+  // Track preview load failures so we can surface them instead of showing a blank area
+  const [previewError, setPreviewError] = useState(false);
+  useEffect(() => { setPreviewError(false); }, [previewUrl]);
 
   const isLastPending = currentFile ? findNextPending(currentIndex) === null : true;
   const canSubmitCurrent = currentFile && (!currentFile.isVideo || currentFile.processedBlob);
@@ -363,14 +357,19 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
         <div className="flex-1 min-h-0 flex flex-col gap-3 px-6 pb-6">
           {/* Preview (shrinks to fit viewport) */}
           <div
-            className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${!currentFile.isVideo ? 'cursor-pointer' : ''}`}
-            onClick={() => { if (!currentFile.isVideo) setCroppingIndex(currentIndex); }}
+            className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${!currentFile.isVideo && !previewError ? 'cursor-pointer' : ''}`}
+            onClick={() => { if (!currentFile.isVideo && !previewError) setCroppingIndex(currentIndex); }}
           >
-            {currentFile.isVideo ? (
+            {previewError ? (
+              <p className="text-error text-sm px-4 text-center">
+                No se pudo cargar la vista previa. Probá saltando este archivo.
+              </p>
+            ) : currentFile.isVideo ? (
               <video
                 src={previewUrl}
                 className="max-w-full max-h-full object-contain"
                 muted
+                onError={() => setPreviewError(true)}
               />
             ) : (
               <>
@@ -379,6 +378,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
                   src={previewUrl}
                   alt=""
                   className="max-w-full max-h-full object-contain"
+                  onError={() => setPreviewError(true)}
                 />
                 <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-on-surface/60 text-surface px-2 py-0.5 rounded-full pointer-events-none">
                   Tocá para recortar
