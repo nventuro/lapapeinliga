@@ -139,14 +139,14 @@ export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageC
         <button onClick={onClose} className="text-muted hover:text-muted-strong text-xl leading-none transition-colors">&times;</button>
       </div>
 
-      <div className="max-h-[60vh] overflow-auto rounded-lg bg-on-surface flex items-center justify-center">
+      <div className="rounded-lg bg-on-surface flex items-center justify-center p-3">
         <ReactCrop crop={crop} onChange={setCrop}>
           <img
             ref={imgRef}
             src={currentSrc}
             alt=""
             onLoad={onImageLoad}
-            className="max-w-full max-h-[60vh] block"
+            className="max-w-full max-h-[55vh] block"
           />
         </ReactCrop>
       </div>
