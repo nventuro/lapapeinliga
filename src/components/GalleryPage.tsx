@@ -220,9 +220,6 @@ export default function GalleryPage() {
     return map;
   }, [events]);
 
-  const selectedPlayerName = playerId
-    ? players.find((p) => p.id === playerId)?.name ?? null
-    : null;
 
   if (loading) {
     return (
@@ -293,24 +290,14 @@ export default function GalleryPage() {
         )}
 
         {/* Active filter indicators */}
-        {(selectedEventLabel || selectedPlayerName) && (
+        {selectedEventLabel && (
           <div className="flex flex-wrap gap-2">
-            {selectedEventLabel && (
-              <button
-                onClick={() => navigate(`/fechas/${eventShortIds.get(eventId!) ?? eventId}`)}
-                className="text-sm text-primary hover:text-primary-hover transition-colors"
-              >
-                ← Ir a Fecha {selectedEventLabel}
-              </button>
-            )}
-            {selectedPlayerName && (
-              <button
-                onClick={() => handlePlayerFilter(null)}
-                className="text-sm text-muted hover:text-muted-strong transition-colors"
-              >
-                ✕ {selectedPlayerName}
-              </button>
-            )}
+            <button
+              onClick={() => navigate(`/fechas/${eventShortIds.get(eventId!) ?? eventId}`)}
+              className="text-sm text-primary hover:text-primary-hover transition-colors"
+            >
+              ← Ir a Fecha {selectedEventLabel}
+            </button>
           </div>
         )}
       </div>

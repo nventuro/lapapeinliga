@@ -27,6 +27,7 @@ function todayISO(): string {
 
 export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEventId }: MediaUploadDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   useBodyScrollLock();
 
   // Step 1: batch metadata
@@ -270,6 +271,9 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     <dialog
       ref={dialogRef}
       className="fixed m-auto w-full max-w-lg max-h-[100dvh] rounded-xl border border-border bg-surface shadow-xl backdrop:bg-on-surface/50 flex flex-col overflow-hidden"
+      onClick={(e) => {
+        if (e.target === dialogRef.current) handleClose();
+      }}
     >
       {/* Header */}
       <div className="shrink-0 px-6 pt-6 pb-3">
@@ -308,7 +312,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Evento (opcional)</label>
+            <label className="block text-sm font-medium mb-1">Evento</label>
             <EventSelect
               events={events}
               eventLabels={eventLabels}
@@ -327,15 +331,19 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
           {!selectedEventId && (
             <div>
               <label className="block text-sm font-medium mb-1">Fecha</label>
-              <div className="relative">
+              <div>
                 <input
+                  ref={dateInputRef}
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary opacity-0 absolute inset-0 z-20 cursor-pointer"
+                  className="sr-only"
                 />
-                <div className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer">
+                <div
+                  onClick={() => dateInputRef.current?.showPicker()}
+                  className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer"
+                >
                   {formatDateShort(date)}
                 </div>
               </div>

@@ -40,6 +40,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   const { onClose } = props;
   const navigate = useNavigate();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   useBodyScrollLock();
   const { teamNames: suggestedTeamNames } = useAppContext();
 
@@ -318,15 +319,19 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
 
           <div>
             <label className="block text-sm font-medium mb-1">Fecha</label>
-            <div className="relative">
+            <div>
               <input
+                ref={dateInputRef}
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary opacity-0 absolute inset-0 z-10"
+                className="sr-only"
               />
-              <div className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer">
+              <div
+                onClick={() => dateInputRef.current?.showPicker()}
+                className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer"
+              >
                 {formatDateShort(date)}
               </div>
             </div>
