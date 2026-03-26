@@ -119,6 +119,16 @@ export default function PlantelPage() {
                       <SpeakerphoneIcon className="w-4 h-4 text-gold" />
                     </Tooltip>
                   )}
+                  {playersWithPhotos.has(player.id) && (
+                    <Tooltip label="Ver fotos">
+                      <button
+                        onClick={() => navigate(`/galeria?player=${player.id}`)}
+                        className="text-muted hover:text-primary transition-colors p-1"
+                      >
+                        <PhotosIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
                   {AWARD_TYPES.map((award) => {
                     const leaders = awardLeaders.get(award);
                     if (!leaders?.has(player.id)) return null;
@@ -130,16 +140,6 @@ export default function PlantelPage() {
                       </Tooltip>
                     );
                   })}
-                  {playersWithPhotos.has(player.id) && (
-                    <Tooltip label="Ver fotos">
-                      <button
-                        onClick={() => navigate(`/galeria?player=${player.id}`)}
-                        className="text-muted hover:text-primary transition-colors p-1"
-                      >
-                        <PhotosIcon className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                  )}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
                   {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0 ml-auto">
