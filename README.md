@@ -1,6 +1,6 @@
 # La Papeinliga
 
-Team organizer for a friendly soccer group. Select attending players, configure team count, and sort into balanced teams using a hill-climbing optimizer that respects player preferences — then manually adjust if needed.
+Team organizer for a friendly soccer group. Browse matchdays and stats publicly, or sign in as admin to manage players, sort balanced teams, record results, upload photos and videos, and share details via WhatsApp.
 
 ## Setup
 
@@ -9,60 +9,72 @@ npm install
 npm run dev
 ```
 
-Requires a Supabase project for database. Admin authentication uses Google OAuth. Copy `.env` template and fill in `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD`.
+### Environment
+
+Create a `.env` file in the project root:
+
+```
+SUPABASE_PROJECT_REF=your-project-ref
+SUPABASE_DB_PASSWORD=your-db-password
+```
 
 ### Database
 
-```bash
-npm run db:link              # link to remote Supabase project (run once)
-npm run db:push              # push pending migrations to remote database
-npm run db:migration:new foo # create a new migration file
-```
-
 Migrations live in `supabase/migrations/`.
 
-## How It Works
+```bash
+npm run db:link              # link to remote Supabase (run once)
+npm run db:push              # push pending migrations
+npm run db:migration:new foo # create a new migration
+```
 
-The site is publicly accessible — anyone can browse matchdays, results, and stats without logging in. Admin features (player management, team sorting, editing results) require Google OAuth sign-in.
+## Features
 
-1. **Browse matchdays** — view past matchdays from the "Fechas" tab, with team rosters, reserves, winner, and awards
-2. **Stats** — view player leaderboards for total awards, per-category awards, games won, and games played
-3. **Sign in** (admin) — authenticate with Google to access management features
-4. **Manage players** — admins can add, edit, and delete players from the roster via a dedicated management page. Players have a tier (core, sporadic, guest) that determines grouping and defaults.
-5. **Select players** — check who's attending from the roster, grouped by tier
-6. **Configure teams** — choose how many teams to create (valid splits shown based on team size limits)
-7. **Sort teams** — a hill-climbing optimizer distributes players into balanced teams, minimizing rating spread, gender imbalance, and preference violations
-8. **Adjust** — move players between teams and reserves, re-sort as needed. A score breakdown shows per-category penalties and specific preference violations. Per-team cards flag size errors and gender warnings.
-9. **Lock & reshuffle** — lock specific players into their current teams, then reshuffle. Locked players stay put while the optimizer redistributes everyone else.
-10. **Save as matchday** — admins can save the current team assignment as a matchday ("fecha"), picking a date, time, location, cost, payee, and team names
-11. **Record results** — admins can set the winning team and individual awards (top scorer, best defense, best player, best goalie, most effort) on any matchday
-12. **Share via WhatsApp** — admins can share matchday details (teams, time, location, per-player cost) to WhatsApp once all details are filled in
+The site is publicly accessible. Admin features require Google OAuth sign-in.
+
+### Public
+
+- **Matchdays** -- browse past matchdays with team rosters, reserves, winners, and individual awards
+- **Training sessions** -- view training sessions with coach assignments
+- **Stats** -- player leaderboards for awards, games won, and games played
+- **Media gallery** -- browse photos and videos from events, with player tagging
+
+### Admin
+
+- **Player management** -- add, edit, and delete players. Each player has a tier (core, sporadic, guest) that determines grouping and defaults
+- **Team sorting** -- select attending players, choose team count, and run a hill-climbing optimizer that balances ratings, gender distribution, and player preferences
+- **Manual adjustments** -- move players between teams and reserves, lock players in place and reshuffle, view a per-category score breakdown
+- **Save matchdays** -- save team assignments as matchdays with date, time, location, cost, payee, and team names
+- **Record results** -- set the winning team and individual awards (top scorer, best defense, best player, best goalie, most effort)
+- **Media upload** -- upload photos and videos to events with in-browser cropping, compression, and video trimming
+- **WhatsApp sharing** -- share matchday details (teams, time, location, per-player cost) to WhatsApp
 
 ## Team Sorting Algorithm
 
-The sorter uses a multi-start hill-climbing optimizer:
+The sorter uses multi-start hill climbing:
 
-1. **Initial assignment** — if enough players of each gender exist, seeds each team with at least one of each via round-robin, then fills randomly. Otherwise, shuffles randomly.
-2. **Hill climbing** — iteratively tries all inter-team player swaps and team-reserve swaps. Picks the single best improvement per iteration, repeating until no swap improves the score.
-3. **Multi-start** — runs the above 10 times from different random seeds and keeps the best result.
+1. **Seed** -- if enough players of each gender exist, seeds each team with at least one of each via round-robin, then fills randomly
+2. **Hill climb** -- iteratively tries all inter-team and team-reserve swaps, picking the single best improvement per iteration until no swap helps
+3. **Repeat** -- runs 10 times from different random seeds, keeps the best result
 
-The score is a weighted sum of four penalties (all <= 0, higher is better):
+The score is a weighted sum of penalties (all &le; 0, higher is better):
 
 | Category | Weight | Penalty |
-|---|---|---|
-| Rating balance | 10 | Sum of squared deviations of team averages from overall average |
-| Gender balance | 6 | Sum of absolute deviations of team gender ratios from expected ratio |
-| Strong preferences | 3 | Count of `strongly_prefer_with` pairs placed on different teams |
+| --- | --- | --- |
+| Rating balance | 10 | Sum of squared deviations of team averages from the overall average |
+| Gender balance | 6 | Sum of absolute deviations of team gender ratios from the expected ratio |
+| Strong preferences | 3 | Count of `strongly_prefer_with` pairs on different teams |
 | Soft preferences | 1 | Count of `prefer_with` pairs split + `prefer_not_with` pairs together |
 
-Hard constraints (never violated): teams differ by at most 1 in size, and each team has at least 1 player of each gender (when feasible).
+Hard constraints (never violated): teams differ by at most 1 in size; each team has at least 1 player of each gender when feasible.
 
 ## Tech Stack
 
-- React + TypeScript + Vite
+- React 19 + TypeScript + Vite
 - Tailwind CSS v4
-- Supabase (database + admin auth via Google OAuth)
-- Hosted on GitHub Pages
+- Supabase (Postgres + auth via Google OAuth + Edge Functions for presigned uploads)
+- Cloudflare R2 (media storage)
+- GitHub Pages (auto-deploy on push to `main`)
 
 ---
 
