@@ -31,7 +31,7 @@ export default function PlayerTagInput({ candidates, allPlayers, selected, onCha
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [allPlayers, candidateIds, search]);
 
-  function togglePlayer(player: Player) {
+  function togglePlayer(player: TaggedPlayer) {
     if (selectedIds.has(player.id)) {
       onChange(selected.filter((p) => p.id !== player.id));
     } else {
