@@ -1,6 +1,6 @@
 import { MIN_PLAYERS } from '../types';
 import { getValidTeamCounts } from '../utils/teamCalculator';
-import { BarbellIcon } from './icons';
+import { BarbellIcon, SoccerBallIcon } from './icons';
 
 interface EventConfiguratorProps {
   selectedCount: number;
@@ -28,8 +28,9 @@ export default function EventConfigurator({
           <button
             key={opt.teamCount}
             onClick={() => onGenerate(opt.teamCount)}
-            className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left"
+            className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
           >
+            <SoccerBallIcon className="w-5 h-5" />
             {opt.teamCount} equipos
             <span className="font-normal ml-2">
               — {opt.playersPerTeam} por equipo
@@ -45,9 +46,8 @@ export default function EventConfigurator({
           className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
         >
           <BarbellIcon className="w-5 h-5" />
-          Entrenamiento
-          <span className="font-normal ml-1">
-            — {selectedCount} jugadores
+          <span className="font-normal">
+            {selectedCount} participantes
           </span>
         </button>
       </div>
