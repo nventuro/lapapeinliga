@@ -99,6 +99,16 @@ export default function PlantelPage() {
                 >
                   <GenderIcon gender={player.gender} />
                   <span className="font-medium truncate">{player.name}</span>
+                  {playersWithPhotos.has(player.id) && (
+                    <Tooltip label="Ver fotos">
+                      <button
+                        onClick={() => navigate(`/galeria?player=${player.id}`)}
+                        className="text-muted hover:text-primary transition-colors p-1"
+                      >
+                        <PhotosIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
                   {mostWonIds.has(player.id) && (
                     <Tooltip label={`Más partidos ganados (${gamesWon.get(player.id)})`}>
                       <TrophyIcon className="w-4 h-4 text-gold" />
@@ -117,16 +127,6 @@ export default function PlantelPage() {
                   {mostCoachedIds.has(player.id) && (
                     <Tooltip label={`Más entrenamientos dirigidos (${trainingsCoached.get(player.id)})`}>
                       <SpeakerphoneIcon className="w-4 h-4 text-gold" />
-                    </Tooltip>
-                  )}
-                  {playersWithPhotos.has(player.id) && (
-                    <Tooltip label="Ver fotos">
-                      <button
-                        onClick={() => navigate(`/galeria?player=${player.id}`)}
-                        className="text-muted hover:text-primary transition-colors p-1"
-                      >
-                        <PhotosIcon className="w-4 h-4" />
-                      </button>
                     </Tooltip>
                   )}
                   {AWARD_TYPES.map((award) => {
