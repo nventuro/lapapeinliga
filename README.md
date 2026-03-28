@@ -35,6 +35,7 @@ The site is publicly accessible. Admin features require Google OAuth sign-in.
 ### Public
 
 - **Matchdays** -- browse past matchdays with team rosters, reserves, winners, and individual awards
+- **Tournaments** -- view multi-team tournaments with match-by-match scores and standings tables
 - **Training sessions** -- view training sessions with coach assignments
 - **Stats** -- player leaderboards for awards, games won, and games played
 - **Media gallery** -- browse photos and videos from events, with player tagging
@@ -44,8 +45,8 @@ The site is publicly accessible. Admin features require Google OAuth sign-in.
 - **Player management** -- add, edit, and delete players. Each player has a tier (core, sporadic, guest) that determines grouping and defaults
 - **Team sorting** -- select attending players, choose team count, and run a hill-climbing optimizer that balances ratings, gender distribution, and player preferences
 - **Manual adjustments** -- move players between teams and reserves, lock players in place and reshuffle, view a per-category score breakdown
-- **Save matchdays** -- save team assignments as matchdays with date, time, location, cost, payee, and team names
-- **Record results** -- set the winning team and individual awards (top scorer, best defense, best player, best goalie, most effort)
+- **Save events** -- save team assignments as matchdays or tournaments with date, time, location, cost, payee, and team names
+- **Record results** -- set the winning team and individual awards (top scorer, best defense, best player, best goalie, most effort); for tournaments, record match-by-match scores
 - **Media upload** -- upload photos and videos to events with in-browser cropping, compression, and video trimming
 - **WhatsApp sharing** -- share matchday details (teams, time, location, per-player cost) to WhatsApp
 
