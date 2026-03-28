@@ -7,9 +7,6 @@ interface StandingsTableProps {
 }
 
 export default function StandingsTable({ teams, matches }: StandingsTableProps) {
-  const scoredMatches = matches.filter((m) => m.score_a !== null);
-  if (scoredMatches.length === 0) return null;
-
   const standings = computeStandings(teams, matches);
 
   return (
