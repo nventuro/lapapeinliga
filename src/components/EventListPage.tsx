@@ -76,7 +76,7 @@ export default function EventListPage() {
           *,
           matches(id, winning_team_id, match_teams!match_teams_match_id_fkey(id, name, match_team_players(count)), match_reserves(count)),
           trainings(id, training_attendees(count), training_coaches(count)),
-          tournaments(id, winning_team_id, tournament_teams(id, name, tournament_team_players(count)), tournament_reserves(count)),
+          tournaments(id, winning_team_id, tournament_teams!tournament_teams_tournament_id_fkey(id, name, tournament_team_players(count)), tournament_reserves(count)),
           location:locations(name)
         `);
       const { data, error } = await orderEvents(query, false);
