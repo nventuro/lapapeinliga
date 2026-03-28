@@ -17,10 +17,10 @@ export default function StandingsTable({ teams, matches }: StandingsTableProps) 
           <thead>
             <tr className="text-muted text-left">
               <th className="pb-2 pr-4">Equipo</th>
-              <th className="pb-2 px-2 text-center">PJ</th>
+              <th className="pb-2 px-2 text-center">Jugados</th>
               <th className="pb-2 px-2 text-center">Resultados</th>
               <th className="pb-2 px-2 text-center">Goles</th>
-              <th className="pb-2 pl-2 text-center">Pts</th>
+              <th className="pb-2 pl-2 text-center">Puntos</th>
             </tr>
           </thead>
           <tbody>

@@ -85,73 +85,66 @@ export default function TournamentMatchList({
                 <span className="text-xs text-muted shrink-0">#{index + 1}</span>
                 <span className="font-medium flex-1 text-right">{teamName(teams, match.team_a_id)}</span>
 
-                <div className="w-24 flex items-center justify-center shrink-0">
-                  {isEditing ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={editScoreA}
-                        onChange={(e) => setEditScoreA(e.target.value)}
-                        className="w-10 px-1 py-0.5 text-center rounded border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                      <span className="text-muted">-</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={editScoreB}
-                        onChange={(e) => setEditScoreB(e.target.value)}
-                        className="w-10 px-1 py-0.5 text-center rounded border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                    </div>
-                  ) : (
-                    <span className="font-bold">
-                      {match.score_a !== null ? `${match.score_a} - ${match.score_b}` : 'vs'}
-                    </span>
-                  )}
-                </div>
+                <span className="font-bold shrink-0">
+                  {match.score_a !== null ? `${match.score_a} - ${match.score_b}` : 'vs'}
+                </span>
 
                 <span className="font-medium flex-1">{teamName(teams, match.team_b_id)}</span>
 
                 {isAdmin && (
                   <div className="flex items-center gap-1 shrink-0">
-                    {isEditing ? (
-                      <>
-                        <button
-                          onClick={() => setEditingMatchId(null)}
-                          className="text-xs px-2 py-1 rounded text-muted hover:text-muted-strong transition-colors"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={handleSaveScore}
-                          disabled={saving || !canSaveScore}
-                          className="text-xs px-2 py-1 rounded font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
-                        >
-                          Guardar
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleStartEditScore(match)}
-                          className="text-xs px-2 py-1 rounded text-muted hover:text-muted-strong transition-colors"
-                        >
-                          {match.score_a !== null ? 'Editar' : 'Resultado'}
-                        </button>
-                        <Tooltip label="Eliminar partido">
-                          <button
-                            onClick={() => setDeletingMatchId(match.id)}
-                            className="p-1 rounded text-muted hover:text-error transition-colors"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </Tooltip>
-                      </>
-                    )}
+                    <button
+                      onClick={() => handleStartEditScore(match)}
+                      className="text-xs px-2 py-1 rounded text-muted hover:text-muted-strong transition-colors"
+                    >
+                      {match.score_a !== null ? 'Editar' : 'Resultado'}
+                    </button>
+                    <Tooltip label="Eliminar partido">
+                      <button
+                        onClick={() => setDeletingMatchId(match.id)}
+                        className="p-1 rounded text-muted hover:text-error transition-colors"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
               </div>
+
+              {isEditing && (
+                <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-surface/95 border border-primary px-3">
+                  <span className="text-sm font-medium truncate">{teamName(teams, match.team_a_id)}</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={editScoreA}
+                    onChange={(e) => setEditScoreA(e.target.value)}
+                    className="w-10 px-1 py-0.5 text-center rounded border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-muted">-</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={editScoreB}
+                    onChange={(e) => setEditScoreB(e.target.value)}
+                    className="w-10 px-1 py-0.5 text-center rounded border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium truncate">{teamName(teams, match.team_b_id)}</span>
+                  <button
+                    onClick={() => setEditingMatchId(null)}
+                    className="text-xs px-2 py-1 rounded text-muted hover:text-muted-strong transition-colors shrink-0"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveScore}
+                    disabled={saving || !canSaveScore}
+                    className="text-xs px-2 py-1 rounded font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors shrink-0"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              )}
 
               {isDeleting && (
                 <div className="absolute inset-0 flex items-center justify-center gap-3 rounded-lg bg-surface/95 border border-error px-3">
