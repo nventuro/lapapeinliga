@@ -37,97 +37,112 @@ function initialTeamNames(count: number, suggestedNames: string[]): string[] {
   );
 }
 
-/** Insert child records for the given event type. Returns an error message on failure, or null on success. */
-async function insertEventChildren(
+async function insertMatchChildren(
   eventId: number,
-  props: SaveEventDialogProps,
+  teams: Team[],
+  reserves: Player[],
   teamNames: string[],
   shirtColors: ShirtColor[],
 ): Promise<string | null> {
-  if (props.type === 'match') {
-    const { data: match, error: matchError } = await supabase
-      .from('matches')
-      .insert({ event_id: eventId })
-      .select('id')
-      .single();
+  const { data: match, error: matchError } = await supabase
+    .from('matches')
+    .insert({ event_id: eventId })
+    .select('id')
+    .single();
 
-    if (matchError || !match) return matchError?.message ?? 'Error al crear el partido.';
+  if (matchError || !match) return matchError?.message ?? 'Error al crear el partido.';
 
-    const trimmedNames = teamNames.map((n) => n.trim());
-    const { data: insertedTeams, error: teamsError } = await supabase
-      .from('match_teams')
-      .insert(trimmedNames.map((name, i) => ({ match_id: match.id, name, shirt_color: shirtColors[i] })))
-      .select('id');
+  const trimmedNames = teamNames.map((n) => n.trim());
+  const { data: insertedTeams, error: teamsError } = await supabase
+    .from('match_teams')
+    .insert(trimmedNames.map((name, i) => ({ match_id: match.id, name, shirt_color: shirtColors[i] })))
+    .select('id');
 
-    if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
+  if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
 
-    const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
-      props.teams[i].players.map((p) => ({ match_team_id: dbTeam.id, player_id: p.id })),
-    );
-    if (playerInserts.length > 0) {
-      const { error } = await supabase.from('match_team_players').insert(playerInserts);
-      if (error) return error.message;
-    }
+  const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
+    teams[i].players.map((p) => ({ match_team_id: dbTeam.id, player_id: p.id })),
+  );
+  if (playerInserts.length > 0) {
+    const { error } = await supabase.from('match_team_players').insert(playerInserts);
+    if (error) return error.message;
+  }
 
-    if (props.reserves.length > 0) {
-      const { error } = await supabase
-        .from('match_reserves')
-        .insert(props.reserves.map((p) => ({ match_id: match.id, player_id: p.id })));
-      if (error) return error.message;
-    }
-  } else if (props.type === 'tournament') {
-    const { data: tournament, error: tournamentError } = await supabase
-      .from('tournaments')
-      .insert({ event_id: eventId })
-      .select('id')
-      .single();
+  if (reserves.length > 0) {
+    const { error } = await supabase
+      .from('match_reserves')
+      .insert(reserves.map((p) => ({ match_id: match.id, player_id: p.id })));
+    if (error) return error.message;
+  }
 
-    if (tournamentError || !tournament) return tournamentError?.message ?? 'Error al crear el torneo.';
+  return null;
+}
 
-    const trimmedNames = teamNames.map((n) => n.trim());
-    const { data: insertedTeams, error: teamsError } = await supabase
-      .from('tournament_teams')
-      .insert(trimmedNames.map((name) => ({ tournament_id: tournament.id, name })))
-      .select('id');
+async function insertTournamentChildren(
+  eventId: number,
+  teams: Team[],
+  reserves: Player[],
+  teamNames: string[],
+): Promise<string | null> {
+  const { data: tournament, error: tournamentError } = await supabase
+    .from('tournaments')
+    .insert({ event_id: eventId })
+    .select('id')
+    .single();
 
-    if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
+  if (tournamentError || !tournament) return tournamentError?.message ?? 'Error al crear el torneo.';
 
-    const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
-      props.teams[i].players.map((p) => ({ tournament_team_id: dbTeam.id, player_id: p.id })),
-    );
-    if (playerInserts.length > 0) {
-      const { error } = await supabase.from('tournament_team_players').insert(playerInserts);
-      if (error) return error.message;
-    }
+  const trimmedNames = teamNames.map((n) => n.trim());
+  const { data: insertedTeams, error: teamsError } = await supabase
+    .from('tournament_teams')
+    .insert(trimmedNames.map((name) => ({ tournament_id: tournament.id, name })))
+    .select('id');
 
-    if (props.reserves.length > 0) {
-      const { error } = await supabase
-        .from('tournament_reserves')
-        .insert(props.reserves.map((p) => ({ tournament_id: tournament.id, player_id: p.id })));
-      if (error) return error.message;
-    }
-  } else {
-    const { data: training, error: trainingError } = await supabase
-      .from('trainings')
-      .insert({ event_id: eventId })
-      .select('id')
-      .single();
+  if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
 
-    if (trainingError || !training) return trainingError?.message ?? 'Error al crear el entrenamiento.';
+  const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
+    teams[i].players.map((p) => ({ tournament_team_id: dbTeam.id, player_id: p.id })),
+  );
+  if (playerInserts.length > 0) {
+    const { error } = await supabase.from('tournament_team_players').insert(playerInserts);
+    if (error) return error.message;
+  }
 
-    if (props.attendees.length > 0) {
-      const { error } = await supabase
-        .from('training_attendees')
-        .insert(props.attendees.map((p) => ({ training_id: training.id, player_id: p.id })));
-      if (error) return error.message;
-    }
+  if (reserves.length > 0) {
+    const { error } = await supabase
+      .from('tournament_reserves')
+      .insert(reserves.map((p) => ({ tournament_id: tournament.id, player_id: p.id })));
+    if (error) return error.message;
+  }
 
-    if (props.coaches.length > 0) {
-      const { error } = await supabase
-        .from('training_coaches')
-        .insert(props.coaches.map((p) => ({ training_id: training.id, player_id: p.id })));
-      if (error) return error.message;
-    }
+  return null;
+}
+
+async function insertTrainingChildren(
+  eventId: number,
+  attendees: Player[],
+  coaches: Player[],
+): Promise<string | null> {
+  const { data: training, error: trainingError } = await supabase
+    .from('trainings')
+    .insert({ event_id: eventId })
+    .select('id')
+    .single();
+
+  if (trainingError || !training) return trainingError?.message ?? 'Error al crear el entrenamiento.';
+
+  if (attendees.length > 0) {
+    const { error } = await supabase
+      .from('training_attendees')
+      .insert(attendees.map((p) => ({ training_id: training.id, player_id: p.id })));
+    if (error) return error.message;
+  }
+
+  if (coaches.length > 0) {
+    const { error } = await supabase
+      .from('training_coaches')
+      .insert(coaches.map((p) => ({ training_id: training.id, player_id: p.id })));
+    if (error) return error.message;
   }
 
   return null;
@@ -266,7 +281,10 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     }
 
     // Insert child records. If any step fails, delete the event (cascades to all children).
-    const childError = await insertEventChildren(event.id, props, teamNames, shirtColors);
+    const childError =
+      props.type === 'match' ? await insertMatchChildren(event.id, props.teams, props.reserves, teamNames, shirtColors)
+      : props.type === 'tournament' ? await insertTournamentChildren(event.id, props.teams, props.reserves, teamNames)
+      : await insertTrainingChildren(event.id, props.attendees, props.coaches);
     if (childError) {
       await supabase.from('events').delete().eq('id', event.id);
       setError(childError);

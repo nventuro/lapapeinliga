@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { EventWithDetails, MatchWithDetails, TournamentWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
-import { isGuest, allParticipants, AWARD_LABELS, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
+import { isGuest, allParticipants, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
 import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, BarbellIcon } from './icons';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
-import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import TimeInput from './TimeInput';
 import InvBadge from './InvBadge';
@@ -21,6 +20,8 @@ import EventMediaStrip from './EventMediaStrip';
 import TournamentMatchList from './TournamentMatchList';
 import StandingsTable from './StandingsTable';
 import TournamentTeamCard from './TournamentTeamCard';
+import ResultsSection from './ResultsSection';
+import ReservesList from './ReservesList';
 
 type EventPageData = {
   event: EventWithDetails;
@@ -518,21 +519,21 @@ export default function EventDetailPage() {
     ? event.teams.find((t) => t.id === event.tournament.winning_team_id)
     : null;
 
-  // Build award map for match teams display
+  // Build award-related derived values for match/tournament
   const awardSource: Record<string, number | null> | null =
     event.type === 'match' ? event.match
     : event.type === 'tournament' ? event.tournament
     : null;
 
   const playerAwards = new Map<number, AwardType[]>();
-  if (awardSource) {
-    for (const award of AWARD_TYPES) {
-      const pid = awardSource[`${award}_id` as keyof typeof awardSource] as number | null;
-      if (pid) {
-        const existing = playerAwards.get(pid) ?? [];
-        existing.push(award);
-        playerAwards.set(pid, existing);
-      }
+  const awardValues = {} as Record<AwardType, number | null>;
+  for (const award of AWARD_TYPES) {
+    const pid = awardSource ? awardSource[`${award}_id` as keyof typeof awardSource] as number | null : null;
+    awardValues[award] = pid;
+    if (pid) {
+      const existing = playerAwards.get(pid) ?? [];
+      existing.push(award);
+      playerAwards.set(pid, existing);
     }
   }
 
@@ -714,122 +715,28 @@ export default function EventDetailPage() {
             ))}
           </div>
 
-          {/* Reserves */}
-          {event.reserves.length > 0 && (
-            <div className="border border-border rounded-lg p-4 mt-4">
-              <h3 className="font-bold text-lg mb-3">
-                Suplentes
-                <span className="font-normal text-sm text-muted ml-2">
-                  ({event.reserves.length})
-                </span>
-              </h3>
-              <ul className="space-y-1">
-                {event.reserves.map((player) => (
-                  <li key={player.id} className="flex items-center gap-2 py-1 px-2">
-                    <GenderIcon gender={player.gender} />
-                    <span>{player.name}</span>
-                    {isGuest(player) && <InvBadge />}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <ReservesList reserves={event.reserves} />
 
-          {/* Results section */}
-          <div className="border border-border rounded-lg p-4 mt-4">
-            <h3 className="font-bold text-lg mb-4">Resultados</h3>
-
-            {isAdmin ? (
-              <div className="space-y-4">
-                {/* Winner picker */}
-                <div>
-                  <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
-                    Ganador
-                    <TrophyIcon className={`w-4 h-4 ${event.match.winning_team_id ? 'text-gold' : 'text-muted'}`} />
-                  </label>
-                  <select
-                    value={event.match.winning_team_id ?? ''}
-                    onChange={(e) =>
-                      handleWinnerChange(e.target.value ? Number(e.target.value) : null)
-                    }
-                    disabled={saving}
-                    className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${event.match.winning_team_id ? 'border-gold' : 'border-border'} ${glowingWinner ? 'animate-gold-glow-pulse' : ''}`}
-                  >
-                    <option value="">Sin definir</option>
-                    {[...event.teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Award pickers */}
-                {AWARD_TYPES.map((award) => {
-                  const Icon = AWARD_ICONS[award];
-                  const isGranted = event.match[`${award}_id` as keyof Match] != null;
-                  const isGlowing = glowingAwards.has(award);
-                  return (
-                  <div key={award}>
-                    <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
-                      {AWARD_LABELS[award]}
-                      <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
-                    </label>
-                    <select
-                      value={(event.match[`${award}_id` as keyof Match] as number | null) ?? ''}
-                      onChange={(e) =>
-                        handleAwardChange(award, e.target.value ? Number(e.target.value) : null)
-                      }
-                      disabled={saving}
-                      className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${isGranted ? 'border-gold' : 'border-border'} ${isGlowing ? 'animate-gold-glow-pulse' : ''}`}
-                    >
-                      <option value="">Sin definir</option>
-                      {[...participants].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-muted">
-                    Ganador
-                    <TrophyIcon className={`w-4 h-4 ${event.match.winning_team_id ? 'text-gold' : 'text-muted'}`} />
-                  </span>
-                  <span className="font-medium">
-                    {winnerTeam ? winnerTeam.name : 'Sin definir'}
-                  </span>
-                </div>
-                {AWARD_TYPES.map((award) => {
-                  const Icon = AWARD_ICONS[award];
-                  const isGranted = event.match[`${award}_id` as keyof Match] != null;
-                  return (
-                    <div key={award} className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-muted">
-                        {AWARD_LABELS[award]}
-                        <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
-                      </span>
-                      <span className="font-medium">
-                        {getPlayerName(event.match[`${award}_id` as keyof Match] as number | null) || 'Sin definir'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ResultsSection
+            winningTeamId={event.match.winning_team_id}
+            teams={event.teams}
+            participants={participants}
+            awardValues={awardValues}
+            winnerTeamName={winnerTeam?.name ?? null}
+            isAdmin={isAdmin}
+            saving={saving}
+            glowingWinner={glowingWinner}
+            glowingAwards={glowingAwards}
+            onWinnerChange={handleWinnerChange}
+            onAwardChange={handleAwardChange}
+            getPlayerName={getPlayerName}
+          />
         </>
       )}
 
       {/* Tournament */}
       {event.type === 'tournament' && (
         <>
-          {/* Teams grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {event.teams.map((team) => (
               <TournamentTeamCard
@@ -841,28 +748,8 @@ export default function EventDetailPage() {
             ))}
           </div>
 
-          {/* Reserves */}
-          {event.reserves.length > 0 && (
-            <div className="border border-border rounded-lg p-4 mt-4">
-              <h3 className="font-bold text-lg mb-3">
-                Suplentes
-                <span className="font-normal text-sm text-muted ml-2">
-                  ({event.reserves.length})
-                </span>
-              </h3>
-              <ul className="space-y-1">
-                {event.reserves.map((player) => (
-                  <li key={player.id} className="flex items-center gap-2 py-1 px-2">
-                    <GenderIcon gender={player.gender} />
-                    <span>{player.name}</span>
-                    {isGuest(player) && <InvBadge />}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <ReservesList reserves={event.reserves} />
 
-          {/* Tournament matches */}
           <TournamentMatchList
             teams={event.teams}
             matches={event.tournamentMatches}
@@ -873,97 +760,22 @@ export default function EventDetailPage() {
             onDeleteMatch={handleDeleteTournamentMatch}
           />
 
-          {/* Standings */}
           <StandingsTable teams={event.teams} matches={event.tournamentMatches} />
 
-          {/* Results section (winner + awards) */}
-          <div className="border border-border rounded-lg p-4 mt-4">
-            <h3 className="font-bold text-lg mb-4">Resultados</h3>
-
-            {isAdmin ? (
-              <div className="space-y-4">
-                {/* Winner picker */}
-                <div>
-                  <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
-                    Ganador
-                    <TrophyIcon className={`w-4 h-4 ${event.tournament.winning_team_id ? 'text-gold' : 'text-muted'}`} />
-                  </label>
-                  <select
-                    value={event.tournament.winning_team_id ?? ''}
-                    onChange={(e) =>
-                      handleTournamentWinnerChange(e.target.value ? Number(e.target.value) : null)
-                    }
-                    disabled={saving}
-                    className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${event.tournament.winning_team_id ? 'border-gold' : 'border-border'} ${glowingWinner ? 'animate-gold-glow-pulse' : ''}`}
-                  >
-                    <option value="">Sin definir</option>
-                    {[...event.teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Award pickers */}
-                {AWARD_TYPES.map((award) => {
-                  const Icon = AWARD_ICONS[award];
-                  const isGranted = event.tournament[`${award}_id` as keyof Tournament] != null;
-                  const isGlowing = glowingAwards.has(award);
-                  return (
-                  <div key={award}>
-                    <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
-                      {AWARD_LABELS[award]}
-                      <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
-                    </label>
-                    <select
-                      value={(event.tournament[`${award}_id` as keyof Tournament] as number | null) ?? ''}
-                      onChange={(e) =>
-                        handleTournamentAwardChange(award, e.target.value ? Number(e.target.value) : null)
-                      }
-                      disabled={saving}
-                      className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${isGranted ? 'border-gold' : 'border-border'} ${isGlowing ? 'animate-gold-glow-pulse' : ''}`}
-                    >
-                      <option value="">Sin definir</option>
-                      {[...participants].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-muted">
-                    Ganador
-                    <TrophyIcon className={`w-4 h-4 ${event.tournament.winning_team_id ? 'text-gold' : 'text-muted'}`} />
-                  </span>
-                  <span className="font-medium">
-                    {tournamentWinnerTeam ? tournamentWinnerTeam.name : 'Sin definir'}
-                  </span>
-                </div>
-                {AWARD_TYPES.map((award) => {
-                  const Icon = AWARD_ICONS[award];
-                  const isGranted = event.tournament[`${award}_id` as keyof Tournament] != null;
-                  return (
-                    <div key={award} className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-muted">
-                        {AWARD_LABELS[award]}
-                        <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
-                      </span>
-                      <span className="font-medium">
-                        {getPlayerName(event.tournament[`${award}_id` as keyof Tournament] as number | null) || 'Sin definir'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ResultsSection
+            winningTeamId={event.tournament.winning_team_id}
+            teams={event.teams}
+            participants={participants}
+            awardValues={awardValues}
+            winnerTeamName={tournamentWinnerTeam?.name ?? null}
+            isAdmin={isAdmin}
+            saving={saving}
+            glowingWinner={glowingWinner}
+            glowingAwards={glowingAwards}
+            onWinnerChange={handleTournamentWinnerChange}
+            onAwardChange={handleTournamentAwardChange}
+            getPlayerName={getPlayerName}
+          />
         </>
       )}
 
