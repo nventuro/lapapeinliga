@@ -1,4 +1,4 @@
-import type { MatchWithDetails, TrainingWithDetails, EventWithDetails } from '../types';
+import type { MatchWithDetails, TrainingWithDetails, TournamentWithDetails, EventWithDetails } from '../types';
 import { allParticipants } from '../types';
 import { formatDateForShare, formatTime } from './dateUtils';
 import { perPlayerCost } from './costUtils';
@@ -8,8 +8,8 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   lines.push('*🏆 La Papeinliga*');
   lines.push('');
 
-  const typeEmoji = event.type === 'match' ? '⚽' : '🏋️';
-  const typeLabel = event.type === 'match' ? 'Partido' : 'Entrenamiento';
+  const typeEmoji = event.type === 'match' ? '⚽' : event.type === 'tournament' ? '🏆' : '🏋️';
+  const typeLabel = event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : 'Entrenamiento';
   const namePart = event.name ? ` · ${event.name}` : '';
   lines.push(`Fecha ${eventNumber}${namePart} · ${typeEmoji} ${typeLabel}`);
   lines.push(`📅 ${formatDateForShare(event.played_at)}`);
@@ -85,8 +85,34 @@ function buildTrainingShareMessage(event: TrainingWithDetails, eventNumber: stri
   return lines.join('\n');
 }
 
+function buildTournamentShareMessage(event: TournamentWithDetails, eventNumber: string): string {
+  const lines = buildHeader(event, eventNumber);
+
+  for (const team of event.teams) {
+    lines.push('');
+    lines.push(team.name);
+    const sorted = [...team.players].sort((a, b) => a.name.localeCompare(b.name));
+    for (const player of sorted) {
+      lines.push(`- ${player.name}`);
+    }
+  }
+
+  if (event.reserves.length > 0) {
+    lines.push('');
+    lines.push('🔄 Suplentes');
+    const sorted = [...event.reserves].sort((a, b) => a.name.localeCompare(b.name));
+    for (const player of sorted) {
+      lines.push(`- ${player.name}`);
+    }
+  }
+
+  lines.push(...buildCostFooter(event));
+  return lines.join('\n');
+}
+
 export function buildEventShareMessage(event: EventWithDetails, eventNumber: string): string {
   if (event.type === 'match') return buildMatchShareMessage(event, eventNumber);
+  if (event.type === 'tournament') return buildTournamentShareMessage(event, eventNumber);
   return buildTrainingShareMessage(event, eventNumber);
 }
 

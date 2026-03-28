@@ -39,6 +39,9 @@
   /* Warning */
   --color-warning: #f59e0b;
 
+  /* Success (green for positive indicators) */
+  --color-success: #22c55e;
+
   /* Info (light blue badges/labels) */
   --color-info: #38bdf8;
 

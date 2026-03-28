@@ -6,7 +6,7 @@ import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { SoccerBallIcon, BarbellIcon } from './icons';
+import { SoccerBallIcon, BarbellIcon, TrophyIcon } from './icons';
 import Tooltip from './Tooltip';
 
 interface MatchSubRow {
@@ -22,6 +22,13 @@ interface TrainingSubRow {
   training_coaches: { count: number }[];
 }
 
+interface TournamentSubRow {
+  id: number;
+  winning_team_id: number | null;
+  tournament_teams: { id: number; name: string; tournament_team_players: { count: number }[] }[];
+  tournament_reserves: { count: number }[];
+}
+
 interface EventRow {
   id: number;
   short_id: string;
@@ -34,6 +41,7 @@ interface EventRow {
   location: { name: string } | null;
   matches: MatchSubRow | null;
   trainings: TrainingSubRow | null;
+  tournaments: TournamentSubRow | null;
 }
 
 function totalParticipants(event: EventRow): number {
@@ -41,6 +49,12 @@ function totalParticipants(event: EventRow): number {
     if (!event.matches) return 0;
     const teamPlayers = event.matches.match_teams.reduce((sum, t) => sum + (t.match_team_players[0]?.count ?? 0), 0);
     const reserves = event.matches.match_reserves[0]?.count ?? 0;
+    return teamPlayers + reserves;
+  }
+  if (event.type === 'tournament') {
+    if (!event.tournaments) return 0;
+    const teamPlayers = event.tournaments.tournament_teams.reduce((sum, t) => sum + (t.tournament_team_players[0]?.count ?? 0), 0);
+    const reserves = event.tournaments.tournament_reserves[0]?.count ?? 0;
     return teamPlayers + reserves;
   }
   if (!event.trainings) return 0;
@@ -62,6 +76,7 @@ export default function EventListPage() {
           *,
           matches(id, winning_team_id, match_teams!match_teams_match_id_fkey(id, name, match_team_players(count)), match_reserves(count)),
           trainings(id, training_attendees(count), training_coaches(count)),
+          tournaments(id, winning_team_id, tournament_teams(id, name, tournament_team_players(count)), tournament_reserves(count)),
           location:locations(name)
         `);
       const { data, error } = await orderEvents(query, false);
@@ -104,8 +119,12 @@ export default function EventListPage() {
         {events.map((event) => {
           const eventLabel = labels.get(event.id) ?? '?';
           const match = event.type === 'match' ? event.matches : null;
+          const tournament = event.type === 'tournament' ? event.tournaments : null;
           const winnerTeam = match?.winning_team_id
             ? match.match_teams.find((t) => t.id === match.winning_team_id)
+            : null;
+          const tournamentWinner = tournament?.winning_team_id
+            ? tournament.tournament_teams.find((t) => t.id === tournament.winning_team_id)
             : null;
 
           return (
@@ -114,11 +133,13 @@ export default function EventListPage() {
               to={`/fechas/${event.short_id}`}
               className="flex border border-border rounded-xl hover:border-neutral-hover transition-colors"
             >
-              <Tooltip label={event.type === 'match' ? 'Partido' : 'Entrenamiento'}>
+              <Tooltip label={event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : 'Entrenamiento'}>
                 <div className="flex flex-col items-center justify-center gap-1 px-3 border-r border-border text-muted min-w-14">
                   <span className="text-xs font-semibold">#{eventLabel}</span>
                   {event.type === 'match' ? (
                     <SoccerBallIcon className="w-5 h-5" />
+                  ) : event.type === 'tournament' ? (
+                    <TrophyIcon className="w-5 h-5" />
                   ) : (
                     <BarbellIcon className="w-5 h-5" />
                   )}
@@ -145,14 +166,19 @@ export default function EventListPage() {
                     {match.match_teams.map((t) => t.name).join(' vs ')}
                   </p>
                 )}
+                {event.type === 'tournament' && tournament && (
+                  <p className="text-xs text-muted mt-1.5">
+                    {tournament.tournament_teams.map((t) => t.name).join(' / ')}
+                  </p>
+                )}
                 {event.type === 'training' && (
                   <p className="text-xs text-muted mt-1.5">
                     {totalParticipants(event)} participantes
                   </p>
                 )}
-                {winnerTeam && (
+                {(winnerTeam || tournamentWinner) && (
                   <p className="text-sm font-medium text-primary mt-1">
-                    Ganador: {winnerTeam.name}
+                    Ganador: {(winnerTeam ?? tournamentWinner)!.name}
                   </p>
                 )}
               {isAdmin && showCosts && event.cost != null && (() => {

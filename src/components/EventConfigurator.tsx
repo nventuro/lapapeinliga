@@ -1,20 +1,28 @@
-import { MIN_PLAYERS } from '../types';
+import { MIN_PLAYERS, MIN_TOURNAMENT_PLAYERS, MIN_TOURNAMENT_TEAMS } from '../types';
 import { getValidTeamCounts } from '../utils/teamCalculator';
-import { BarbellIcon, SoccerBallIcon } from './icons';
+import { BarbellIcon, SoccerBallIcon, TrophyIcon } from './icons';
 
 interface EventConfiguratorProps {
   selectedCount: number;
   onGenerate: (teamCount: number) => void;
+  onTournament: (teamCount: number) => void;
   onTraining: () => void;
 }
 
 export default function EventConfigurator({
   selectedCount,
   onGenerate,
+  onTournament,
   onTraining,
 }: EventConfiguratorProps) {
   const canBuildTeams = selectedCount >= MIN_PLAYERS;
-  const options = canBuildTeams ? getValidTeamCounts(selectedCount) : [];
+  const allOptions = canBuildTeams ? getValidTeamCounts(selectedCount) : [];
+  const matchOptions = allOptions.filter((opt) => opt.teamCount === 2);
+
+  const canBuildTournament = selectedCount >= MIN_TOURNAMENT_PLAYERS;
+  const tournamentOptions = canBuildTournament
+    ? allOptions.filter((opt) => opt.teamCount >= MIN_TOURNAMENT_TEAMS)
+    : [];
 
   return (
     <div>
@@ -24,14 +32,31 @@ export default function EventConfigurator({
       </p>
 
       <div className="flex flex-col gap-3">
-        {options.map((opt) => (
+        {matchOptions.map((opt) => (
           <button
-            key={opt.teamCount}
+            key={`match-${opt.teamCount}`}
             onClick={() => onGenerate(opt.teamCount)}
             className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
           >
             <SoccerBallIcon className="w-5 h-5" />
-            {opt.teamCount} equipos
+            Partido
+            <span className="font-normal ml-2">
+              — {opt.playersPerTeam} por equipo
+              {opt.reserves > 0
+                ? `, ${opt.reserves} suplente${opt.reserves !== 1 ? 's' : ''}`
+                : ''}
+            </span>
+          </button>
+        ))}
+
+        {tournamentOptions.map((opt) => (
+          <button
+            key={`tournament-${opt.teamCount}`}
+            onClick={() => onTournament(opt.teamCount)}
+            className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
+          >
+            <TrophyIcon className="w-5 h-5" />
+            Torneo — {opt.teamCount} equipos
             <span className="font-normal ml-2">
               — {opt.playersPerTeam} por equipo
               {opt.reserves > 0

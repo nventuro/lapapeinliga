@@ -3,6 +3,8 @@ export const MAX_TEAM_SIZE = 9;
 export const MIN_TEAMS = 2;
 export const MIN_GENDER_PER_TEAM = 1;
 export const MIN_PLAYERS = MIN_TEAM_SIZE * MIN_TEAMS;
+export const MIN_TOURNAMENT_TEAMS = 3;
+export const MIN_TOURNAMENT_PLAYERS = MIN_TEAM_SIZE * MIN_TOURNAMENT_TEAMS;
 export const MIN_TRAINING_PLAYERS = 2;
 export const MIN_RATING = 1;
 export const MAX_RATING = 10;
@@ -106,7 +108,10 @@ export function isNewLocationComplete(selection: LocationSelection): boolean {
 export const COST_MARKUP_MULTIPLIER = 1.2;
 export const COST_ROUNDING_NEAREST = 100;
 
-export type EventType = 'match' | 'training';
+export const TOURNAMENT_WIN_POINTS = 3;
+export const TOURNAMENT_DRAW_POINTS = 1;
+
+export type EventType = 'match' | 'training' | 'tournament';
 
 export type Event = {
   id: number;
@@ -136,6 +141,33 @@ export type Training = {
   event_id: number;
 };
 
+export type Tournament = {
+  id: number;
+  event_id: number;
+  winning_team_id: number | null;
+  top_scorer_id: number | null;
+  best_defense_id: number | null;
+  mvp_id: number | null;
+  best_goalie_id: number | null;
+  most_effort_id: number | null;
+};
+
+export type TournamentTeam = {
+  id: number;
+  tournament_id: number;
+  name: string;
+  players: Player[];
+};
+
+export type TournamentMatch = {
+  id: number;
+  tournament_id: number;
+  team_a_id: number;
+  team_b_id: number;
+  score_a: number | null;
+  score_b: number | null;
+};
+
 export type MatchTeam = {
   id: number;
   match_id: number;
@@ -160,10 +192,22 @@ export type TrainingWithDetails = Event & {
   location: Location | null;
 };
 
-export type EventWithDetails = MatchWithDetails | TrainingWithDetails;
+export type TournamentWithDetails = Event & {
+  type: 'tournament';
+  tournament: Tournament;
+  teams: TournamentTeam[];
+  reserves: Player[];
+  tournamentMatches: TournamentMatch[];
+  location: Location | null;
+};
+
+export type EventWithDetails = MatchWithDetails | TrainingWithDetails | TournamentWithDetails;
 
 export function allParticipants(event: EventWithDetails): Player[] {
   if (event.type === 'match') {
+    return [...event.teams.flatMap((t) => t.players), ...event.reserves];
+  }
+  if (event.type === 'tournament') {
     return [...event.teams.flatMap((t) => t.players), ...event.reserves];
   }
   return [...event.attendees, ...event.coaches];

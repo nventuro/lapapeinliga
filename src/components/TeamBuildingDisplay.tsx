@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Player, PlayerPreference, Team } from '../types';
+import type { Player, PlayerPreference, Team, EventType } from '../types';
 import { MIN_TEAM_SIZE, MAX_TEAM_SIZE, MIN_GENDER_PER_TEAM, MAX_RATING_SPREAD, isGuest, effectiveRating } from '../types';
 import { teamAverageRating } from '../utils/teamSorter';
 import { scoreAssignment } from '../utils/scoring';
@@ -57,6 +57,7 @@ function PlayerRow({ player, isSelected, isLocked, showRating, onTap, onToggleLo
 }
 
 interface TeamBuildingDisplayProps {
+  eventType: Extract<EventType, 'match' | 'tournament'>;
   teams: Team[];
   reserves: Player[];
   preferences: PlayerPreference[];
@@ -68,6 +69,7 @@ interface TeamBuildingDisplayProps {
 }
 
 export default function TeamBuildingDisplay({
+  eventType,
   teams,
   reserves,
   preferences,
@@ -378,7 +380,7 @@ export default function TeamBuildingDisplay({
 
       {showSaveDialog && (
         <SaveEventDialog
-          type="match"
+          type={eventType}
           teams={teams}
           reserves={reserves}
           onClose={() => setShowSaveDialog(false)}

@@ -26,6 +26,7 @@ type SaveEventDialogProps = {
   onClose: () => void;
 } & (
   | { type: 'match'; teams: Team[]; reserves: Player[] }
+  | { type: 'tournament'; teams: Team[]; reserves: Player[] }
   | { type: 'training'; attendees: Player[]; coaches: Player[] }
 );
 
@@ -34,6 +35,102 @@ function initialTeamNames(count: number, suggestedNames: string[]): string[] {
   return Array.from({ length: count }, (_, i) =>
     i < shuffled.length ? shuffled[i] : defaultTeamName(i),
   );
+}
+
+/** Insert child records for the given event type. Returns an error message on failure, or null on success. */
+async function insertEventChildren(
+  eventId: number,
+  props: SaveEventDialogProps,
+  teamNames: string[],
+  shirtColors: ShirtColor[],
+): Promise<string | null> {
+  if (props.type === 'match') {
+    const { data: match, error: matchError } = await supabase
+      .from('matches')
+      .insert({ event_id: eventId })
+      .select('id')
+      .single();
+
+    if (matchError || !match) return matchError?.message ?? 'Error al crear el partido.';
+
+    const trimmedNames = teamNames.map((n) => n.trim());
+    const { data: insertedTeams, error: teamsError } = await supabase
+      .from('match_teams')
+      .insert(trimmedNames.map((name, i) => ({ match_id: match.id, name, shirt_color: shirtColors[i] })))
+      .select('id');
+
+    if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
+
+    const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
+      props.teams[i].players.map((p) => ({ match_team_id: dbTeam.id, player_id: p.id })),
+    );
+    if (playerInserts.length > 0) {
+      const { error } = await supabase.from('match_team_players').insert(playerInserts);
+      if (error) return error.message;
+    }
+
+    if (props.reserves.length > 0) {
+      const { error } = await supabase
+        .from('match_reserves')
+        .insert(props.reserves.map((p) => ({ match_id: match.id, player_id: p.id })));
+      if (error) return error.message;
+    }
+  } else if (props.type === 'tournament') {
+    const { data: tournament, error: tournamentError } = await supabase
+      .from('tournaments')
+      .insert({ event_id: eventId })
+      .select('id')
+      .single();
+
+    if (tournamentError || !tournament) return tournamentError?.message ?? 'Error al crear el torneo.';
+
+    const trimmedNames = teamNames.map((n) => n.trim());
+    const { data: insertedTeams, error: teamsError } = await supabase
+      .from('tournament_teams')
+      .insert(trimmedNames.map((name) => ({ tournament_id: tournament.id, name })))
+      .select('id');
+
+    if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
+
+    const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
+      props.teams[i].players.map((p) => ({ tournament_team_id: dbTeam.id, player_id: p.id })),
+    );
+    if (playerInserts.length > 0) {
+      const { error } = await supabase.from('tournament_team_players').insert(playerInserts);
+      if (error) return error.message;
+    }
+
+    if (props.reserves.length > 0) {
+      const { error } = await supabase
+        .from('tournament_reserves')
+        .insert(props.reserves.map((p) => ({ tournament_id: tournament.id, player_id: p.id })));
+      if (error) return error.message;
+    }
+  } else {
+    const { data: training, error: trainingError } = await supabase
+      .from('trainings')
+      .insert({ event_id: eventId })
+      .select('id')
+      .single();
+
+    if (trainingError || !training) return trainingError?.message ?? 'Error al crear el entrenamiento.';
+
+    if (props.attendees.length > 0) {
+      const { error } = await supabase
+        .from('training_attendees')
+        .insert(props.attendees.map((p) => ({ training_id: training.id, player_id: p.id })));
+      if (error) return error.message;
+    }
+
+    if (props.coaches.length > 0) {
+      const { error } = await supabase
+        .from('training_coaches')
+        .insert(props.coaches.map((p) => ({ training_id: training.id, player_id: p.id })));
+      if (error) return error.message;
+    }
+  }
+
+  return null;
 }
 
 export default function SaveEventDialog(props: SaveEventDialogProps) {
@@ -51,8 +148,9 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [cost, setCost] = useState('');
   const [payee, setPayee] = useState('');
+  const hasTeams = props.type === 'match' || props.type === 'tournament';
   const [teamNames, setTeamNames] = useState(() =>
-    props.type === 'match' ? initialTeamNames(props.teams.length, suggestedTeamNames) : [],
+    hasTeams ? initialTeamNames(props.teams.length, suggestedTeamNames) : [],
   );
   const [shirtColors, setShirtColors] = useState<ShirtColor[]>(() =>
     props.type === 'match' ? props.teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')) : [],
@@ -112,7 +210,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     e.preventDefault();
     setError(null);
 
-    if (props.type === 'match') {
+    if (props.type === 'match' || props.type === 'tournament') {
       const trimmedNames = teamNames.map((n) => n.trim());
       if (trimmedNames.some((n) => n === '')) {
         setError('Todos los equipos deben tener un nombre.');
@@ -167,126 +265,13 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       return;
     }
 
-    if (props.type === 'match') {
-      // 3. Insert match
-      const { data: match, error: matchError } = await supabase
-        .from('matches')
-        .insert({ event_id: event.id })
-        .select('id')
-        .single();
-
-      if (matchError || !match) {
-        setError(matchError?.message ?? 'Error al crear el partido.');
-        setSaving(false);
-        return;
-      }
-
-      // 4. Insert teams
-      const trimmedNames = teamNames.map((n) => n.trim());
-      const teamInserts = trimmedNames.map((teamName, i) => ({
-        match_id: match.id,
-        name: teamName,
-        shirt_color: shirtColors[i],
-      }));
-
-      const { data: insertedTeams, error: teamsError } = await supabase
-        .from('match_teams')
-        .insert(teamInserts)
-        .select('id');
-
-      if (teamsError || !insertedTeams) {
-        setError(teamsError?.message ?? 'Error al crear los equipos.');
-        setSaving(false);
-        return;
-      }
-
-      // 5. Insert team players
-      const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
-        props.teams[i].players.map((p) => ({
-          match_team_id: dbTeam.id,
-          player_id: p.id,
-        })),
-      );
-
-      if (playerInserts.length > 0) {
-        const { error: playersError } = await supabase
-          .from('match_team_players')
-          .insert(playerInserts);
-
-        if (playersError) {
-          setError(playersError.message);
-          setSaving(false);
-          return;
-        }
-      }
-
-      // 6. Insert reserves
-      if (props.reserves.length > 0) {
-        const reserveInserts = props.reserves.map((p) => ({
-          match_id: match.id,
-          player_id: p.id,
-        }));
-
-        const { error: reservesError } = await supabase
-          .from('match_reserves')
-          .insert(reserveInserts);
-
-        if (reservesError) {
-          setError(reservesError.message);
-          setSaving(false);
-          return;
-        }
-      }
-    } else {
-      // Training flow
-      // 3. Insert training
-      const { data: training, error: trainingError } = await supabase
-        .from('trainings')
-        .insert({ event_id: event.id })
-        .select('id')
-        .single();
-
-      if (trainingError || !training) {
-        setError(trainingError?.message ?? 'Error al crear el entrenamiento.');
-        setSaving(false);
-        return;
-      }
-
-      // 4. Insert attendees
-      if (props.attendees.length > 0) {
-        const attendeeInserts = props.attendees.map((p) => ({
-          training_id: training.id,
-          player_id: p.id,
-        }));
-
-        const { error: attendeesError } = await supabase
-          .from('training_attendees')
-          .insert(attendeeInserts);
-
-        if (attendeesError) {
-          setError(attendeesError.message);
-          setSaving(false);
-          return;
-        }
-      }
-
-      // 5. Insert coaches
-      if (props.coaches.length > 0) {
-        const coachInserts = props.coaches.map((p) => ({
-          training_id: training.id,
-          player_id: p.id,
-        }));
-
-        const { error: coachesError } = await supabase
-          .from('training_coaches')
-          .insert(coachInserts);
-
-        if (coachesError) {
-          setError(coachesError.message);
-          setSaving(false);
-          return;
-        }
-      }
+    // Insert child records. If any step fails, delete the event (cascades to all children).
+    const childError = await insertEventChildren(event.id, props, teamNames, shirtColors);
+    if (childError) {
+      await supabase.from('events').delete().eq('id', event.id);
+      setError(childError);
+      setSaving(false);
+      return;
     }
 
     navigate(`/fechas/${event.short_id}`);
@@ -302,7 +287,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     >
       <form onSubmit={handleSave} className="p-6">
         <h2 className="text-xl font-bold mb-4">
-          {props.type === 'match' ? 'Guardar partido' : 'Guardar entrenamiento'}
+          {props.type === 'match' ? 'Guardar partido' : props.type === 'tournament' ? 'Guardar torneo' : 'Guardar entrenamiento'}
         </h2>
 
         <div className="space-y-4">
@@ -374,7 +359,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
             />
           </div>
 
-          {props.type === 'match' && teamNames.map((teamName, i) => (
+          {hasTeams && teamNames.map((teamName, i) => (
             <div key={i} className="border border-border rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <input
@@ -395,17 +380,19 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
                     </button>
                   </Tooltip>
                 )}
-                <Tooltip label={shirtColors[i] === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
-                  <button
-                    type="button"
-                    onClick={() => handleShirtColorToggle(i)}
-                    className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
-                  >
-                    <ShirtIcon
-                      className={`w-5 h-5 ${shirtColors[i] === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-                    />
-                  </button>
-                </Tooltip>
+                {props.type === 'match' && (
+                  <Tooltip label={shirtColors[i] === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
+                    <button
+                      type="button"
+                      onClick={() => handleShirtColorToggle(i)}
+                      className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
+                    >
+                      <ShirtIcon
+                        className={`w-5 h-5 ${shirtColors[i] === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
+                      />
+                    </button>
+                  </Tooltip>
+                )}
               </div>
               <ul className="mt-2 text-sm text-muted space-y-0.5">
                 {props.teams[i].players.map((p) => (

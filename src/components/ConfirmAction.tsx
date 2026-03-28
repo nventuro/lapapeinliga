@@ -9,9 +9,11 @@ interface ConfirmActionProps {
   onConfirm: () => void;
   /** Optional class name for the outer wrapper. */
   className?: string;
+  /** Optional custom trigger element. Receives onClick handler. */
+  renderTrigger?: (onClick: () => void) => React.ReactNode;
 }
 
-export default function ConfirmAction({ label, message, onConfirm, className = '' }: ConfirmActionProps) {
+export default function ConfirmAction({ label, message, onConfirm, className = '', renderTrigger }: ConfirmActionProps) {
   const [confirming, setConfirming] = useState(false);
 
   if (confirming) {
@@ -29,11 +31,15 @@ export default function ConfirmAction({ label, message, onConfirm, className = '
             onClick={onConfirm}
             className="flex-1 py-2 rounded-lg text-sm font-medium bg-error text-on-primary hover:bg-error/80 transition-colors"
           >
-            {label}
+            {label || 'Confirmar'}
           </button>
         </div>
       </div>
     );
+  }
+
+  if (renderTrigger) {
+    return <>{renderTrigger(() => setConfirming(true))}</>;
   }
 
   return (

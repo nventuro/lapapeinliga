@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
-import type { EventWithDetails, MatchWithDetails, Match, Training, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
+import type { EventWithDetails, MatchWithDetails, TournamentWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
 import { isGuest, allParticipants, AWARD_LABELS, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
@@ -18,6 +18,9 @@ import BuiltTeamDisplay from './BuiltTeamDisplay';
 import ConfettiBurst from './ConfettiBurst';
 import LocationPicker from './LocationPicker';
 import EventMediaStrip from './EventMediaStrip';
+import TournamentMatchList from './TournamentMatchList';
+import StandingsTable from './StandingsTable';
+import TournamentTeamCard from './TournamentTeamCard';
 
 type EventPageData = {
   event: EventWithDetails;
@@ -100,6 +103,65 @@ async function fetchEventData(
 
     return {
       event: { ...eventData, type: 'match' as const, match, teams, reserves, location } as MatchWithDetails,
+      eventNumber,
+    };
+  } else if (eventData.type === 'tournament') {
+    // Tournament
+    const { data: tournamentData } = await supabase
+      .from('tournaments')
+      .select('*')
+      .eq('event_id', eventId)
+      .single();
+
+    if (!tournamentData) return null;
+
+    const { data: teamsData } = await supabase
+      .from('tournament_teams')
+      .select('id, tournament_id, name')
+      .eq('tournament_id', tournamentData.id)
+      .order('id');
+
+    const [teamPlayersResult, reservesResult, matchesResult] = await Promise.all([
+      supabase
+        .from('tournament_team_players')
+        .select('tournament_team_id, player_id')
+        .in('tournament_team_id', (teamsData ?? []).map((t) => t.id)),
+      supabase
+        .from('tournament_reserves')
+        .select('player_id')
+        .eq('tournament_id', tournamentData.id),
+      supabase
+        .from('tournament_matches')
+        .select('*')
+        .eq('tournament_id', tournamentData.id)
+        .order('id'),
+    ]);
+
+    const teams: TournamentTeam[] = (teamsData ?? []).map((team) => ({
+      ...team,
+      players: (teamPlayersResult.data ?? [])
+        .filter((tp) => tp.tournament_team_id === team.id)
+        .map((tp) => playerMap.get(tp.player_id))
+        .filter((p): p is Player => p !== undefined),
+    }));
+
+    const reserves = (reservesResult.data ?? [])
+      .map((r) => playerMap.get(r.player_id))
+      .filter((p): p is Player => p !== undefined);
+
+    const tournament: Tournament = tournamentData as Tournament;
+    const tournamentMatches: TournamentMatch[] = (matchesResult.data ?? []) as TournamentMatch[];
+
+    return {
+      event: {
+        ...eventData,
+        type: 'tournament' as const,
+        tournament,
+        teams,
+        reserves,
+        tournamentMatches,
+        location,
+      } as TournamentWithDetails,
       eventNumber,
     };
   } else {
@@ -320,6 +382,106 @@ export default function EventDetailPage() {
     setSaving(false);
   }
 
+  async function handleTournamentWinnerChange(teamId: number | null) {
+    if (!event || event.type !== 'tournament') return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('tournaments')
+      .update({ winning_team_id: teamId })
+      .eq('id', event.tournament.id);
+
+    if (!error) {
+      setEvent({ ...event, tournament: { ...event.tournament, winning_team_id: teamId } });
+      if (teamId !== null) {
+        setGlowingWinner(true);
+        setTimeout(() => setGlowingWinner(false), 4000);
+      }
+    }
+    setSaving(false);
+  }
+
+  async function handleTournamentAwardChange(award: AwardType, playerId: number | null) {
+    if (!event || event.type !== 'tournament') return;
+    setSaving(true);
+
+    const field = `${award}_id`;
+    const { error } = await supabase
+      .from('tournaments')
+      .update({ [field]: playerId })
+      .eq('id', event.tournament.id);
+
+    if (!error) {
+      setEvent({ ...event, tournament: { ...event.tournament, [`${award}_id`]: playerId } });
+      if (playerId !== null) {
+        setGlowingAwards((prev) => new Set(prev).add(award));
+        setTimeout(() => {
+          setGlowingAwards((prev) => {
+            const next = new Set(prev);
+            next.delete(award);
+            return next;
+          });
+        }, 4000);
+      }
+    }
+    setSaving(false);
+  }
+
+  async function handleAddTournamentMatch(teamAId: number, teamBId: number) {
+    if (!event || event.type !== 'tournament') return;
+    setSaving(true);
+
+    const { data, error } = await supabase
+      .from('tournament_matches')
+      .insert({ tournament_id: event.tournament.id, team_a_id: teamAId, team_b_id: teamBId })
+      .select('*')
+      .single();
+
+    if (!error && data) {
+      const newMatch = data as TournamentMatch;
+      setEvent({ ...event, tournamentMatches: [...event.tournamentMatches, newMatch] });
+    }
+    setSaving(false);
+  }
+
+  async function handleUpdateTournamentMatchScore(matchId: number, scoreA: number | null, scoreB: number | null) {
+    if (!event || event.type !== 'tournament') return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('tournament_matches')
+      .update({ score_a: scoreA, score_b: scoreB })
+      .eq('id', matchId);
+
+    if (!error) {
+      setEvent({
+        ...event,
+        tournamentMatches: event.tournamentMatches.map((m) =>
+          m.id === matchId ? { ...m, score_a: scoreA, score_b: scoreB } : m,
+        ),
+      });
+    }
+    setSaving(false);
+  }
+
+  async function handleDeleteTournamentMatch(matchId: number) {
+    if (!event || event.type !== 'tournament') return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('tournament_matches')
+      .delete()
+      .eq('id', matchId);
+
+    if (!error) {
+      setEvent({
+        ...event,
+        tournamentMatches: event.tournamentMatches.filter((m) => m.id !== matchId),
+      });
+    }
+    setSaving(false);
+  }
+
   async function handleDelete() {
     if (!event) return;
 
@@ -348,15 +510,24 @@ export default function EventDetailPage() {
     );
   }
 
-  // Match-specific derived values
+  // Match/tournament derived values
   const winnerTeam = event.type === 'match' && event.match.winning_team_id
     ? event.teams.find((t) => t.id === event.match.winning_team_id)
     : null;
+  const tournamentWinnerTeam = event.type === 'tournament' && event.tournament.winning_team_id
+    ? event.teams.find((t) => t.id === event.tournament.winning_team_id)
+    : null;
+
+  // Build award map for match teams display
+  const awardSource: Record<string, number | null> | null =
+    event.type === 'match' ? event.match
+    : event.type === 'tournament' ? event.tournament
+    : null;
 
   const playerAwards = new Map<number, AwardType[]>();
-  if (event.type === 'match') {
+  if (awardSource) {
     for (const award of AWARD_TYPES) {
-      const pid = event.match[`${award}_id` as keyof Match] as number | null;
+      const pid = awardSource[`${award}_id` as keyof typeof awardSource] as number | null;
       if (pid) {
         const existing = playerAwards.get(pid) ?? [];
         existing.push(award);
@@ -370,8 +541,8 @@ export default function EventDetailPage() {
     return players.find((p) => p.id === playerId)?.name ?? '';
   }
 
-  const TypeIcon = event.type === 'match' ? SoccerBallIcon : BarbellIcon;
-  const typeLabel = event.type === 'match' ? 'Partido' : 'Entrenamiento';
+  const TypeIcon = event.type === 'match' ? SoccerBallIcon : event.type === 'tournament' ? TrophyIcon : BarbellIcon;
+  const typeLabel = event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : 'Entrenamiento';
 
   return (
     <div>
@@ -645,6 +816,147 @@ export default function EventDetailPage() {
                       </span>
                       <span className="font-medium">
                         {getPlayerName(event.match[`${award}_id` as keyof Match] as number | null) || 'Sin definir'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Tournament */}
+      {event.type === 'tournament' && (
+        <>
+          {/* Teams grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+            {event.teams.map((team) => (
+              <TournamentTeamCard
+                key={team.id}
+                team={team}
+                isWinner={team.id === event.tournament.winning_team_id}
+                playerAwards={playerAwards}
+              />
+            ))}
+          </div>
+
+          {/* Reserves */}
+          {event.reserves.length > 0 && (
+            <div className="border border-border rounded-lg p-4 mt-4">
+              <h3 className="font-bold text-lg mb-3">
+                Suplentes
+                <span className="font-normal text-sm text-muted ml-2">
+                  ({event.reserves.length})
+                </span>
+              </h3>
+              <ul className="space-y-1">
+                {event.reserves.map((player) => (
+                  <li key={player.id} className="flex items-center gap-2 py-1 px-2">
+                    <GenderIcon gender={player.gender} />
+                    <span>{player.name}</span>
+                    {isGuest(player) && <InvBadge />}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Tournament matches */}
+          <TournamentMatchList
+            teams={event.teams}
+            matches={event.tournamentMatches}
+            isAdmin={isAdmin}
+            saving={saving}
+            onAddMatch={handleAddTournamentMatch}
+            onUpdateScore={handleUpdateTournamentMatchScore}
+            onDeleteMatch={handleDeleteTournamentMatch}
+          />
+
+          {/* Standings */}
+          <StandingsTable teams={event.teams} matches={event.tournamentMatches} />
+
+          {/* Results section (winner + awards) */}
+          <div className="border border-border rounded-lg p-4 mt-4">
+            <h3 className="font-bold text-lg mb-4">Resultados</h3>
+
+            {isAdmin ? (
+              <div className="space-y-4">
+                {/* Winner picker */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
+                    Ganador
+                    <TrophyIcon className={`w-4 h-4 ${event.tournament.winning_team_id ? 'text-gold' : 'text-muted'}`} />
+                  </label>
+                  <select
+                    value={event.tournament.winning_team_id ?? ''}
+                    onChange={(e) =>
+                      handleTournamentWinnerChange(e.target.value ? Number(e.target.value) : null)
+                    }
+                    disabled={saving}
+                    className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${event.tournament.winning_team_id ? 'border-gold' : 'border-border'} ${glowingWinner ? 'animate-gold-glow-pulse' : ''}`}
+                  >
+                    <option value="">Sin definir</option>
+                    {[...event.teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Award pickers */}
+                {AWARD_TYPES.map((award) => {
+                  const Icon = AWARD_ICONS[award];
+                  const isGranted = event.tournament[`${award}_id` as keyof Tournament] != null;
+                  const isGlowing = glowingAwards.has(award);
+                  return (
+                  <div key={award}>
+                    <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
+                      {AWARD_LABELS[award]}
+                      <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
+                    </label>
+                    <select
+                      value={(event.tournament[`${award}_id` as keyof Tournament] as number | null) ?? ''}
+                      onChange={(e) =>
+                        handleTournamentAwardChange(award, e.target.value ? Number(e.target.value) : null)
+                      }
+                      disabled={saving}
+                      className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${isGranted ? 'border-gold' : 'border-border'} ${isGlowing ? 'animate-gold-glow-pulse' : ''}`}
+                    >
+                      <option value="">Sin definir</option>
+                      {[...participants].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-muted">
+                    Ganador
+                    <TrophyIcon className={`w-4 h-4 ${event.tournament.winning_team_id ? 'text-gold' : 'text-muted'}`} />
+                  </span>
+                  <span className="font-medium">
+                    {tournamentWinnerTeam ? tournamentWinnerTeam.name : 'Sin definir'}
+                  </span>
+                </div>
+                {AWARD_TYPES.map((award) => {
+                  const Icon = AWARD_ICONS[award];
+                  const isGranted = event.tournament[`${award}_id` as keyof Tournament] != null;
+                  return (
+                    <div key={award} className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-muted">
+                        {AWARD_LABELS[award]}
+                        <Icon className={`w-4 h-4 ${isGranted ? 'text-gold' : 'text-muted'}`} />
+                      </span>
+                      <span className="font-medium">
+                        {getPlayerName(event.tournament[`${award}_id` as keyof Tournament] as number | null) || 'Sin definir'}
                       </span>
                     </div>
                   );

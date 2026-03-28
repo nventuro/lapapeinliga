@@ -94,6 +94,16 @@ export default function TeamSorterPage() {
     [selectedPlayers, preferences],
   );
 
+  const generateTournament = useCallback(
+    (teamCount: number) => {
+      setResult(sortTeams(selectedPlayers, teamCount, preferences));
+      setLastTeamCount(teamCount);
+      setEventType('tournament');
+      setStep('results');
+    },
+    [selectedPlayers, preferences],
+  );
+
   const handleTraining = useCallback(() => {
     setEventType('training');
     setCoachIds(new Set());
@@ -200,6 +210,7 @@ export default function TeamSorterPage() {
           <EventConfigurator
             selectedCount={selectedIds.size}
             onGenerate={generateTeams}
+            onTournament={generateTournament}
             onTraining={handleTraining}
           />
           <button
@@ -221,8 +232,9 @@ export default function TeamSorterPage() {
         />
       )}
 
-      {step === 'results' && eventType === 'match' && result && (
+      {step === 'results' && (eventType === 'match' || eventType === 'tournament') && result && (
         <TeamBuildingDisplay
+          eventType={eventType}
           teams={result.teams}
           reserves={result.reserves}
           preferences={preferences}
