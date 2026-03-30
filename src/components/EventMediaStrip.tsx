@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EVENT_MEDIA_PREVIEW_COUNT } from '../types';
 import type { MediaItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
@@ -87,8 +88,8 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {items.map((item) => (
+          <div className="grid grid-cols-3 gap-2">
+            {items.slice(0, EVENT_MEDIA_PREVIEW_COUNT).map((item) => (
               <button
                 key={item.id}
                 onClick={() => handleItemClick(item)}

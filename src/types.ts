@@ -231,6 +231,8 @@ export const EQUIPO_TAG_NAME = 'equipo';
 export const THUMBNAIL_MAX_WIDTH = 400;
 export const FULL_IMAGE_MAX_WIDTH = 1600;
 
+export const EVENT_MEDIA_PREVIEW_COUNT = 3;
+
 export type MediaType = 'image' | 'video';
 
 export type MediaItem = {
