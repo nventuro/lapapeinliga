@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Player, AwardType } from '../types';
 import { PLAYER_TIERS, TIER_GROUP_LABELS, AWARD_TYPES, AWARD_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
-import { useAppContext } from '../context/appContext';
+import { useAppContext, useCurrentPlayer } from '../context/appContext';
 import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
 import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon, PhotosIcon, MailIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
@@ -15,6 +15,7 @@ import Tooltip from './Tooltip';
 export default function PlantelPage() {
   const navigate = useNavigate();
   const { players, isAdmin, showRatings, refetchData } = useAppContext();
+  const currentPlayer = useCurrentPlayer();
   const { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, loading: statsLoading } = useEventStats();
   const [modalPlayer, setModalPlayer] = useState<Player | null | undefined>(undefined);
   // undefined = closed, null = creating, Player = editing
@@ -95,7 +96,9 @@ export default function PlantelPage() {
               {tierPlayers.map((player) => (
                 <li
                   key={player.id}
-                  className="flex items-center gap-2 py-1 px-2 rounded hover:bg-border-subtle"
+                  className={`flex items-center gap-2 py-1 px-2 rounded ${
+                    player.id === currentPlayer?.id ? 'bg-primary/10' : 'hover:bg-border-subtle'
+                  }`}
                 >
                   {isAdmin && player.email && (
                     <Tooltip label={player.email}>

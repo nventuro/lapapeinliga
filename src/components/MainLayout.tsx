@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAppContext } from '../context/appContext';
+import { useAppContext, useCurrentPlayer } from '../context/appContext';
 import { CalendarIcon, ChartBarIcon, CogIcon, GoogleIcon, PhotosIcon, UserGroupIcon } from './icons';
 import ToggleSwitch from './ToggleSwitch';
 import Footer from './Footer';
 
 export default function MainLayout() {
   const { session, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, signIn } = useAppContext();
+  const currentPlayer = useCurrentPlayer();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -65,6 +66,11 @@ export default function MainLayout() {
                       </p>
                       {session.user.user_metadata.full_name && session.user.email && (
                         <p className="text-xs text-muted truncate">{session.user.email}</p>
+                      )}
+                      {currentPlayer && (
+                        <p className="text-xs text-primary truncate mt-1">
+                          Jugás como <span className="font-medium">{currentPlayer.name}</span>
+                        </p>
                       )}
                     </div>
 

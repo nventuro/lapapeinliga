@@ -23,3 +23,11 @@ export function useAppContext(): AppContextValue {
   if (!ctx) throw new Error('useAppContext must be used within AppProvider');
   return ctx;
 }
+
+/** The Player record claimed by the currently signed-in user, or null if none. */
+export function useCurrentPlayer(): Player | null {
+  const { session, players } = useAppContext();
+  const email = session?.user.email;
+  if (!email) return null;
+  return players.find((p) => p.email === email) ?? null;
+}
