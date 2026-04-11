@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAppContext } from '../context/appContext';
 import { supabase } from '../lib/supabase';
-import { PLAYER_TIERS, TIER_GROUP_LABELS } from '../types';
 import type { Player } from '../types';
 import GenderIcon from './GenderIcon';
 import { GoogleIcon } from './icons';
@@ -25,15 +24,12 @@ export default function ClaimPage() {
     [players, userEmail]
   );
 
-  // Unclaimed players (no email set)
-  const unclaimedByTier = useMemo(
+  // Unclaimed players sorted alphabetically
+  const unclaimedPlayers = useMemo(
     () =>
-      PLAYER_TIERS.map((tier) => ({
-        tier,
-        players: players
-          .filter((p) => p.tier === tier && !p.email)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      })).filter((group) => group.players.length > 0),
+      players
+        .filter((p) => !p.email)
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [players]
   );
 
@@ -79,10 +75,10 @@ export default function ClaimPage() {
 
     return (
       <div className="text-center py-12">
-        <p className="text-muted mb-4">Iniciá sesión con Google para vincular tu cuenta.</p>
+        <p className="text-muted mb-4">Iniciá sesión con Google para vincular tu cuenta. Este proceso toma 30 segundos.</p>
         <button
           onClick={signInWithRedirect}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm bg-primary text-on-primary hover:bg-primary-hover transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm border border-border-subtle text-on-surface bg-surface hover:bg-border-subtle transition-colors"
         >
           <GoogleIcon className="w-5 h-5" />
           Iniciar sesión
@@ -125,41 +121,34 @@ export default function ClaimPage() {
         <p className="text-sm text-error mb-3">{error}</p>
       )}
 
-      <div className="space-y-4 mb-6">
-        {unclaimedByTier.map(({ tier, players: tierPlayers }) => (
-          <div key={tier}>
-            <h3 className="text-xs font-semibold text-muted mb-1">{TIER_GROUP_LABELS[tier]}</h3>
-            <ul className="space-y-1">
-              {tierPlayers.map((player) => (
-                <li key={player.id}>
-                  <button
-                    onClick={() => setSelectedPlayer(player)}
-                    className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-left transition-colors ${
-                      selectedPlayer?.id === player.id
-                        ? 'bg-primary/10 border border-primary'
-                        : 'hover:bg-border-subtle border border-transparent'
-                    }`}
-                  >
-                    <GenderIcon gender={player.gender} />
-                    <span className="font-medium">{player.name}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+      <ul className="space-y-1 mb-6">
+        {unclaimedPlayers.map((player) => (
+          <li key={player.id}>
+            <button
+              onClick={() => setSelectedPlayer(player)}
+              className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-left transition-colors ${
+                selectedPlayer?.id === player.id
+                  ? 'bg-primary/10 border border-primary'
+                  : 'hover:bg-border-subtle border border-transparent'
+              }`}
+            >
+              <GenderIcon gender={player.gender} />
+              <span className="font-medium">{player.name}</span>
+            </button>
+          </li>
         ))}
 
-        {unclaimedByTier.length === 0 && (
-          <p className="text-center text-muted py-4">No hay jugadores disponibles para vincular.</p>
+        {unclaimedPlayers.length === 0 && (
+          <li className="text-center text-muted py-4">No hay jugadores disponibles para vincular.</li>
         )}
-      </div>
+      </ul>
 
       <button
         onClick={handleClaim}
         disabled={!selectedPlayer || claiming}
         className="w-full px-4 py-2 rounded-lg font-medium text-sm bg-primary text-on-primary hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {claiming ? 'Vinculando...' : 'Vincular'}
+        {claiming ? 'Vinculando...' : selectedPlayer ? `Vincular como ${selectedPlayer.name}` : 'Vincular'}
       </button>
     </div>
   );
