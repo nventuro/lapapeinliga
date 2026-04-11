@@ -97,6 +97,11 @@ export default function PlantelPage() {
                   key={player.id}
                   className="flex items-center gap-2 py-1 px-2 rounded hover:bg-border-subtle"
                 >
+                  {isAdmin && player.email && (
+                    <Tooltip label={player.email}>
+                      <MailIcon className="w-4 h-4 text-muted" />
+                    </Tooltip>
+                  )}
                   <GenderIcon gender={player.gender} />
                   <span className="font-medium truncate">{player.name}</span>
                   {playersWithPhotos.has(player.id) && (
@@ -141,11 +146,6 @@ export default function PlantelPage() {
                     );
                   })}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
-                  {isAdmin && player.email && (
-                    <Tooltip label={player.email}>
-                      <MailIcon className="w-4 h-4 text-muted" />
-                    </Tooltip>
-                  )}
                   {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0 ml-auto">
                       <Tooltip label="Editar jugador">
