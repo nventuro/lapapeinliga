@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { EventWithDetails, MatchWithDetails, TournamentWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
-import { isGuest, allParticipants, AWARD_TYPES, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
+import { isGuest, allParticipants, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
@@ -21,7 +21,9 @@ import TournamentMatchList from './TournamentMatchList';
 import StandingsTable from './StandingsTable';
 import TournamentTeamCard from './TournamentTeamCard';
 import ResultsSection from './ResultsSection';
+import AwardsSection from './AwardsSection';
 import ReservesList from './ReservesList';
+import { useEventAwards } from '../hooks/useEventAwards';
 
 type EventPageData = {
   event: EventWithDetails;
@@ -42,16 +44,14 @@ async function fetchEventData(
 
   const eventId = eventData.id;
 
-  // Fetch location if present
-  let location: Location | null = null;
-  if (eventData.location_id) {
-    const { data: locData } = await supabase
-      .from('locations')
-      .select('*')
-      .eq('id', eventData.location_id)
-      .single();
-    if (locData) location = locData as Location;
-  }
+  // Fetch location — events.location_id is NOT NULL so this always exists.
+  const { data: locData } = await supabase
+    .from('locations')
+    .select('*')
+    .eq('id', eventData.location_id)
+    .single();
+  if (!locData) return null;
+  const location = locData as Location;
 
   // Fetch all events for labeling
   const allEventsResult = await orderEvents(supabase.from('events').select('id, played_at'), true);
@@ -212,8 +212,9 @@ export default function EventDetailPage() {
   const [eventNumber, setEventNumber] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [glowingAwards, setGlowingAwards] = useState<Set<AwardType>>(new Set());
   const [glowingWinner, setGlowingWinner] = useState(false);
+
+  const awards = useEventAwards(event?.id ?? null, event?.type ?? null);
 
   // Details editing state
   const [editingDetails, setEditingDetails] = useState(false);
@@ -236,14 +237,6 @@ export default function EventDetailPage() {
       if (!cancelled) {
         setEvent(data?.event ?? null);
         setEventNumber(data?.eventNumber ?? '');
-        if (data?.event) {
-          setEditTime(data.event.played_at_time ? formatTime(data.event.played_at_time) : '');
-          setEditLocationSelection(
-            data.event.location_id
-              ? { type: 'existing', locationId: data.event.location_id }
-              : { type: 'none' },
-          );
-        }
         setLoading(false);
       }
     }
@@ -273,31 +266,33 @@ export default function EventDetailPage() {
   function openDetailsEditor() {
     if (!event) return;
     setEditName(event.name ?? '');
-    setEditTime(event.played_at_time ? event.played_at_time.slice(0, 5) : '');
+    setEditTime(event.played_at_time.slice(0, 5));
     setEditCost(event.cost != null ? String(event.cost) : '');
     setEditPayee(event.payee_alias_cbu ?? '');
-    setEditLocationSelection(
-      event.location_id
-        ? { type: 'existing', locationId: event.location_id }
-        : { type: 'none' },
-    );
+    setEditLocationSelection({ type: 'existing', locationId: event.location_id });
     setEditingDetails(true);
   }
 
   async function handleSaveDetails() {
     if (!event) return;
+    // played_at_time and location_id are NOT NULL on events; the button is
+    // disabled when either is missing, but defend in depth.
+    if (!editTime || !isValidTime(editTime) || editLocationSelection.type === 'none') return;
     setSaving(true);
 
-    const timeValue = editTime || null;
-
     // Resolve location
-    let locationId: number | null = null;
-    let location: Location | null = null;
+    let locationId: number;
+    let location: Location;
 
     if (editLocationSelection.type === 'existing') {
       locationId = editLocationSelection.locationId;
-      location = allLocations.find((l) => l.id === locationId) ?? null;
-    } else if (editLocationSelection.type === 'new') {
+      const found = allLocations.find((l) => l.id === locationId);
+      if (!found) {
+        setSaving(false);
+        return;
+      }
+      location = found;
+    } else {
       if (!editLocationSelection.name.trim() || !editLocationSelection.mapsUrl.trim()) {
         setSaving(false);
         return;
@@ -319,7 +314,7 @@ export default function EventDetailPage() {
 
       location = newLoc as Location;
       locationId = location.id;
-      setAllLocations((prev) => [...prev, location!].sort((a, b) => a.name.localeCompare(b.name)));
+      setAllLocations((prev) => [...prev, location].sort((a, b) => a.name.localeCompare(b.name)));
     }
 
     const nameValue = editName.trim() || null;
@@ -328,11 +323,11 @@ export default function EventDetailPage() {
 
     const { error } = await supabase
       .from('events')
-      .update({ name: nameValue, played_at_time: timeValue, location_id: locationId, cost: costValue, payee_alias_cbu: payeeValue })
+      .update({ name: nameValue, played_at_time: editTime, location_id: locationId, cost: costValue, payee_alias_cbu: payeeValue })
       .eq('id', event.id);
 
     if (!error) {
-      setEvent({ ...event, name: nameValue, played_at_time: timeValue, location_id: locationId, location, cost: costValue, payee_alias_cbu: payeeValue });
+      setEvent({ ...event, name: nameValue, played_at_time: editTime, location_id: locationId, location, cost: costValue, payee_alias_cbu: payeeValue });
       closeDetailsEditor();
     }
     setSaving(false);
@@ -357,32 +352,6 @@ export default function EventDetailPage() {
     setSaving(false);
   }
 
-  async function handleAwardChange(award: AwardType, playerId: number | null) {
-    if (!event || event.type !== 'match') return;
-    setSaving(true);
-
-    const field = `${award}_id`;
-    const { error } = await supabase
-      .from('matches')
-      .update({ [field]: playerId })
-      .eq('id', event.match.id);
-
-    if (!error) {
-      setEvent({ ...event, match: { ...event.match, [`${award}_id`]: playerId } });
-      if (playerId !== null) {
-        setGlowingAwards((prev) => new Set(prev).add(award));
-        setTimeout(() => {
-          setGlowingAwards((prev) => {
-            const next = new Set(prev);
-            next.delete(award);
-            return next;
-          });
-        }, 4000);
-      }
-    }
-    setSaving(false);
-  }
-
   async function handleTournamentWinnerChange(teamId: number | null) {
     if (!event || event.type !== 'tournament') return;
     setSaving(true);
@@ -397,32 +366,6 @@ export default function EventDetailPage() {
       if (teamId !== null) {
         setGlowingWinner(true);
         setTimeout(() => setGlowingWinner(false), 4000);
-      }
-    }
-    setSaving(false);
-  }
-
-  async function handleTournamentAwardChange(award: AwardType, playerId: number | null) {
-    if (!event || event.type !== 'tournament') return;
-    setSaving(true);
-
-    const field = `${award}_id`;
-    const { error } = await supabase
-      .from('tournaments')
-      .update({ [field]: playerId })
-      .eq('id', event.tournament.id);
-
-    if (!error) {
-      setEvent({ ...event, tournament: { ...event.tournament, [`${award}_id`]: playerId } });
-      if (playerId !== null) {
-        setGlowingAwards((prev) => new Set(prev).add(award));
-        setTimeout(() => {
-          setGlowingAwards((prev) => {
-            const next = new Set(prev);
-            next.delete(award);
-            return next;
-          });
-        }, 4000);
       }
     }
     setSaving(false);
@@ -519,27 +462,16 @@ export default function EventDetailPage() {
     ? event.teams.find((t) => t.id === event.tournament.winning_team_id)
     : null;
 
-  // Build award-related derived values for match/tournament
-  const awardSource: Record<string, number | null> | null =
-    event.type === 'match' ? event.match
-    : event.type === 'tournament' ? event.tournament
-    : null;
-
+  // Build the "gold icon per player" map from the voting results. Only
+  // categories with a confirmed winner (either from votes or a resolution)
+  // contribute — tied / pending / no_votes leave the player card clean.
   const playerAwards = new Map<number, AwardType[]>();
-  const awardValues = {} as Record<AwardType, number | null>;
-  for (const award of AWARD_TYPES) {
-    const pid = awardSource ? awardSource[`${award}_id` as keyof typeof awardSource] as number | null : null;
-    awardValues[award] = pid;
-    if (pid) {
-      const existing = playerAwards.get(pid) ?? [];
-      existing.push(award);
-      playerAwards.set(pid, existing);
+  for (const result of awards.results) {
+    if (result.state === 'winner' && result.winner_id != null) {
+      const existing = playerAwards.get(result.winner_id) ?? [];
+      existing.push(result.award_type);
+      playerAwards.set(result.winner_id, existing);
     }
-  }
-
-  function getPlayerName(playerId: number | null): string {
-    if (!playerId) return '';
-    return players.find((p) => p.id === playerId)?.name ?? '';
   }
 
   const TypeIcon = event.type === 'match' ? SoccerBallIcon : event.type === 'tournament' ? TrophyIcon : BarbellIcon;
@@ -619,83 +551,67 @@ export default function EventDetailPage() {
             <button
               type="button"
               onClick={handleSaveDetails}
-              disabled={saving || !isValidTime(editTime) || !isNewLocationComplete(editLocationSelection)}
+              disabled={saving || !editTime || !isValidTime(editTime) || editLocationSelection.type === 'none' || !isNewLocationComplete(editLocationSelection)}
               className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors text-sm"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
         </div>
-      ) : (isAdmin || event.location || event.played_at_time) && (() => {
-        const hasTimeOrLocation = event.location || event.played_at_time;
+      ) : (() => {
         const hasCost = isAdmin && showCosts && event.cost != null;
-        const hasAnyDetails = hasTimeOrLocation || hasCost;
+        const canShare = event.payee_alias_cbu != null;
         return (
           <div className="border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
             <div className="flex items-center justify-between">
-              {hasAnyDetails ? (
-                <div className="space-y-1">
-                  {hasTimeOrLocation && (
-                    <p>
-                      {event.location && (
-                        <a
-                          href={event.location.maps_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:text-primary-hover underline underline-offset-2"
-                        >
-                          {event.location.name}
-                        </a>
-                      )}
-                      {event.location && event.played_at_time && ' · '}
-                      {event.played_at_time && formatTime(event.played_at_time)}
-                    </p>
-                  )}
-                  {hasCost && (
-                    <p className="flex flex-wrap gap-x-4">
-                      <span>Total: {formatPesos(event.cost!)}</span>
-                      <span>Inflado: {formatPesos(event.cost! * COST_MARKUP_MULTIPLIER)}</span>
-                      {participants.length > 0 && (
-                        <span>Por jugador: {formatPesos(perPlayerCost(event.cost!, participants.length))}</span>
-                      )}
-                      {event.payee_alias_cbu && <span>Pagó: {event.payee_alias_cbu}</span>}
-                    </p>
-                  )}
+              <div className="space-y-1">
+                <p>
+                  <a
+                    href={event.location.maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary-hover underline underline-offset-2"
+                  >
+                    {event.location.name}
+                  </a>
+                  {' · '}
+                  {formatTime(event.played_at_time)}
+                </p>
+                {hasCost && (
+                  <p className="flex flex-wrap gap-x-4">
+                    <span>Total: {formatPesos(event.cost!)}</span>
+                    <span>Inflado: {formatPesos(event.cost! * COST_MARKUP_MULTIPLIER)}</span>
+                    {participants.length > 0 && (
+                      <span>Por jugador: {formatPesos(perPlayerCost(event.cost!, participants.length))}</span>
+                    )}
+                    {event.payee_alias_cbu && <span>Pagó: {event.payee_alias_cbu}</span>}
+                  </p>
+                )}
+              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-1 shrink-0 self-start">
+                  <Tooltip label="Editar detalles">
+                    <button
+                      type="button"
+                      onClick={openDetailsEditor}
+                      className="p-1 rounded text-muted hover:text-on-surface transition-colors"
+                    >
+                      <EditIcon className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip label={canShare ? 'Compartir por WhatsApp' : 'Completá alias/CBU para compartir'}>
+                    <button
+                      type="button"
+                      onClick={() => openWhatsAppShare(buildEventShareMessage(event, eventNumber))}
+                      disabled={!canShare}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
+                    >
+                      Compartir
+                      <WhatsAppIcon className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
                 </div>
-              ) : (
-                <p className="italic">Sin detalles</p>
               )}
-              {isAdmin && (() => {
-                const missing: string[] = [];
-                if (!event.played_at_time) missing.push('horario');
-                if (!event.location) missing.push('cancha');
-                if (!event.payee_alias_cbu) missing.push('alias/CBU');
-                const canShare = missing.length === 0;
-                return (
-                  <div className="flex items-center gap-1 shrink-0 self-start">
-                    <Tooltip label="Editar detalles">
-                      <button
-                        type="button"
-                        onClick={openDetailsEditor}
-                        className="p-1 rounded text-muted hover:text-on-surface transition-colors"
-                      >
-                        <EditIcon className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                    <Tooltip label={canShare ? 'Compartir por WhatsApp' : `Completá ${missing.join(', ')} para compartir`}>
-                      <button
-                        type="button"
-                        onClick={() => openWhatsAppShare(buildEventShareMessage(event, eventNumber))}
-                        disabled={!canShare}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
-                      >
-                        Compartir
-                        <WhatsAppIcon className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                );
-              })()}
             </div>
           </div>
         );
@@ -720,16 +636,23 @@ export default function EventDetailPage() {
           <ResultsSection
             winningTeamId={event.match.winning_team_id}
             teams={event.teams}
-            participants={participants}
-            awardValues={awardValues}
             winnerTeamName={winnerTeam?.name ?? null}
             isAdmin={isAdmin}
             saving={saving}
             glowingWinner={glowingWinner}
-            glowingAwards={glowingAwards}
             onWinnerChange={handleWinnerChange}
-            onAwardChange={handleAwardChange}
-            getPlayerName={getPlayerName}
+          />
+
+          <AwardsSection
+            eventType={event.type}
+            participants={participants}
+            voteWindow={awards.voteWindow}
+            results={awards.results}
+            myVotes={awards.myVotes}
+            loading={awards.loading}
+            onCastVote={awards.castVote}
+            onClearVote={awards.clearVote}
+            onResolveTie={awards.resolveTie}
           />
         </>
       )}
@@ -765,16 +688,23 @@ export default function EventDetailPage() {
           <ResultsSection
             winningTeamId={event.tournament.winning_team_id}
             teams={event.teams}
-            participants={participants}
-            awardValues={awardValues}
             winnerTeamName={tournamentWinnerTeam?.name ?? null}
             isAdmin={isAdmin}
             saving={saving}
             glowingWinner={glowingWinner}
-            glowingAwards={glowingAwards}
             onWinnerChange={handleTournamentWinnerChange}
-            onAwardChange={handleTournamentAwardChange}
-            getPlayerName={getPlayerName}
+          />
+
+          <AwardsSection
+            eventType={event.type}
+            participants={participants}
+            voteWindow={awards.voteWindow}
+            results={awards.results}
+            myVotes={awards.myVotes}
+            loading={awards.loading}
+            onCastVote={awards.castVote}
+            onClearVote={awards.clearVote}
+            onResolveTie={awards.resolveTie}
           />
         </>
       )}

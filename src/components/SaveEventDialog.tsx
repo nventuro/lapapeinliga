@@ -233,13 +233,23 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       }
     }
 
+    if (!time || !isValidTime(time)) {
+      setError('Completá el horario.');
+      return;
+    }
+
+    if (locationSelection.type === 'none') {
+      setError('Elegí una cancha.');
+      return;
+    }
+
     setSaving(true);
 
     // 1. Resolve location
-    let locationId: number | null = null;
+    let locationId: number;
     if (locationSelection.type === 'existing') {
       locationId = locationSelection.locationId;
-    } else if (locationSelection.type === 'new') {
+    } else {
       if (!locationSelection.name.trim() || !locationSelection.mapsUrl.trim()) {
         setError('Completá el nombre y el link de Google Maps de la cancha.');
         setSaving(false);
@@ -266,7 +276,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
         name: name.trim() || null,
         type: props.type,
         played_at: date,
-        played_at_time: time || null,
+        played_at_time: time,
         location_id: locationId,
         cost: cost.trim() ? parseInt(cost.trim(), 10) : null,
         payee_alias_cbu: payee.trim() || null,
@@ -456,7 +466,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
           </button>
           <button
             type="submit"
-            disabled={saving || !isValidTime(time) || !isNewLocationComplete(locationSelection)}
+            disabled={saving || !time || !isValidTime(time) || locationSelection.type === 'none' || !isNewLocationComplete(locationSelection)}
             className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Guardando...' : 'Guardar'}

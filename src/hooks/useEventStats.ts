@@ -30,6 +30,7 @@ export function useEventStats(): EventStats {
         matchesResult, teamsResult, teamPlayersResult, reservesResult,
         trainingsResult, attendeesResult, coachesResult,
         tournamentsResult, tournamentTeamsResult, tournamentTeamPlayersResult, tournamentReservesResult,
+        resolvedAwardsResult,
       ] = await Promise.all([
         supabase.from('matches').select('*'),
         supabase.from('match_teams').select('id, match_id'),
@@ -42,12 +43,13 @@ export function useEventStats(): EventStats {
         supabase.from('tournament_teams').select('id, tournament_id'),
         supabase.from('tournament_team_players').select('tournament_team_id, player_id'),
         supabase.from('tournament_reserves').select('tournament_id, player_id'),
+        supabase.rpc('get_resolved_event_awards'),
       ]);
 
       const queryError = matchesResult.error || teamsResult.error || teamPlayersResult.error
         || reservesResult.error || trainingsResult.error || attendeesResult.error || coachesResult.error
         || tournamentsResult.error || tournamentTeamsResult.error || tournamentTeamPlayersResult.error
-        || tournamentReservesResult.error;
+        || tournamentReservesResult.error || resolvedAwardsResult.error;
       if (queryError) {
         setError(queryError.message);
         setLoading(false);
@@ -65,12 +67,7 @@ export function useEventStats(): EventStats {
       const tournamentTeams = tournamentTeamsResult.data!;
       const tournamentTeamPlayers = tournamentTeamPlayersResult.data!;
       const tournamentReserves = tournamentReservesResult.data!;
-
-      // Build team ID → match ID lookup
-      const teamToMatch = new Map<number, number>();
-      for (const team of teams) {
-        teamToMatch.set(team.id, team.match_id);
-      }
+      const resolvedAwards = (resolvedAwardsResult.data ?? []) as { event_id: number; award_type: AwardType; player_id: number }[];
 
       // Games played: count from team players + reserves
       const played = new Map<number, number>();
@@ -91,23 +88,18 @@ export function useEventStats(): EventStats {
         }
       }
 
-      // Awards per category
+      // Awards per category — from the resolved-awards RPC which aggregates
+      // historical resolutions + computed unambiguous winners from votes,
+      // gated on closed voting windows.
       const perCategory = new Map<AwardType, Map<number, number>>();
       for (const award of AWARD_TYPES) {
-        const counts = new Map<number, number>();
-        for (const match of matches) {
-          const playerId = match[`${award}_id`] as number | null;
-          if (playerId) {
-            counts.set(playerId, (counts.get(playerId) ?? 0) + 1);
-          }
-        }
-        perCategory.set(award, counts);
+        perCategory.set(award, new Map());
       }
-
-      // Tournament team ID → tournament ID lookup
-      const tournamentTeamToTournament = new Map<number, number>();
-      for (const tt of tournamentTeams) {
-        tournamentTeamToTournament.set(tt.id, tt.tournament_id);
+      for (const row of resolvedAwards) {
+        const counts = perCategory.get(row.award_type);
+        if (counts) {
+          counts.set(row.player_id, (counts.get(row.player_id) ?? 0) + 1);
+        }
       }
 
       // Tournaments: whole tournament = 1 game played per participant
@@ -135,15 +127,6 @@ export function useEventStats(): EventStats {
             .filter((ttp) => ttp.tournament_team_id === tournament.winning_team_id);
           for (const wp of winningPlayers) {
             won.set(wp.player_id, (won.get(wp.player_id) ?? 0) + 1);
-          }
-        }
-
-        // Awards
-        for (const award of AWARD_TYPES) {
-          const playerId = tournament[`${award}_id`] as number | null;
-          if (playerId) {
-            const counts = perCategory.get(award)!;
-            counts.set(playerId, (counts.get(playerId) ?? 0) + 1);
           }
         }
       }

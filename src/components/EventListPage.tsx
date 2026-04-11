@@ -35,10 +35,10 @@ interface EventRow {
   name: string | null;
   type: EventType;
   played_at: string;
-  played_at_time: string | null;
+  played_at_time: string;
   cost: number | null;
   payee_alias_cbu: string | null;
-  location: { name: string } | null;
+  location: { name: string };
   matches: MatchSubRow | null;
   trainings: TrainingSubRow | null;
   tournaments: TournamentSubRow | null;
@@ -154,13 +154,9 @@ export default function EventListPage() {
                     {formatDate(event.played_at)}
                   </p>
                 )}
-                {(event.location || event.played_at_time) && (
-                  <p className="text-sm text-muted mt-1">
-                    {event.location?.name}
-                    {event.location && event.played_at_time && ' '}
-                    {event.played_at_time && formatTime(event.played_at_time)}
-                  </p>
-                )}
+                <p className="text-sm text-muted mt-1">
+                  {event.location.name} {formatTime(event.played_at_time)}
+                </p>
                 {event.type === 'match' && match && (
                   <p className="text-xs text-muted mt-1.5">
                     {match.match_teams.map((t) => t.name).join(' vs ')}

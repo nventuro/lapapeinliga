@@ -120,8 +120,8 @@ export type Event = {
   name: string | null;
   type: EventType;
   played_at: string;
-  played_at_time: string | null;
-  location_id: number | null;
+  played_at_time: string;
+  location_id: number;
   cost: number | null;
   payee_alias_cbu: string | null;
 };
@@ -130,11 +130,6 @@ export type Match = {
   id: number;
   event_id: number;
   winning_team_id: number | null;
-  top_scorer_id: number | null;
-  best_defense_id: number | null;
-  mvp_id: number | null;
-  best_goalie_id: number | null;
-  most_effort_id: number | null;
 };
 
 export type Training = {
@@ -146,11 +141,6 @@ export type Tournament = {
   id: number;
   event_id: number;
   winning_team_id: number | null;
-  top_scorer_id: number | null;
-  best_defense_id: number | null;
-  mvp_id: number | null;
-  best_goalie_id: number | null;
-  most_effort_id: number | null;
 };
 
 export type TournamentTeam = {
@@ -182,7 +172,7 @@ export type MatchWithDetails = Event & {
   match: Match;
   teams: MatchTeam[];
   reserves: Player[];
-  location: Location | null;
+  location: Location;
 };
 
 export type TrainingWithDetails = Event & {
@@ -190,7 +180,7 @@ export type TrainingWithDetails = Event & {
   training: Training;
   attendees: Player[];
   coaches: Player[];
-  location: Location | null;
+  location: Location;
 };
 
 export type TournamentWithDetails = Event & {
@@ -199,7 +189,7 @@ export type TournamentWithDetails = Event & {
   teams: TournamentTeam[];
   reserves: Player[];
   tournamentMatches: TournamentMatch[];
-  location: Location | null;
+  location: Location;
 };
 
 export type EventWithDetails = MatchWithDetails | TrainingWithDetails | TournamentWithDetails;
@@ -224,6 +214,23 @@ export const AWARD_LABELS: Record<AwardType, string> = {
   mvp: 'Figura del Partido',
   best_goalie: 'Manos de Acero',
   most_effort: 'Mas Huevo',
+};
+
+export type AwardVoteWindowState = 'pending' | 'open' | 'closed' | 'n/a';
+
+export type EventAwardWindow = {
+  state: AwardVoteWindowState;
+  opens_at: string | null;
+  closes_at: string | null;
+};
+
+export type AwardResultState = 'pending' | 'winner' | 'tied' | 'no_votes' | 'n/a';
+
+export type AwardResult = {
+  award_type: AwardType;
+  state: AwardResultState;
+  winner_id: number | null;
+  tied_candidates: number[] | null;
 };
 
 // Media gallery constants
