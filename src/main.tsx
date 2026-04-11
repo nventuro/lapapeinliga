@@ -9,6 +9,7 @@ import EventListPage from './components/EventListPage.tsx'
 import EventDetailPage from './components/EventDetailPage.tsx'
 import StatsPage from './components/StatsPage.tsx'
 import GalleryPage from './components/GalleryPage.tsx'
+import ClaimPage from './components/ClaimPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -22,6 +23,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="armado" element={<TeamSorterPage />} />
           <Route path="plantel" element={<PlantelPage />} />
           <Route path="galeria" element={<GalleryPage />} />
+          <Route path="vincular" element={<ClaimPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

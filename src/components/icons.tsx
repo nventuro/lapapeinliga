@@ -27,6 +27,7 @@ import {
   IconPhoto,
   IconUpload,
   IconShare,
+  IconMail,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -157,4 +158,8 @@ export function GoogleIcon({ className = 'w-4 h-4' }: IconProps) {
       <path d="M60 23.864c8.81 0 16.718 3.027 22.936 8.973l17.21-17.21C89.754 5.946 76.172 0 60 0 36.545 0 16.255 13.445 6.382 33.055L26.427 48.6C31.145 34.418 44.373 23.864 60 23.864z" fill="#EA4335" />
     </svg>
   );
+}
+
+export function MailIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconMail className={className} stroke={STROKE} />;
 }

@@ -48,6 +48,7 @@ export interface Player {
   gender: 'male' | 'female';
   rating: number | null; // 1-10, null for unrated guests
   tier: PlayerTier;
+  email: string | null; // linked Google account, only visible to admins
 }
 
 export function isGuest(player: Player): boolean {

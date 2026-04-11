@@ -5,7 +5,7 @@ import { PLAYER_TIERS, TIER_GROUP_LABELS, AWARD_TYPES, AWARD_LABELS } from '../t
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
-import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon, PhotosIcon } from './icons';
+import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon, PhotosIcon, MailIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
@@ -141,6 +141,11 @@ export default function PlantelPage() {
                     );
                   })}
                   {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
+                  {isAdmin && player.email && (
+                    <Tooltip label={player.email}>
+                      <MailIcon className="w-4 h-4 text-muted" />
+                    </Tooltip>
+                  )}
                   {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0 ml-auto">
                       <Tooltip label="Editar jugador">
