@@ -90,11 +90,13 @@ export default function ClaimPage() {
   // Already linked
   if (linkedPlayer) {
     return (
-      <div className="text-center py-12">
-        <p className="text-on-surface mb-2">Tu cuenta ya está vinculada como <strong>{linkedPlayer.name}</strong>.</p>
-        <Link to="/fechas" className="text-primary hover:text-primary-hover underline">
-          Ir al inicio
-        </Link>
+      <div className="max-w-sm mx-auto py-12">
+        <div className="rounded-lg border border-primary bg-primary/10 p-4 text-center">
+          <p className="text-on-surface font-medium mb-3">Tu cuenta ya está vinculada como <strong>{linkedPlayer.name}</strong>.</p>
+          <Link to="/fechas" className="text-primary hover:text-primary-hover underline text-sm">
+            Ir al inicio
+          </Link>
+        </div>
       </div>
     );
   }
@@ -102,11 +104,13 @@ export default function ClaimPage() {
   // Success state
   if (success) {
     return (
-      <div className="text-center py-12">
-        <p className="text-on-surface mb-2">¡Listo! Tu cuenta fue vinculada como <strong>{selectedPlayer!.name}</strong>.</p>
-        <Link to="/fechas" className="text-primary hover:text-primary-hover underline">
-          Ir al inicio
-        </Link>
+      <div className="max-w-sm mx-auto py-12">
+        <div className="rounded-lg border border-success bg-success/10 p-4 text-center">
+          <p className="text-on-surface font-medium mb-3">¡Listo! Tu cuenta fue vinculada como <strong>{selectedPlayer!.name}</strong>.</p>
+          <Link to="/fechas" className="text-primary hover:text-primary-hover underline text-sm">
+            Ir al inicio
+          </Link>
+        </div>
       </div>
     );
   }
@@ -118,7 +122,9 @@ export default function ClaimPage() {
       <p className="text-sm text-muted mb-4">Seleccioná tu nombre para vincularlo con <strong>{userEmail}</strong>.</p>
 
       {error && (
-        <p className="text-sm text-error mb-3">{error}</p>
+        <div className="rounded-lg border border-error bg-error/10 p-3 mb-4">
+          <p className="text-sm text-error font-medium">{error}</p>
+        </div>
       )}
 
       <ul className="space-y-1 mb-6">
