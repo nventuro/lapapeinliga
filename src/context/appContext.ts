@@ -8,6 +8,7 @@ export interface AppContextValue {
   preferences: PlayerPreference[];
   teamNames: string[];
   isAdmin: boolean;
+  currentPlayerId: number | null;
   showRatings: boolean;
   setShowRatings: (show: boolean) => void;
   showCosts: boolean;
@@ -26,8 +27,7 @@ export function useAppContext(): AppContextValue {
 
 /** The Player record claimed by the currently signed-in user, or null if none. */
 export function useCurrentPlayer(): Player | null {
-  const { session, players } = useAppContext();
-  const email = session?.user.email;
-  if (!email) return null;
-  return players.find((p) => p.email === email) ?? null;
+  const { currentPlayerId, players } = useAppContext();
+  if (currentPlayerId == null) return null;
+  return players.find((p) => p.id === currentPlayerId) ?? null;
 }

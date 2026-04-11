@@ -15,6 +15,7 @@ export function AppProvider({
   const [preferences, setPreferences] = useState<PlayerPreference[]>([]);
   const [teamNames, setTeamNames] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
   const [showRatings, setShowRatingsState] = useState(false);
   const [showCosts, setShowCostsState] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,9 +69,13 @@ export function AppProvider({
 
       let admin = false;
       if (session) {
-        const { data: adminResult } = await supabase.rpc('is_admin');
-        admin = adminResult === true;
+        const [adminRes, myPlayerRes] = await Promise.all([
+          supabase.rpc('is_admin'),
+          supabase.rpc('get_my_player_id'),
+        ]);
+        admin = adminRes.data === true;
         setIsAdmin(admin);
+        setCurrentPlayerId((myPlayerRes.data as number | null) ?? null);
 
         if (admin) {
           const stored = localStorage.getItem(SHOW_RATINGS_KEY);
@@ -80,6 +85,7 @@ export function AppProvider({
         }
       } else {
         setIsAdmin(false);
+        setCurrentPlayerId(null);
       }
 
       await fetchData(admin);
@@ -132,7 +138,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, teamNames, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
+    <AppContext.Provider value={{ session, players, preferences, teamNames, isAdmin, currentPlayerId, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
       {children}
     </AppContext.Provider>
   );

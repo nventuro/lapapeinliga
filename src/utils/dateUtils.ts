@@ -33,6 +33,16 @@ export function formatTime(timeStr: string): string {
   return `${timeStr.slice(0, 5)}hs`;
 }
 
+/** Formats an ISO timestamp as a lowercase es-AR sentence-case datetime, e.g. "sábado 11 de abril a las 20:00hs". */
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString('es-AR', { weekday: 'long' });
+  const day = date.getDate();
+  const monthName = date.toLocaleDateString('es-AR', { month: 'long' });
+  const time = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  return `${weekday} ${day} de ${monthName} a las ${time}hs`;
+}
+
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** Returns true if the string is empty (optional) or a valid HH:MM time (00:00–23:59). */

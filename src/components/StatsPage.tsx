@@ -1,5 +1,5 @@
 import type { Player, AwardType } from '../types';
-import { AWARD_TYPES, AWARD_LABELS, LEADERBOARD_MIN_DISPLAY } from '../types';
+import { AWARD_TYPES, AWARD_LABELS, AWARD_DESCRIPTIONS, LEADERBOARD_MIN_DISPLAY } from '../types';
 import { useAppContext } from '../context/appContext';
 import { useEventStats } from '../hooks/useEventStats';
 import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, SpeakerphoneIcon } from './icons';
@@ -51,10 +51,12 @@ function tierLimited<T extends { rank: number }>(ranked: T[]): T[] {
 
 function LeaderboardSection({
   title,
+  description,
   icon,
   entries,
 }: {
   title: string;
+  description?: string;
   icon: React.ReactNode;
   entries: LeaderboardEntry[];
 }) {
@@ -65,10 +67,13 @@ function LeaderboardSection({
 
   return (
     <div className="border border-border rounded-lg p-4">
-      <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
-        {icon}
-        {title}
-      </h3>
+      <div className="mb-3">
+        <h3 className="font-bold text-lg flex items-center gap-2">
+          {icon}
+          {title}
+        </h3>
+        {description && <p className="text-xs text-muted">{description}</p>}
+      </div>
       <ul className="space-y-1">
         {ranked.map((entry) => (
           <li key={entry.player.id} className="flex items-center gap-2 py-1 px-2">
@@ -257,6 +262,7 @@ export default function StatsPage() {
             <LeaderboardSection
               key={award}
               title={AWARD_LABELS[award]}
+              description={AWARD_DESCRIPTIONS[award]}
               icon={<Icon className="w-5 h-5 text-gold" />}
               entries={toEntries(counts)}
             />

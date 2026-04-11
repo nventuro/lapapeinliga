@@ -216,6 +216,14 @@ export const AWARD_LABELS: Record<AwardType, string> = {
   most_effort: 'Mas Huevo',
 };
 
+export const AWARD_DESCRIPTIONS: Record<AwardType, string> = {
+  top_scorer: 'el gol que nos emocionó',
+  best_defense: 'el terror de los delanteros',
+  mvp: 'la persona que brilló',
+  best_goalie: 'atajó todo y más',
+  most_effort: 'dejó todo en la cancha',
+};
+
 export type AwardVoteWindowState = 'pending' | 'open' | 'closed' | 'n/a';
 
 export type EventAwardWindow = {

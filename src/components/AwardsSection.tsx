@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import type { AwardResult, AwardType, EventAwardWindow, EventType, Player } from '../types';
-import { AWARD_LABELS, AWARD_TYPES } from '../types';
+import { AWARD_DESCRIPTIONS, AWARD_LABELS, AWARD_TYPES } from '../types';
 import { AWARD_ICONS } from './awardIcons';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
+import { formatDateTime } from '../utils/dateUtils';
 import TiebreakerDialog from './TiebreakerDialog';
 
 interface AwardsSectionProps {
@@ -18,22 +18,15 @@ interface AwardsSectionProps {
   onResolveTie: (award: AwardType, chosenId: number) => Promise<void>;
 }
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('es-AR', {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 function formatTimeRemaining(iso: string, now: Date): string {
   const diffMs = new Date(iso).getTime() - now.getTime();
   if (diffMs <= 0) return 'cerrando…';
   const hours = Math.floor(diffMs / 3600000);
   const minutes = Math.floor((diffMs % 3600000) / 60000);
+  const seconds = Math.floor((diffMs % 60000) / 1000);
   if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 export default function AwardsSection({
@@ -55,7 +48,7 @@ export default function AwardsSection({
 
   useEffect(() => {
     if (voteWindow?.state !== 'open') return;
-    const interval = setInterval(() => setNow(new Date()), 30000);
+    const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, [voteWindow?.state]);
 
@@ -102,7 +95,7 @@ export default function AwardsSection({
       <div className="border border-border rounded-lg p-4 mt-4">
         <h3 className="font-bold text-lg mb-2">Premios</h3>
         <p className="text-sm text-muted">
-          La votación abre {voteWindow.opens_at ? `el ${formatDateTime(voteWindow.opens_at)}hs` : 'próximamente'}.
+          La votación abre {voteWindow.opens_at ? `el ${formatDateTime(voteWindow.opens_at)}` : 'próximamente'}.
         </p>
       </div>
     );
@@ -115,7 +108,7 @@ export default function AwardsSection({
     return (
       <div className="border border-border rounded-lg p-4 mt-4">
         <div className="flex items-baseline justify-between mb-1">
-          <h3 className="font-bold text-lg">Votación abierta</h3>
+          <h3 className="font-bold text-lg">Votación de Premios</h3>
           <span className="text-xs text-muted">Cierra en {timeLeft}</span>
         </div>
         <p className="text-xs text-muted mb-4">
@@ -123,12 +116,9 @@ export default function AwardsSection({
         </p>
 
         {!currentPlayer ? (
-          <div className="text-sm">
-            <p className="mb-2">Tenés que vincular tu cuenta a un jugador para votar.</p>
-            <Link to="/claim" className="text-primary hover:text-primary-hover underline underline-offset-2">
-              Vincular cuenta
-            </Link>
-          </div>
+          <p className="text-sm">
+            Tu cuenta no está vinculada a un jugador. Pedile a un admin que la vincule para poder votar.
+          </p>
         ) : (
           <div className="space-y-4">
             {AWARD_TYPES.map((award) => {
@@ -137,10 +127,11 @@ export default function AwardsSection({
               const isSaving = savingAward === award;
               return (
                 <div key={award}>
-                  <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
+                  <label className="flex items-center gap-1.5 text-sm font-medium">
                     {AWARD_LABELS[award]}
                     <Icon className={`w-4 h-4 ${currentVote != null ? 'text-gold' : 'text-muted'}`} />
                   </label>
+                  <p className="text-xs text-muted mb-1">{AWARD_DESCRIPTIONS[award]}</p>
                   <select
                     value={currentVote ?? ''}
                     onChange={(e) => handleVoteChange(award, e.target.value)}
