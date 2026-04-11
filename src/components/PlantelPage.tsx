@@ -100,13 +100,13 @@ export default function PlantelPage() {
                     player.id === currentPlayer?.id ? 'bg-primary/10' : 'hover:bg-border-subtle'
                   }`}
                 >
+                  <GenderIcon gender={player.gender} />
+                  <span className="font-medium truncate">{player.name}</span>
                   {isAdmin && player.email && (
                     <Tooltip label={player.email}>
                       <MailIcon className="w-4 h-4 text-muted" />
                     </Tooltip>
                   )}
-                  <GenderIcon gender={player.gender} />
-                  <span className="font-medium truncate">{player.name}</span>
                   {playersWithPhotos.has(player.id) && (
                     <Tooltip label="Ver fotos">
                       <button
