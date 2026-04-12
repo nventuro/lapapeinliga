@@ -39,9 +39,8 @@ export default function EventConfigurator({
             className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
           >
             <SoccerBallIcon className="w-5 h-5" />
-            Partido
-            <span className="font-normal ml-2">
-              — {opt.playersPerTeam} por equipo
+            <span className="font-normal">
+              {opt.playersPerTeam} por equipo
               {opt.reserves > 0
                 ? `, ${opt.reserves} suplente${opt.reserves !== 1 ? 's' : ''}`
                 : ''}
@@ -56,9 +55,8 @@ export default function EventConfigurator({
             className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
           >
             <TrophyIcon className="w-5 h-5" />
-            Torneo — {opt.teamCount} equipos
-            <span className="font-normal ml-2">
-              — {opt.playersPerTeam} por equipo
+            <span className="font-normal">
+              {opt.teamCount} equipos, {opt.playersPerTeam} por equipo
               {opt.reserves > 0
                 ? `, ${opt.reserves} suplente${opt.reserves !== 1 ? 's' : ''}`
                 : ''}
