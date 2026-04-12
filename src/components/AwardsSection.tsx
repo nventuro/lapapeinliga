@@ -24,7 +24,7 @@ function formatTimeRemaining(iso: string, now: Date): string {
   const hours = Math.floor(diffMs / 3600000);
   const minutes = Math.floor((diffMs % 3600000) / 60000);
   const seconds = Math.floor((diffMs % 60000) / 1000);
-  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
 }
@@ -111,6 +111,11 @@ export default function AwardsSection({
           <h3 className="font-bold text-lg">Votación de Premios</h3>
           <span className="text-xs text-muted">Cierra en {timeLeft}</span>
         </div>
+        {voteWindow.voter_count > 0 && (
+          <p className="text-xs text-muted mb-1">
+            {voteWindow.voter_count === 1 ? '1 persona votó' : `${voteWindow.voter_count} personas votaron`}
+          </p>
+        )}
         <p className="text-xs text-muted mb-4">
           Los votos son secretos. Los resultados se muestran una vez que cierra la votación.
         </p>
@@ -146,6 +151,11 @@ export default function AwardsSection({
                 </div>
               );
             })}
+            {myVotes.size > 0 && (
+              <p className="text-xs text-muted italic">
+                Tus votos ya fueron registrados. Podés cambiarlos hasta que cierre la votación.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -156,7 +166,14 @@ export default function AwardsSection({
   return (
     <>
       <div className="border border-border rounded-lg p-4 mt-4">
-        <h3 className="font-bold text-lg mb-4">Premios</h3>
+        <div className="flex items-baseline justify-between mb-4">
+          <h3 className="font-bold text-lg">Premios</h3>
+          {voteWindow.voter_count > 0 && (
+            <span className="text-xs text-muted">
+              {voteWindow.voter_count === 1 ? '1 voto' : `${voteWindow.voter_count} votos`}
+            </span>
+          )}
+        </div>
         {loading && results.length === 0 ? (
           <p className="text-sm text-muted">Cargando...</p>
         ) : (

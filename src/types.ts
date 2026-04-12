@@ -230,6 +230,7 @@ export type EventAwardWindow = {
   state: AwardVoteWindowState;
   opens_at: string | null;
   closes_at: string | null;
+  voter_count: number;
 };
 
 export type AwardResultState = 'pending' | 'winner' | 'tied' | 'no_votes' | 'n/a';

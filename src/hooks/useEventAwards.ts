@@ -13,7 +13,7 @@ interface UseEventAwardsResult {
   resolveTie: (award: AwardType, chosenId: number) => Promise<void>;
 }
 
-type WindowRow = { state: AwardVoteWindowState; opens_at: string | null; closes_at: string | null };
+type WindowRow = { state: AwardVoteWindowState; opens_at: string | null; closes_at: string | null; voter_count: number };
 type ResultRow = { award_type: AwardType; state: AwardResultState; winner_id: number | null; tied_candidates: number[] | null };
 type MyVoteRow = { award_type: AwardType; candidate_player_id: number };
 
@@ -31,7 +31,7 @@ export function useEventAwards(eventId: number | null, eventType: EventType | nu
     async function fetchAll() {
       if (eventId == null || eventType == null || eventType === 'training') {
         if (cancelled) return;
-        setVoteWindow({ state: 'n/a', opens_at: null, closes_at: null });
+        setVoteWindow({ state: 'n/a', opens_at: null, closes_at: null, voter_count: 0 });
         setResults([]);
         setMyVotes(new Map());
         setLoading(false);
@@ -54,7 +54,7 @@ export function useEventAwards(eventId: number | null, eventType: EventType | nu
       }
 
       const windowRow = (windowRes.data as WindowRow[] | null)?.[0] ?? null;
-      setVoteWindow(windowRow ?? { state: 'n/a', opens_at: null, closes_at: null });
+      setVoteWindow(windowRow ?? { state: 'n/a', opens_at: null, closes_at: null, voter_count: 0 });
 
       const resultRows = (resultsRes.data as ResultRow[] | null) ?? [];
       setResults(resultRows.map((row) => ({
