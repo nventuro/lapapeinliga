@@ -122,7 +122,7 @@ export default function AwardsSection({
 
         {!currentPlayer ? (
           <p className="text-sm">
-            Tu cuenta no está vinculada a un jugador. Pedile a un admin que la vincule para poder votar.
+            Tu cuenta no está vinculada a un jugador. Buscá el link de invitación en el grupo de WhatsApp para poder votar.
           </p>
         ) : (
           <div className="space-y-4">
