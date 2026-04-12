@@ -238,18 +238,13 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       return;
     }
 
-    if (locationSelection.type === 'none') {
-      setError('Elegí una cancha.');
-      return;
-    }
-
     setSaving(true);
 
-    // 1. Resolve location
-    let locationId: number;
+    // 1. Resolve location (optional)
+    let locationId: number | null = null;
     if (locationSelection.type === 'existing') {
       locationId = locationSelection.locationId;
-    } else {
+    } else if (locationSelection.type === 'new') {
       if (!locationSelection.name.trim() || !locationSelection.mapsUrl.trim()) {
         setError('Completá el nombre y el link de Google Maps de la cancha.');
         setSaving(false);
@@ -356,7 +351,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Cancha</label>
+            <label className="block text-sm font-medium mb-1">Cancha (opcional)</label>
             <LocationPicker
               value={locationSelection}
               onChange={setLocationSelection}
@@ -466,7 +461,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
           </button>
           <button
             type="submit"
-            disabled={saving || !time || !isValidTime(time) || locationSelection.type === 'none' || !isNewLocationComplete(locationSelection)}
+            disabled={saving || !time || !isValidTime(time) || !isNewLocationComplete(locationSelection)}
             className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Guardando...' : 'Guardar'}

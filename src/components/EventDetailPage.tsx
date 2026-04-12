@@ -44,14 +44,16 @@ async function fetchEventData(
 
   const eventId = eventData.id;
 
-  // Fetch location — events.location_id is NOT NULL so this always exists.
-  const { data: locData } = await supabase
-    .from('locations')
-    .select('*')
-    .eq('id', eventData.location_id)
-    .single();
-  if (!locData) return null;
-  const location = locData as Location;
+  // Fetch location (nullable — not every event has a venue)
+  let location: Location | null = null;
+  if (eventData.location_id != null) {
+    const { data: locData } = await supabase
+      .from('locations')
+      .select('*')
+      .eq('id', eventData.location_id)
+      .single();
+    if (locData) location = locData as Location;
+  }
 
   // Fetch all events for labeling
   const allEventsResult = await orderEvents(supabase.from('events').select('id, played_at'), true);
@@ -269,20 +271,18 @@ export default function EventDetailPage() {
     setEditTime(event.played_at_time.slice(0, 5));
     setEditCost(event.cost != null ? String(event.cost) : '');
     setEditPayee(event.payee_alias_cbu ?? '');
-    setEditLocationSelection({ type: 'existing', locationId: event.location_id });
+    setEditLocationSelection(event.location_id != null ? { type: 'existing', locationId: event.location_id } : { type: 'none' });
     setEditingDetails(true);
   }
 
   async function handleSaveDetails() {
     if (!event) return;
-    // played_at_time and location_id are NOT NULL on events; the button is
-    // disabled when either is missing, but defend in depth.
-    if (!editTime || !isValidTime(editTime) || editLocationSelection.type === 'none') return;
+    if (!editTime || !isValidTime(editTime)) return;
     setSaving(true);
 
-    // Resolve location
-    let locationId: number;
-    let location: Location;
+    // Resolve location (optional)
+    let locationId: number | null = null;
+    let location: Location | null = null;
 
     if (editLocationSelection.type === 'existing') {
       locationId = editLocationSelection.locationId;
@@ -292,7 +292,7 @@ export default function EventDetailPage() {
         return;
       }
       location = found;
-    } else {
+    } else if (editLocationSelection.type === 'new') {
       if (!editLocationSelection.name.trim() || !editLocationSelection.mapsUrl.trim()) {
         setSaving(false);
         return;
@@ -312,9 +312,10 @@ export default function EventDetailPage() {
         return;
       }
 
-      location = newLoc as Location;
-      locationId = location.id;
-      setAllLocations((prev) => [...prev, location].sort((a, b) => a.name.localeCompare(b.name)));
+      const created = newLoc as Location;
+      location = created;
+      locationId = created.id;
+      setAllLocations((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
     }
 
     const nameValue = editName.trim() || null;
@@ -510,7 +511,7 @@ export default function EventDetailPage() {
             <TimeInput value={editTime} onChange={setEditTime} disabled={saving} />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Cancha</label>
+            <label className="block text-sm font-medium mb-1">Cancha (opcional)</label>
             <LocationPicker
               value={editLocationSelection}
               onChange={setEditLocationSelection}
@@ -551,7 +552,7 @@ export default function EventDetailPage() {
             <button
               type="button"
               onClick={handleSaveDetails}
-              disabled={saving || !editTime || !isValidTime(editTime) || editLocationSelection.type === 'none' || !isNewLocationComplete(editLocationSelection)}
+              disabled={saving || !editTime || !isValidTime(editTime) || !isNewLocationComplete(editLocationSelection)}
               className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors text-sm"
             >
               {saving ? 'Guardando...' : 'Guardar'}
@@ -566,15 +567,19 @@ export default function EventDetailPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p>
-                  <a
-                    href={event.location.maps_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:text-primary-hover underline underline-offset-2"
-                  >
-                    {event.location.name}
-                  </a>
-                  {' · '}
+                  {event.location ? (
+                    <>
+                      <a
+                        href={event.location.maps_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:text-primary-hover underline underline-offset-2"
+                      >
+                        {event.location.name}
+                      </a>
+                      {' · '}
+                    </>
+                  ) : null}
                   {formatTime(event.played_at_time)}
                 </p>
                 {hasCost && (

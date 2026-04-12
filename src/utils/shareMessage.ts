@@ -14,10 +14,10 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   lines.push(`Fecha ${eventNumber}${namePart} · ${typeEmoji} ${typeLabel}`);
   lines.push(`📅 ${formatDateForShare(event.played_at)}`);
 
-  // Time and location are NOT NULL on events; payee is guaranteed by the
-  // share button being disabled when it's missing.
   lines.push(`🕐 ${formatTime(event.played_at_time)}`);
-  lines.push(`📍 ${event.location.name} (${event.location.maps_url})`);
+  if (event.location) {
+    lines.push(`📍 ${event.location.name} (${event.location.maps_url})`);
+  }
 
   return lines;
 }

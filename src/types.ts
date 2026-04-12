@@ -121,7 +121,7 @@ export type Event = {
   type: EventType;
   played_at: string;
   played_at_time: string;
-  location_id: number;
+  location_id: number | null;
   cost: number | null;
   payee_alias_cbu: string | null;
 };
@@ -172,7 +172,7 @@ export type MatchWithDetails = Event & {
   match: Match;
   teams: MatchTeam[];
   reserves: Player[];
-  location: Location;
+  location: Location | null;
 };
 
 export type TrainingWithDetails = Event & {
@@ -180,7 +180,7 @@ export type TrainingWithDetails = Event & {
   training: Training;
   attendees: Player[];
   coaches: Player[];
-  location: Location;
+  location: Location | null;
 };
 
 export type TournamentWithDetails = Event & {
@@ -189,7 +189,7 @@ export type TournamentWithDetails = Event & {
   teams: TournamentTeam[];
   reserves: Player[];
   tournamentMatches: TournamentMatch[];
-  location: Location;
+  location: Location | null;
 };
 
 export type EventWithDetails = MatchWithDetails | TrainingWithDetails | TournamentWithDetails;
