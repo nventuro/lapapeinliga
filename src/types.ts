@@ -217,11 +217,11 @@ export const AWARD_LABELS: Record<AwardType, string> = {
 };
 
 export const AWARD_DESCRIPTIONS: Record<AwardType, string> = {
-  top_scorer: 'el gol que nos emocionó',
-  best_defense: 'el terror de los delanteros',
-  mvp: 'la persona que brilló',
-  best_goalie: 'atajó todo y más',
-  most_effort: 'dejó todo en la cancha',
+  top_scorer: 'Ese gol que se va a contar en el próximo asado',
+  best_defense: 'El terror de los delanteros, no dejó pasar a nadie',
+  mvp: 'Brilló a su manera y se ganó todos los aplausos',
+  best_goalie: 'Sacó hasta las que no se sacan',
+  most_effort: 'Garra pura: no bajó los brazos ni un minuto',
 };
 
 export type AwardVoteWindowState = 'pending' | 'open' | 'closed' | 'n/a';
