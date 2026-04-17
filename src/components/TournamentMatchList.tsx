@@ -6,7 +6,7 @@ import Tooltip from './Tooltip';
 interface TournamentMatchListProps {
   teams: TournamentTeam[];
   matches: TournamentMatch[];
-  isAdmin: boolean;
+  canEdit: boolean;
   saving: boolean;
   onAddMatch: (teamAId: number, teamBId: number) => void;
   onUpdateScore: (matchId: number, scoreA: number | null, scoreB: number | null) => void;
@@ -20,7 +20,7 @@ function teamName(teams: TournamentTeam[], teamId: number): string {
 export default function TournamentMatchList({
   teams,
   matches,
-  isAdmin,
+  canEdit,
   saving,
   onAddMatch,
   onUpdateScore,
@@ -91,7 +91,7 @@ export default function TournamentMatchList({
 
                 <span className="font-medium flex-1">{teamName(teams, match.team_b_id)}</span>
 
-                {isAdmin && (
+                {canEdit && (
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => handleStartEditScore(match)}
@@ -168,7 +168,7 @@ export default function TournamentMatchList({
         })}
       </div>
 
-      {isAdmin && (
+      {canEdit && (
         <>
           {addingMatch ? (
             <div className="mt-3 border border-border rounded-lg p-3 space-y-3">

@@ -24,6 +24,16 @@ export type PlayerTier = 'core' | 'sporadic' | 'guest';
 
 export const PLAYER_TIERS: PlayerTier[] = ['core', 'sporadic', 'guest'];
 
+export type UserRole = 'basic' | 'moderator' | 'admin';
+
+export const USER_ROLES: UserRole[] = ['basic', 'moderator', 'admin'];
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  basic: 'Sin rol',
+  moderator: 'Moderador',
+  admin: 'Administrador',
+};
+
 export const TIER_LABELS: Record<PlayerTier, string> = {
   core: 'Fijo',
   sporadic: 'Esporádico',
@@ -49,6 +59,7 @@ export interface Player {
   rating: number | null; // 1-10, null for unrated guests
   tier: PlayerTier;
   email: string | null; // linked Google account, only visible to admins
+  role: UserRole; // admin-only column, absent from players_public
 }
 
 export function isGuest(player: Player): boolean {

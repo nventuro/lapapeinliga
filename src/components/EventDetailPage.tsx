@@ -208,7 +208,7 @@ async function fetchEventData(
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { players, isAdmin, showCosts } = useAppContext();
+  const { players, isAdmin, isModOrAdmin, showCosts } = useAppContext();
 
   const [event, setEvent] = useState<EventWithDetails | null>(null);
   const [eventNumber, setEventNumber] = useState('');
@@ -642,7 +642,7 @@ export default function EventDetailPage() {
             winningTeamId={event.match.winning_team_id}
             teams={event.teams}
             winnerTeamName={winnerTeam?.name ?? null}
-            isAdmin={isAdmin}
+            canEdit={isModOrAdmin}
             saving={saving}
             glowingWinner={glowingWinner}
             onWinnerChange={handleWinnerChange}
@@ -681,7 +681,7 @@ export default function EventDetailPage() {
           <TournamentMatchList
             teams={event.teams}
             matches={event.tournamentMatches}
-            isAdmin={isAdmin}
+            canEdit={isModOrAdmin}
             saving={saving}
             onAddMatch={handleAddTournamentMatch}
             onUpdateScore={handleUpdateTournamentMatchScore}
@@ -694,7 +694,7 @@ export default function EventDetailPage() {
             winningTeamId={event.tournament.winning_team_id}
             teams={event.teams}
             winnerTeamName={tournamentWinnerTeam?.name ?? null}
-            isAdmin={isAdmin}
+            canEdit={isModOrAdmin}
             saving={saving}
             glowingWinner={glowingWinner}
             onWinnerChange={handleTournamentWinnerChange}

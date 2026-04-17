@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { Player, PlayerPreference } from '../types';
+import type { Player, PlayerPreference, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { AppContext } from './appContext';
 
@@ -14,7 +14,7 @@ export function AppProvider({
   const [players, setPlayers] = useState<Player[]>([]);
   const [preferences, setPreferences] = useState<PlayerPreference[]>([]);
   const [teamNames, setTeamNames] = useState<string[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<UserRole>('basic');
   const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
   const [showRatings, setShowRatingsState] = useState(false);
   const [showCosts, setShowCostsState] = useState(false);
@@ -62,33 +62,36 @@ export function AppProvider({
     setError(null);
   }, []);
 
-  // Initial data load + admin check
+  const isAdmin = role === 'admin';
+  const isModOrAdmin = role === 'admin' || role === 'moderator';
+
+  // Initial data load + role check
   useEffect(() => {
     async function init() {
       setLoading(true);
 
-      let admin = false;
+      let resolvedRole: UserRole = 'basic';
       if (session) {
-        const [adminRes, myPlayerRes] = await Promise.all([
-          supabase.rpc('is_admin'),
+        const [roleRes, myPlayerRes] = await Promise.all([
+          supabase.rpc('current_user_role'),
           supabase.rpc('get_my_player_id'),
         ]);
-        admin = adminRes.data === true;
-        setIsAdmin(admin);
+        resolvedRole = (roleRes.data as UserRole | null) ?? 'basic';
+        setRole(resolvedRole);
         setCurrentPlayerId((myPlayerRes.data as number | null) ?? null);
 
-        if (admin) {
+        if (resolvedRole === 'admin') {
           const stored = localStorage.getItem(SHOW_RATINGS_KEY);
           if (stored === 'true') setShowRatingsState(true);
           const storedCosts = localStorage.getItem(SHOW_COSTS_KEY);
           if (storedCosts === 'true') setShowCostsState(true);
         }
       } else {
-        setIsAdmin(false);
+        setRole('basic');
         setCurrentPlayerId(null);
       }
 
-      await fetchData(admin);
+      await fetchData(resolvedRole === 'admin');
       setLoading(false);
     }
     init();
@@ -138,7 +141,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, teamNames, isAdmin, currentPlayerId, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
+    <AppContext.Provider value={{ session, players, preferences, teamNames, role, isAdmin, isModOrAdmin, currentPlayerId, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
       {children}
     </AppContext.Provider>
   );

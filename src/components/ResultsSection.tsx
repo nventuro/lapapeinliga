@@ -4,7 +4,7 @@ interface ResultsSectionProps {
   winningTeamId: number | null;
   teams: { id: number; name: string }[];
   winnerTeamName: string | null;
-  isAdmin: boolean;
+  canEdit: boolean;
   saving: boolean;
   glowingWinner: boolean;
   onWinnerChange: (teamId: number | null) => void;
@@ -14,7 +14,7 @@ export default function ResultsSection({
   winningTeamId,
   teams,
   winnerTeamName,
-  isAdmin,
+  canEdit,
   saving,
   glowingWinner,
   onWinnerChange,
@@ -23,7 +23,7 @@ export default function ResultsSection({
     <div className="border border-border rounded-lg p-4 mt-4">
       <h3 className="font-bold text-lg mb-4">Resultado</h3>
 
-      {isAdmin ? (
+      {canEdit ? (
         <div>
           <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
             Ganador

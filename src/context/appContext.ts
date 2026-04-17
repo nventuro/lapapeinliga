@@ -1,13 +1,15 @@
 import { createContext, useContext } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import type { Player, PlayerPreference } from '../types';
+import type { Player, PlayerPreference, UserRole } from '../types';
 
 export interface AppContextValue {
   session: Session | null;
   players: Player[];
   preferences: PlayerPreference[];
   teamNames: string[];
+  role: UserRole;
   isAdmin: boolean;
+  isModOrAdmin: boolean;
   currentPlayerId: number | null;
   showRatings: boolean;
   setShowRatings: (show: boolean) => void;

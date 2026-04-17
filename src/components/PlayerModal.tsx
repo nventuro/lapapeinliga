@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import type { Player, PlayerPreference, PreferenceType, PlayerTier } from '../types';
-import { MIN_RATING, MAX_RATING, DEFAULT_UNRATED_RATING, PLAYER_TIERS, TIER_LABELS } from '../types';
+import type { Player, PlayerPreference, PreferenceType, PlayerTier, UserRole } from '../types';
+import { MIN_RATING, MAX_RATING, DEFAULT_UNRATED_RATING, PLAYER_TIERS, TIER_LABELS, USER_ROLES, USER_ROLE_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { capitalizeName } from '../utils/nameUtils';
 import { useAppContext } from '../context/appContext';
@@ -38,6 +38,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
   const [gender, setGender] = useState<'male' | 'female'>(player?.gender ?? 'male');
   const [tier, setTier] = useState<PlayerTier>(player?.tier ?? 'guest');
   const [rating, setRating] = useState<number | null>(player?.rating ?? null);
+  const [role, setRole] = useState<UserRole>(player?.role ?? 'basic');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -165,7 +166,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
       // Update player
       const { error: dbError } = await supabase
         .from('players')
-        .update({ name: trimmed, gender, rating, tier })
+        .update({ name: trimmed, gender, rating, tier, role })
         .eq('id', player.id);
 
       if (dbError) {
@@ -200,7 +201,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
       // Create player
       const { data: newPlayer, error: dbError } = await supabase
         .from('players')
-        .insert({ name: trimmed, gender, rating, tier })
+        .insert({ name: trimmed, gender, rating, tier, role })
         .select('id')
         .single();
 
@@ -306,6 +307,27 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
               />
             )}
           </div>
+
+          {player && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Rol</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as UserRole)}
+                disabled={!player.email}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {USER_ROLES.map((r) => (
+                  <option key={r} value={r}>{USER_ROLE_LABELS[r]}</option>
+                ))}
+              </select>
+              {!player.email && (
+                <p className="text-xs text-muted mt-1">
+                  Vinculá un email primero para asignar un rol.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {error && (
