@@ -1,19 +1,34 @@
-import type { TournamentTeam, AwardType } from '../types';
-import { isGuest, comparePlayersByGenderThenName, AWARD_LABELS } from '../types';
+import type { TournamentTeam, Player, AwardType } from '../types';
+import { comparePlayersByGenderThenName } from '../types';
 import { TrophyIcon, GenderMaleIcon, GenderFemaleIcon } from './icons';
-import { AWARD_ICONS } from './awardIcons';
-import GenderIcon from './GenderIcon';
-import InvBadge from './InvBadge';
 import Tooltip from './Tooltip';
 import Confetti from './Confetti';
+import ParticipantRow, { type MoveDestination } from './ParticipantRow';
+import AddParticipantControl from './AddParticipantControl';
 
 interface TournamentTeamCardProps {
   team: TournamentTeam;
   isWinner: boolean;
   playerAwards: Map<number, AwardType[]>;
+  canEdit?: boolean;
+  saving?: boolean;
+  availablePlayers?: Player[];
+  moveDestinationsFor?: (player: Player) => MoveDestination[];
+  onAddPlayer?: (playerId: number) => void;
+  onRemovePlayer?: (playerId: number) => void;
 }
 
-export default function TournamentTeamCard({ team, isWinner, playerAwards }: TournamentTeamCardProps) {
+export default function TournamentTeamCard({
+  team,
+  isWinner,
+  playerAwards,
+  canEdit = false,
+  saving = false,
+  availablePlayers = [],
+  moveDestinationsFor,
+  onAddPlayer,
+  onRemovePlayer,
+}: TournamentTeamCardProps) {
   const maleCount = team.players.filter((p) => p.gender === 'male').length;
   const femaleCount = team.players.filter((p) => p.gender === 'female').length;
 
@@ -33,25 +48,25 @@ export default function TournamentTeamCard({ team, isWinner, playerAwards }: Tou
         <h3 className="font-bold text-lg">{team.name}</h3>
       </div>
       <ul className="space-y-1">
-        {[...team.players].sort(comparePlayersByGenderThenName).map((player) => {
-          const awards = playerAwards.get(player.id);
-          return (
-            <li key={player.id} className="flex items-center gap-2 py-1 px-2">
-              <GenderIcon gender={player.gender} />
-              <span>{player.name}</span>
-              {isGuest(player) && <InvBadge />}
-              {awards?.map((award) => {
-                const Icon = AWARD_ICONS[award];
-                return (
-                  <Tooltip key={award} label={AWARD_LABELS[award]} className="text-gold">
-                    <Icon className="w-4 h-4" />
-                  </Tooltip>
-                );
-              })}
-            </li>
-          );
-        })}
+        {[...team.players].sort(comparePlayersByGenderThenName).map((player) => (
+          <ParticipantRow
+            key={player.id}
+            player={player}
+            awards={playerAwards.get(player.id)}
+            canEdit={canEdit}
+            disabled={saving}
+            moveDestinations={moveDestinationsFor?.(player) ?? []}
+            onRemove={onRemovePlayer ? () => onRemovePlayer(player.id) : undefined}
+          />
+        ))}
       </ul>
+      {canEdit && onAddPlayer && (
+        <AddParticipantControl
+          availablePlayers={availablePlayers}
+          onAdd={onAddPlayer}
+          disabled={saving}
+        />
+      )}
       <div className="mt-2 pt-2 border-t border-border-subtle text-sm text-muted">
         <span>{team.players.length} jugador{team.players.length !== 1 ? 'es' : ''}</span>
         {' · '}

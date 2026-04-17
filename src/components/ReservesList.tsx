@@ -1,14 +1,28 @@
 import type { Player } from '../types';
-import { isGuest } from '../types';
-import GenderIcon from './GenderIcon';
-import InvBadge from './InvBadge';
+import ParticipantRow, { type MoveDestination } from './ParticipantRow';
+import AddParticipantControl from './AddParticipantControl';
 
 interface ReservesListProps {
   reserves: Player[];
+  canEdit?: boolean;
+  saving?: boolean;
+  availablePlayers?: Player[];
+  moveDestinationsFor?: (player: Player) => MoveDestination[];
+  onAddPlayer?: (playerId: number) => void;
+  onRemovePlayer?: (playerId: number) => void;
 }
 
-export default function ReservesList({ reserves }: ReservesListProps) {
-  if (reserves.length === 0) return null;
+export default function ReservesList({
+  reserves,
+  canEdit = false,
+  saving = false,
+  availablePlayers = [],
+  moveDestinationsFor,
+  onAddPlayer,
+  onRemovePlayer,
+}: ReservesListProps) {
+  // Hide the whole card when there are no reserves and editing is disabled
+  if (reserves.length === 0 && !canEdit) return null;
 
   return (
     <div className="border border-border rounded-lg p-4 mt-4">
@@ -18,15 +32,27 @@ export default function ReservesList({ reserves }: ReservesListProps) {
           ({reserves.length})
         </span>
       </h3>
-      <ul className="space-y-1">
-        {reserves.map((player) => (
-          <li key={player.id} className="flex items-center gap-2 py-1 px-2">
-            <GenderIcon gender={player.gender} />
-            <span>{player.name}</span>
-            {isGuest(player) && <InvBadge />}
-          </li>
-        ))}
-      </ul>
+      {reserves.length > 0 && (
+        <ul className="space-y-1">
+          {[...reserves].sort((a, b) => a.name.localeCompare(b.name)).map((player) => (
+            <ParticipantRow
+              key={player.id}
+              player={player}
+              canEdit={canEdit}
+              disabled={saving}
+              moveDestinations={moveDestinationsFor?.(player) ?? []}
+              onRemove={onRemovePlayer ? () => onRemovePlayer(player.id) : undefined}
+            />
+          ))}
+        </ul>
+      )}
+      {canEdit && onAddPlayer && (
+        <AddParticipantControl
+          availablePlayers={availablePlayers}
+          onAdd={onAddPlayer}
+          disabled={saving}
+        />
+      )}
     </div>
   );
 }

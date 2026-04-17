@@ -28,6 +28,8 @@ import {
   IconUpload,
   IconShare,
   IconMail,
+  IconDotsVertical,
+  IconPlus,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -162,4 +164,12 @@ export function GoogleIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function MailIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconMail className={className} stroke={STROKE} />;
+}
+
+export function DotsVerticalIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconDotsVertical className={className} stroke={STROKE} />;
+}
+
+export function PlusIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconPlus className={className} stroke={STROKE} />;
 }
