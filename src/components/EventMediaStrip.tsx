@@ -13,7 +13,7 @@ interface EventMediaStripProps {
 }
 
 export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
-  const { isAdmin } = useAppContext();
+  const { isModOrAdmin } = useAppContext();
   const navigate = useNavigate();
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
   if (loading) return null;
 
   // Empty state: show upload button for admins, nothing for non-admins
-  if (items.length === 0 && !isAdmin) return null;
+  if (items.length === 0 && !isModOrAdmin) return null;
 
   return (
     <div className="mt-4">
@@ -69,7 +69,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-sm text-muted">Fotos</h3>
             <div className="flex items-center gap-2">
-              {isAdmin && (
+              {isModOrAdmin && (
                 <Tooltip label="Subir fotos">
                   <button
                     onClick={() => setShowUpload(true)}

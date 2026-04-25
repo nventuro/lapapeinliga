@@ -16,7 +16,7 @@ import PlayerSearchFilter from './PlayerSearchFilter';
 import { deleteFromR2, keyFromPublicUrl } from '../utils/mediaUpload';
 
 export default function GalleryPage() {
-  const { isAdmin, players: allPlayers } = useAppContext();
+  const { isAdmin, isModOrAdmin, players: allPlayers } = useAppContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -91,7 +91,7 @@ export default function GalleryPage() {
     ? (items.find((i) => i.id === openMediaId)?.event_id ?? null)
     : null;
   const { participants: tagCandidates, loading: tagCandidatesLoading } = useEventParticipants(
-    isAdmin ? lightboxEventId : null,
+    isModOrAdmin ? lightboxEventId : null,
   );
 
   const openItem = openMediaId ? items.find((i) => i.id === openMediaId) ?? null : null;
@@ -236,7 +236,7 @@ export default function GalleryPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold">Galería</h2>
-        {isAdmin && items.length > 0 && (
+        {isModOrAdmin && items.length > 0 && (
           <Tooltip label="Subir fotos">
             <button
               onClick={() => setShowUpload(true)}
@@ -306,7 +306,7 @@ export default function GalleryPage() {
         <div className="flex flex-col items-center justify-center py-16 text-muted">
           <PhotosIcon className="w-12 h-12 mb-3" />
           <p className="text-lg font-medium">Todavía no hay fotos</p>
-          {isAdmin && (
+          {isModOrAdmin && (
             <button
               onClick={() => setShowUpload(true)}
               className="mt-4 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors"
@@ -334,11 +334,11 @@ export default function GalleryPage() {
           })() : null}
           onEventClick={openItem.event_id ? () => navigate(`/fechas/${eventShortIds.get(openItem.event_id!) ?? openItem.event_id}`) : undefined}
           onPlayerClick={handlePlayerClick}
-          isAdmin={isAdmin}
+          canEditTags={isModOrAdmin}
           tagCandidates={tagCandidates}
           allPlayers={allPlayers}
           tagCandidatesLoading={tagCandidatesLoading}
-          onTogglePlayerTag={isAdmin ? handleTogglePlayerTag : undefined}
+          onTogglePlayerTag={isModOrAdmin ? handleTogglePlayerTag : undefined}
         />
       )}
       {showUpload && (

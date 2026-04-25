@@ -6,11 +6,6 @@ import {
 } from "npm:@aws-sdk/client-s3@3";
 import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3";
 
-const ADMIN_EMAILS = [
-  "nicolas.venturo@gmail.com",
-  "gustavobarbaresi@gmail.com",
-];
-
 const R2_BUCKET = "lapapeinliga-media";
 const R2_PUBLIC_URL = "https://pub-df9f9a703547492297599f5504e26d19.r2.dev";
 const PRESIGNED_URL_EXPIRY = 900; // 15 minutes
@@ -34,26 +29,26 @@ function getS3Client(): S3Client {
   });
 }
 
-async function verifyAdmin(authHeader: string | null): Promise<{ isAdmin: boolean; debug: string }> {
-  if (!authHeader) return { isAdmin: false, debug: "No auth header" };
+async function verifyRole(
+  authHeader: string | null,
+  rpcName: "is_admin" | "is_mod_or_admin",
+): Promise<{ allowed: boolean; debug: string }> {
+  if (!authHeader) return { allowed: false, debug: "No auth header" };
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
   if (!supabaseUrl || !supabaseKey) {
-    return { isAdmin: false, debug: `Missing env: URL=${!!supabaseUrl}, KEY=${!!supabaseKey}` };
+    return { allowed: false, debug: `Missing env: URL=${!!supabaseUrl}, KEY=${!!supabaseKey}` };
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey, {
     global: { headers: { Authorization: authHeader } },
   });
 
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error) return { isAdmin: false, debug: `getUser error: ${error.message}` };
-  if (!user?.email) return { isAdmin: false, debug: "No email in user" };
-  if (!ADMIN_EMAILS.includes(user.email)) {
-    return { isAdmin: false, debug: `Email ${user.email} not in admin list` };
-  }
-  return { isAdmin: true, debug: "ok" };
+  const { data, error } = await supabase.rpc(rpcName);
+  if (error) return { allowed: false, debug: `${rpcName} error: ${error.message}` };
+  if (data !== true) return { allowed: false, debug: `${rpcName} returned ${data}` };
+  return { allowed: true, debug: "ok" };
 }
 
 Deno.serve(async (req) => {
@@ -62,9 +57,11 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Verify admin
-  const { isAdmin, debug } = await verifyAdmin(req.headers.get("Authorization"));
-  if (!isAdmin) {
+  // POST (presigned uploads) is open to mods + admins; DELETE (R2 removal)
+  // stays admin-only. RPCs hit the role table — single source of truth.
+  const requiredRole = req.method === "DELETE" ? "is_admin" : "is_mod_or_admin";
+  const { allowed, debug } = await verifyRole(req.headers.get("Authorization"), requiredRole);
+  if (!allowed) {
     return new Response(JSON.stringify({ error: "Unauthorized", debug }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

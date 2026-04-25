@@ -17,8 +17,8 @@ interface LightboxProps {
   eventLabel?: string | null;
   onEventClick?: () => void;
   onPlayerClick?: (playerId: number) => void;
-  // Admin tagging
-  isAdmin?: boolean;
+  // Player tagging (mods + admins)
+  canEditTags?: boolean;
   tagCandidates?: Player[];
   allPlayers?: Player[];
   tagCandidatesLoading?: boolean;
@@ -27,7 +27,7 @@ interface LightboxProps {
 
 export default function Lightbox({
   item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick,
-  onPlayerClick, isAdmin, tagCandidates, allPlayers, tagCandidatesLoading, onTogglePlayerTag,
+  onPlayerClick, canEditTags, tagCandidates, allPlayers, tagCandidatesLoading, onTogglePlayerTag,
 }: LightboxProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useBodyScrollLock();
@@ -138,7 +138,7 @@ export default function Lightbox({
             &times;
           </button>
           <div className="flex items-center gap-2">
-            {isAdmin && onTogglePlayerTag && (
+            {canEditTags && onTogglePlayerTag && (
               <Tooltip label="Etiquetar personas">
                 <button
                   onClick={() => setShowTagEditor((v) => !v)}
