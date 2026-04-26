@@ -677,6 +677,20 @@ export default function EventDetailPage() {
       {/* Match: Teams */}
       {event.type === 'match' && (
         <>
+          <AwardsSection
+            eventType={event.type}
+            participants={participants}
+            voteWindow={awards.voteWindow}
+            results={awards.results}
+            myVotes={awards.myVotes}
+            loading={awards.loading}
+            onCastVote={awards.castVote}
+            onClearVote={awards.clearVote}
+            onResolveTie={awards.resolveTie}
+          />
+
+          <EventMediaStrip eventId={event.id} />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             {event.teams.map((team) => {
               const matchEvent = event as MatchWithDetails;
@@ -745,7 +759,12 @@ export default function EventDetailPage() {
             glowingWinner={glowingWinner}
             onWinnerChange={handleWinnerChange}
           />
+        </>
+      )}
 
+      {/* Tournament */}
+      {event.type === 'tournament' && (
+        <>
           <AwardsSection
             eventType={event.type}
             participants={participants}
@@ -757,12 +776,9 @@ export default function EventDetailPage() {
             onClearVote={awards.clearVote}
             onResolveTie={awards.resolveTie}
           />
-        </>
-      )}
 
-      {/* Tournament */}
-      {event.type === 'tournament' && (
-        <>
+          <EventMediaStrip eventId={event.id} />
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {event.teams.map((team) => {
               const tournamentEvent = event as TournamentWithDetails;
@@ -843,18 +859,6 @@ export default function EventDetailPage() {
             glowingWinner={glowingWinner}
             onWinnerChange={handleTournamentWinnerChange}
           />
-
-          <AwardsSection
-            eventType={event.type}
-            participants={participants}
-            voteWindow={awards.voteWindow}
-            results={awards.results}
-            myVotes={awards.myVotes}
-            loading={awards.loading}
-            onCastVote={awards.castVote}
-            onClearVote={awards.clearVote}
-            onResolveTie={awards.resolveTie}
-          />
         </>
       )}
 
@@ -909,7 +913,7 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      <EventMediaStrip eventId={event.id} />
+      {event.type === 'training' && <EventMediaStrip eventId={event.id} />}
 
       {isAdmin && (
         <ConfirmAction
