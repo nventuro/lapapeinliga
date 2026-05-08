@@ -117,7 +117,7 @@ export function isNewLocationComplete(selection: LocationSelection): boolean {
   );
 }
 
-export const COST_MARKUP_MULTIPLIER = 1.2;
+export const COST_MARKUP_MULTIPLIER = 1;
 export const COST_ROUNDING_NEAREST = 100;
 
 export const TOURNAMENT_WIN_POINTS = 3;
