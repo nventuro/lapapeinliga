@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
-import { CalendarIcon, ChartBarIcon, CogIcon, GoogleIcon, PhotosIcon, UserGroupIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, CogIcon, EditIcon, GoogleIcon, PhotosIcon, UserGroupIcon } from './icons';
 import ToggleSwitch from './ToggleSwitch';
+import Tooltip from './Tooltip';
+import EditNameDialog from './EditNameDialog';
 import Footer from './Footer';
 
 export default function MainLayout() {
@@ -11,6 +13,7 @@ export default function MainLayout() {
   const currentPlayer = useCurrentPlayer();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editNameOpen, setEditNameOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = () => {
@@ -68,8 +71,18 @@ export default function MainLayout() {
                         <p className="text-xs text-muted truncate">{session.user.email}</p>
                       )}
                       {currentPlayer && (
-                        <p className="text-xs text-primary truncate mt-1">
-                          Jugás como <span className="font-medium">{currentPlayer.name}</span>
+                        <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                          <span className="truncate">
+                            Jugás como <span className="font-medium">{currentPlayer.name}</span>
+                          </span>
+                          <Tooltip label="Cambiar nombre">
+                            <button
+                              onClick={() => { setMenuOpen(false); setEditNameOpen(true); }}
+                              className="shrink-0 text-muted hover:text-primary transition-colors"
+                            >
+                              <EditIcon className="w-3 h-3" />
+                            </button>
+                          </Tooltip>
                         </p>
                       )}
                     </div>
@@ -163,6 +176,13 @@ export default function MainLayout() {
 
         <Footer className="mt-8 pb-4" />
       </div>
+
+      {editNameOpen && currentPlayer && (
+        <EditNameDialog
+          currentName={currentPlayer.name}
+          onClose={() => setEditNameOpen(false)}
+        />
+      )}
     </div>
   );
 }
