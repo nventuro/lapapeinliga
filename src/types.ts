@@ -215,9 +215,9 @@ export function allParticipants(event: EventWithDetails): Player[] {
   return [...event.attendees, ...event.coaches];
 }
 
-export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort';
+export type AwardType = 'top_scorer' | 'best_defense' | 'mvp' | 'best_goalie' | 'most_effort' | 'brutality';
 
-export const AWARD_TYPES: AwardType[] = ['mvp', 'most_effort', 'top_scorer', 'best_defense', 'best_goalie'];
+export const AWARD_TYPES: AwardType[] = ['mvp', 'most_effort', 'top_scorer', 'best_defense', 'best_goalie', 'brutality'];
 
 export const AWARD_LABELS: Record<AwardType, string> = {
   top_scorer: 'Gol de Oro',
@@ -225,6 +225,7 @@ export const AWARD_LABELS: Record<AwardType, string> = {
   mvp: 'Figura del Partido',
   best_goalie: 'Manos de Acero',
   most_effort: 'Mas Huevo',
+  brutality: 'El Carnicero',
 };
 
 export const AWARD_DESCRIPTIONS: Record<AwardType, string> = {
@@ -233,6 +234,7 @@ export const AWARD_DESCRIPTIONS: Record<AwardType, string> = {
   mvp: 'Brilló a su manera y se ganó todos los aplausos',
   best_goalie: 'Sacó hasta las que no se sacan',
   most_effort: 'Garra pura: no bajó los brazos ni un minuto',
+  brutality: 'Llegó tarde a la pelota, justo a tiempo para el rival',
 };
 
 export type AwardVoteWindowState = 'pending' | 'open' | 'closed' | 'n/a';

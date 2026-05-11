@@ -30,6 +30,7 @@ import {
   IconMail,
   IconDotsVertical,
   IconPlus,
+  IconAxe,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -172,4 +173,8 @@ export function DotsVerticalIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function PlusIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconPlus className={className} stroke={STROKE} />;
+}
+
+export function AxeIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconAxe className={className} stroke={STROKE} />;
 }
