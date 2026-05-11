@@ -28,6 +28,7 @@ import {
   IconUpload,
   IconShare,
   IconMail,
+  IconMailOff,
   IconDotsVertical,
   IconPlus,
   IconAxe,
@@ -165,6 +166,10 @@ export function GoogleIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function MailIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconMail className={className} stroke={STROKE} />;
+}
+
+export function MailOffIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconMailOff className={className} stroke={STROKE} />;
 }
 
 export function DotsVerticalIcon({ className = 'w-4 h-4' }: IconProps) {

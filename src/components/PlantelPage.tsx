@@ -5,7 +5,7 @@ import { PLAYER_TIERS, TIER_GROUP_LABELS, AWARD_TYPES, AWARD_LABELS } from '../t
 import { supabase } from '../lib/supabase';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
 import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
-import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon, PhotosIcon, MailIcon } from './icons';
+import { EditIcon, TrashIcon, TrophyIcon, SneakerIcon, BarbellIcon, SpeakerphoneIcon, PhotosIcon, MailOffIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import PlayerModal from './PlayerModal';
 import RatingBadge from './RatingBadge';
@@ -102,9 +102,9 @@ export default function PlantelPage() {
                 >
                   <GenderIcon gender={player.gender} />
                   <span className="font-medium truncate">{player.name}</span>
-                  {isAdmin && player.email && (
-                    <Tooltip label={player.email}>
-                      <MailIcon className="w-4 h-4 text-muted" />
+                  {isAdmin && !player.email && (
+                    <Tooltip label="Sin email vinculado">
+                      <MailOffIcon className="w-4 h-4 text-warning" />
                     </Tooltip>
                   )}
                   {playersWithPhotos.has(player.id) && (
