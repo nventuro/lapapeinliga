@@ -24,7 +24,7 @@ import {
   IconArrowsShuffle,
   IconBarbell,
   IconSpeakerphone,
-  IconPhoto,
+  IconCamera,
   IconUpload,
   IconShare,
   IconMail,
@@ -141,7 +141,7 @@ export function BarbellIcon({ className = 'w-4 h-4' }: IconProps) {
 }
 
 export function PhotosIcon({ className = 'w-4 h-4' }: IconProps) {
-  return <IconPhoto className={className} stroke={STROKE} />;
+  return <IconCamera className={className} stroke={STROKE} />;
 }
 
 export function UploadIcon({ className = 'w-4 h-4' }: IconProps) {
