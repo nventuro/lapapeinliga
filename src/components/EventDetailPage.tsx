@@ -653,17 +653,19 @@ export default function EventDetailPage() {
                   </p>
                 )}
               </div>
-              {isAdmin && (
+              {isModOrAdmin && (
                 <div className="flex items-center gap-1 shrink-0 self-start">
-                  <Tooltip label="Editar detalles">
-                    <button
-                      type="button"
-                      onClick={openDetailsEditor}
-                      className="p-1 rounded text-muted hover:text-on-surface transition-colors"
-                    >
-                      <EditIcon className="w-4 h-4" />
-                    </button>
-                  </Tooltip>
+                  {isAdmin && (
+                    <Tooltip label="Editar detalles">
+                      <button
+                        type="button"
+                        onClick={openDetailsEditor}
+                        className="p-1 rounded text-muted hover:text-on-surface transition-colors"
+                      >
+                        <EditIcon className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
                   <Tooltip label={canShare ? 'Compartir por WhatsApp' : 'Completá alias/CBU para compartir'}>
                     <button
                       type="button"
