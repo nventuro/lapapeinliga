@@ -5,6 +5,7 @@ import { AWARD_ICONS } from './awardIcons';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
 import { formatDateTime } from '../utils/dateUtils';
 import TiebreakerDialog from './TiebreakerDialog';
+import FeedbackInput from './FeedbackInput';
 
 interface AwardsSectionProps {
   eventType: EventType;
@@ -16,6 +17,10 @@ interface AwardsSectionProps {
   onCastVote: (award: AwardType, candidateId: number) => Promise<void>;
   onClearVote: (award: AwardType) => Promise<void>;
   onResolveTie: (award: AwardType, chosenId: number) => Promise<void>;
+  feedbackBody: string | null;
+  feedbackLoading: boolean;
+  onSubmitFeedback: (body: string) => Promise<void>;
+  onClearFeedback: () => Promise<void>;
 }
 
 function formatTimeRemaining(iso: string, now: Date): string {
@@ -39,6 +44,10 @@ export default function AwardsSection({
   onCastVote,
   onClearVote,
   onResolveTie,
+  feedbackBody,
+  feedbackLoading,
+  onSubmitFeedback,
+  onClearFeedback,
 }: AwardsSectionProps) {
   const { isAdmin } = useAppContext();
   const currentPlayer = useCurrentPlayer();
@@ -156,6 +165,15 @@ export default function AwardsSection({
                 Tus votos ya fueron registrados. Podés cambiarlos hasta que cierre la votación.
               </p>
             )}
+
+            <div className="border-t border-border pt-4">
+              <FeedbackInput
+                savedBody={feedbackBody}
+                loading={feedbackLoading}
+                onSubmit={onSubmitFeedback}
+                onClear={onClearFeedback}
+              />
+            </div>
           </div>
         )}
       </div>

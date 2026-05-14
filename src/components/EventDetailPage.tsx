@@ -20,10 +20,12 @@ import StandingsTable from './StandingsTable';
 import TournamentTeamCard from './TournamentTeamCard';
 import ResultsSection from './ResultsSection';
 import AwardsSection from './AwardsSection';
+import EventFeedbackAdminSection from './EventFeedbackAdminSection';
 import ReservesList from './ReservesList';
 import TrainingParticipantsList from './TrainingParticipantsList';
 import type { MoveDestination } from './ParticipantRow';
 import { useEventAwards } from '../hooks/useEventAwards';
+import { useEventFeedback } from '../hooks/useEventFeedback';
 
 type EventPageData = {
   event: EventWithDetails;
@@ -217,6 +219,12 @@ export default function EventDetailPage() {
   const [glowingWinner, setGlowingWinner] = useState(false);
 
   const awards = useEventAwards(event?.id ?? null, event?.type ?? null);
+  const feedback = useEventFeedback(
+    event?.id ?? null,
+    event?.type ?? null,
+    awards.voteWindow?.state ?? null,
+    isAdmin,
+  );
 
   // Details editing state
   const [editingDetails, setEditingDetails] = useState(false);
@@ -687,7 +695,15 @@ export default function EventDetailPage() {
             onCastVote={awards.castVote}
             onClearVote={awards.clearVote}
             onResolveTie={awards.resolveTie}
+            feedbackBody={feedback.myBody}
+            feedbackLoading={feedback.loading}
+            onSubmitFeedback={feedback.submit}
+            onClearFeedback={feedback.clear}
           />
+
+          {isAdmin && (
+            <EventFeedbackAdminSection bodies={feedback.adminBodies} loading={feedback.loading} />
+          )}
 
           <EventMediaStrip eventId={event.id} />
 
@@ -775,7 +791,15 @@ export default function EventDetailPage() {
             onCastVote={awards.castVote}
             onClearVote={awards.clearVote}
             onResolveTie={awards.resolveTie}
+            feedbackBody={feedback.myBody}
+            feedbackLoading={feedback.loading}
+            onSubmitFeedback={feedback.submit}
+            onClearFeedback={feedback.clear}
           />
+
+          {isAdmin && (
+            <EventFeedbackAdminSection bodies={feedback.adminBodies} loading={feedback.loading} />
+          )}
 
           <EventMediaStrip eventId={event.id} />
 

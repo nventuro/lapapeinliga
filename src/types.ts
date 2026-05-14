@@ -255,6 +255,8 @@ export type AwardResult = {
   tied_candidates: number[] | null;
 };
 
+export const EVENT_FEEDBACK_MAX_LENGTH = 2000;
+
 // Media gallery constants
 export const EQUIPO_TAG_NAME = 'equipo';
 
