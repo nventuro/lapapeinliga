@@ -9,7 +9,7 @@ import EditNameDialog from './EditNameDialog';
 import Footer from './Footer';
 
 export default function MainLayout() {
-  const { session, isAdmin, showRatings, setShowRatings, showCosts, setShowCosts, signIn } = useAppContext();
+  const { session, isActualAdmin, adminMode, setAdminMode, showRatings, setShowRatings, showCosts, setShowCosts, signIn } = useAppContext();
   const currentPlayer = useCurrentPlayer();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -88,18 +88,29 @@ export default function MainLayout() {
                     </div>
 
                     {/* Admin toggles */}
-                    {isAdmin && (
+                    {isActualAdmin && (
                       <div className="px-4 py-2 border-b border-border-subtle space-y-2">
                         <ToggleSwitch
-                          checked={showRatings}
-                          onChange={setShowRatings}
-                          label="Mostrar puntajes"
+                          checked={adminMode}
+                          onChange={setAdminMode}
+                          label="Modo admin"
                         />
-                        <ToggleSwitch
-                          checked={showCosts}
-                          onChange={setShowCosts}
-                          label="Mostrar costos"
-                        />
+                        {/* Score/cost displays don't exist for non-admins, so hide
+                            their toggles while previewing as one. */}
+                        {adminMode && (
+                          <>
+                            <ToggleSwitch
+                              checked={showRatings}
+                              onChange={setShowRatings}
+                              label="Mostrar puntajes"
+                            />
+                            <ToggleSwitch
+                              checked={showCosts}
+                              onChange={setShowCosts}
+                              label="Mostrar costos"
+                            />
+                          </>
+                        )}
                       </div>
                     )}
 

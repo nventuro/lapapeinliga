@@ -18,6 +18,7 @@ export function AppProvider({
   const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
   const [showRatings, setShowRatingsState] = useState(false);
   const [showCosts, setShowCostsState] = useState(false);
+  const [adminMode, setAdminMode] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,8 +63,18 @@ export function AppProvider({
     setError(null);
   }, []);
 
-  const isAdmin = role === 'admin';
-  const isModOrAdmin = role === 'admin' || role === 'moderator';
+  // Real privileges from the user's role.
+  const isActualAdmin = role === 'admin';
+  const isActualModOrAdmin = role === 'admin' || role === 'moderator';
+
+  // An actual admin can turn off admin mode to preview the app as a non-admin.
+  // While previewing, all elevated privileges drop and score/cost displays are
+  // forced off, so the UI matches exactly what a non-admin sees.
+  const previewingAsNonAdmin = isActualAdmin && !adminMode;
+  const isAdmin = isActualAdmin && !previewingAsNonAdmin;
+  const isModOrAdmin = isActualModOrAdmin && !previewingAsNonAdmin;
+  const effectiveShowRatings = showRatings && !previewingAsNonAdmin;
+  const effectiveShowCosts = showCosts && !previewingAsNonAdmin;
 
   // Initial data load + role check
   useEffect(() => {
@@ -98,8 +109,9 @@ export function AppProvider({
   }, [session, fetchData]);
 
   const refetchData = useCallback(async () => {
-    await fetchData(isAdmin);
-  }, [fetchData, isAdmin]);
+    // Data privileges follow the real role, not the non-admin preview.
+    await fetchData(isActualAdmin);
+  }, [fetchData, isActualAdmin]);
 
   const signIn = useCallback(() => {
     supabase.auth.signInWithOAuth({
@@ -141,7 +153,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, teamNames, role, isAdmin, isModOrAdmin, currentPlayerId, showRatings, setShowRatings, showCosts, setShowCosts, refetchData, signIn }}>
+    <AppContext.Provider value={{ session, players, preferences, teamNames, role, isAdmin, isModOrAdmin, isActualAdmin, adminMode, setAdminMode, currentPlayerId, showRatings: effectiveShowRatings, setShowRatings, showCosts: effectiveShowCosts, setShowCosts, refetchData, signIn }}>
       {children}
     </AppContext.Provider>
   );
