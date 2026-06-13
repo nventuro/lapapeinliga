@@ -3,7 +3,6 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useNavigate } from 'react-router-dom';
 import type { Team, Player, ShirtColor, Location, LocationSelection } from '../types';
 import { isNewLocationComplete } from '../types';
-import { ShirtIcon, ShuffleIcon } from './icons';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDateShort, isValidTime } from '../utils/dateUtils';
@@ -11,7 +10,7 @@ import { shuffle } from '../utils/shuffle';
 import { defaultTeamName } from '../utils/teamSorter';
 import LocationPicker from './LocationPicker';
 import TimeInput from './TimeInput';
-import Tooltip from './Tooltip';
+import TeamNameColorControls from './TeamNameColorControls';
 
 function nextSaturday(): string {
   const today = new Date();
@@ -384,39 +383,14 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
 
           {hasTeams && teamNames.map((teamName, i) => (
             <div key={i} className="border border-border rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={teamName}
-                  onChange={(e) => handleTeamNameChange(i, e.target.value)}
-                  required
-                  className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-                />
-                {suggestedTeamNames.length > 0 && (
-                  <Tooltip label="Nombre aleatorio">
-                    <button
-                      type="button"
-                      onClick={() => handleRandomizeName(i)}
-                      className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
-                    >
-                      <ShuffleIcon className="w-5 h-5 text-muted" />
-                    </button>
-                  </Tooltip>
-                )}
-                {props.type === 'match' && (
-                  <Tooltip label={shirtColors[i] === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
-                    <button
-                      type="button"
-                      onClick={() => handleShirtColorToggle(i)}
-                      className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
-                    >
-                      <ShirtIcon
-                        className={`w-5 h-5 ${shirtColors[i] === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-                      />
-                    </button>
-                  </Tooltip>
-                )}
-              </div>
+              <TeamNameColorControls
+                name={teamName}
+                onNameChange={(value) => handleTeamNameChange(i, value)}
+                shirtColor={props.type === 'match' ? shirtColors[i] : undefined}
+                onShirtColorToggle={() => handleShirtColorToggle(i)}
+                onRandomize={suggestedTeamNames.length > 0 ? () => handleRandomizeName(i) : undefined}
+                required
+              />
               <ul className="mt-2 text-sm text-muted space-y-0.5">
                 {props.teams[i].players.map((p) => (
                   <li key={p.id}>{p.name}</li>

@@ -1,10 +1,10 @@
-import type { MatchTeam, Player, AwardType } from '../types';
+import type { MatchTeam, Player, AwardType, ShirtColor } from '../types';
 import { comparePlayersByGenderThenName } from '../types';
 import { teamAverageRating } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
-import { TrophyIcon, ShirtIcon, GenderMaleIcon, GenderFemaleIcon } from './icons';
-import Tooltip from './Tooltip';
+import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 import Confetti from './Confetti';
+import EditableTeamName from './EditableTeamName';
 import ParticipantRow, { type MoveDestination } from './ParticipantRow';
 import AddParticipantControl from './AddParticipantControl';
 
@@ -18,6 +18,8 @@ interface BuiltTeamDisplayProps {
   moveDestinationsFor?: (player: Player) => MoveDestination[];
   onAddPlayer?: (playerId: number) => void;
   onRemovePlayer?: (playerId: number) => void;
+  canEditTeam?: boolean;
+  onSaveTeam?: (name: string, shirtColor?: ShirtColor) => void;
 }
 
 export default function BuiltTeamDisplay({
@@ -30,6 +32,8 @@ export default function BuiltTeamDisplay({
   moveDestinationsFor,
   onAddPlayer,
   onRemovePlayer,
+  canEditTeam = false,
+  onSaveTeam,
 }: BuiltTeamDisplayProps) {
   const { isAdmin, showRatings } = useAppContext();
   const maleCount = team.players.filter((p) => p.gender === 'male').length;
@@ -42,26 +46,19 @@ export default function BuiltTeamDisplay({
       }`}
     >
       {isWinner && <Confetti />}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {isWinner && (
-            <Tooltip label="Ganador">
-              <TrophyIcon className="w-5 h-5 text-gold" />
-            </Tooltip>
-          )}
-          <h3 className="font-bold text-lg">{team.name}</h3>
-          <Tooltip label={team.shirt_color === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
-            <ShirtIcon
-              className={`w-5 h-5 ${team.shirt_color === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-            />
-          </Tooltip>
-        </div>
-        {isAdmin && showRatings && (
-          <span className="text-sm text-muted">
+      <EditableTeamName
+        name={team.name}
+        shirtColor={team.shirt_color}
+        isWinner={isWinner}
+        trailing={isAdmin && showRatings ? (
+          <span className="text-sm text-muted shrink-0">
             Promedio: {teamAverageRating(team).toFixed(1)}
           </span>
-        )}
-      </div>
+        ) : undefined}
+        canEdit={canEditTeam}
+        saving={saving}
+        onSave={onSaveTeam}
+      />
       <ul className="space-y-1">
         {[...team.players].sort(comparePlayersByGenderThenName).map((player) => (
           <ParticipantRow

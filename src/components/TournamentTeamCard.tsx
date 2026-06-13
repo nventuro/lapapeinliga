@@ -1,8 +1,8 @@
 import type { TournamentTeam, Player, AwardType } from '../types';
 import { comparePlayersByGenderThenName } from '../types';
-import { TrophyIcon, GenderMaleIcon, GenderFemaleIcon } from './icons';
-import Tooltip from './Tooltip';
+import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 import Confetti from './Confetti';
+import EditableTeamName from './EditableTeamName';
 import ParticipantRow, { type MoveDestination } from './ParticipantRow';
 import AddParticipantControl from './AddParticipantControl';
 
@@ -16,6 +16,8 @@ interface TournamentTeamCardProps {
   moveDestinationsFor?: (player: Player) => MoveDestination[];
   onAddPlayer?: (playerId: number) => void;
   onRemovePlayer?: (playerId: number) => void;
+  canEditTeam?: boolean;
+  onSaveTeam?: (name: string) => void;
 }
 
 export default function TournamentTeamCard({
@@ -28,6 +30,8 @@ export default function TournamentTeamCard({
   moveDestinationsFor,
   onAddPlayer,
   onRemovePlayer,
+  canEditTeam = false,
+  onSaveTeam,
 }: TournamentTeamCardProps) {
   const maleCount = team.players.filter((p) => p.gender === 'male').length;
   const femaleCount = team.players.filter((p) => p.gender === 'female').length;
@@ -39,14 +43,13 @@ export default function TournamentTeamCard({
       }`}
     >
       {isWinner && <Confetti />}
-      <div className="flex items-center gap-2 mb-3">
-        {isWinner && (
-          <Tooltip label="Ganador">
-            <TrophyIcon className="w-5 h-5 text-gold" />
-          </Tooltip>
-        )}
-        <h3 className="font-bold text-lg">{team.name}</h3>
-      </div>
+      <EditableTeamName
+        name={team.name}
+        isWinner={isWinner}
+        canEdit={canEditTeam}
+        saving={saving}
+        onSave={onSaveTeam}
+      />
       <ul className="space-y-1">
         {[...team.players].sort(comparePlayersByGenderThenName).map((player) => (
           <ParticipantRow

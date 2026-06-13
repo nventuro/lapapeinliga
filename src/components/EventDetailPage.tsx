@@ -721,6 +721,10 @@ export default function EventDetailPage() {
                   canEdit={isModOrAdmin}
                   saving={saving}
                   availablePlayers={availablePlayers}
+                  canEditTeam={isAdmin}
+                  onSaveTeam={(name, shirtColor) => mutate(() =>
+                    supabase.from('match_teams').update({ name, ...(shirtColor ? { shirt_color: shirtColor } : {}) }).eq('id', team.id),
+                  )}
                   onAddPlayer={(playerId) => mutate(() =>
                     supabase.from('match_team_players').insert({ match_team_id: team.id, player_id: playerId }),
                   )}
@@ -817,6 +821,10 @@ export default function EventDetailPage() {
                   canEdit={isModOrAdmin}
                   saving={saving}
                   availablePlayers={availablePlayers}
+                  canEditTeam={isAdmin}
+                  onSaveTeam={(name) => mutate(() =>
+                    supabase.from('tournament_teams').update({ name }).eq('id', team.id),
+                  )}
                   onAddPlayer={(playerId) => mutate(() =>
                     supabase.from('tournament_team_players').insert({ tournament_team_id: team.id, player_id: playerId }),
                   )}
