@@ -1,12 +1,13 @@
 import { MIN_PLAYERS, MIN_TOURNAMENT_PLAYERS, MIN_TOURNAMENT_TEAMS } from '../types';
 import { getValidTeamCounts } from '../utils/teamCalculator';
-import { BarbellIcon, SoccerBallIcon, TrophyIcon } from './icons';
+import { BarbellIcon, ShieldIcon, SoccerBallIcon, TrophyIcon } from './icons';
 
 interface EventConfiguratorProps {
   selectedCount: number;
   onGenerate: (teamCount: number) => void;
   onTournament: (teamCount: number) => void;
   onTraining: () => void;
+  onExternalMatch: () => void;
 }
 
 export default function EventConfigurator({
@@ -14,6 +15,7 @@ export default function EventConfigurator({
   onGenerate,
   onTournament,
   onTraining,
+  onExternalMatch,
 }: EventConfiguratorProps) {
   const canBuildTeams = selectedCount >= MIN_PLAYERS;
   const allOptions = canBuildTeams ? getValidTeamCounts(selectedCount) : [];
@@ -63,6 +65,16 @@ export default function EventConfigurator({
             </span>
           </button>
         ))}
+
+        <button
+          onClick={onExternalMatch}
+          className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
+        >
+          <ShieldIcon className="w-5 h-5" />
+          <span className="font-normal">
+            Partido externo, {selectedCount} en nuestro equipo
+          </span>
+        </button>
 
         <button
           onClick={onTraining}

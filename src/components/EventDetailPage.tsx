@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
-import type { EventWithDetails, MatchWithDetails, TournamentWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
+import type { EventWithDetails, MatchWithDetails, TournamentWithDetails, ExternalMatchWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, ExternalMatch, ExternalTeam, ExternalMatchPlayer, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
 import { allParticipants, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, BarbellIcon } from './icons';
+import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, BarbellIcon, ShieldIcon } from './icons';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
 import TimeInput from './TimeInput';
 import Tooltip from './Tooltip';
@@ -19,6 +19,9 @@ import TournamentMatchList from './TournamentMatchList';
 import StandingsTable from './StandingsTable';
 import TournamentTeamCard from './TournamentTeamCard';
 import ResultsSection from './ResultsSection';
+import ExternalMatchRoster from './ExternalMatchRoster';
+import ExternalMatchScoreCard from './ExternalMatchScoreCard';
+import ExternalMatchHeadToHead from './ExternalMatchHeadToHead';
 import AwardsSection from './AwardsSection';
 import EventFeedbackAdminSection from './EventFeedbackAdminSection';
 import ReservesList from './ReservesList';
@@ -167,6 +170,61 @@ async function fetchEventData(
         tournamentMatches,
         location,
       } as TournamentWithDetails,
+      eventNumber,
+    };
+  } else if (eventData.type === 'external_match') {
+    // External match
+    const { data: externalMatchData } = await supabase
+      .from('external_matches')
+      .select('*')
+      .eq('event_id', eventId)
+      .single();
+
+    if (!externalMatchData) return null;
+
+    const { data: opponentData } = await supabase
+      .from('external_teams')
+      .select('id, name')
+      .eq('id', externalMatchData.external_team_id)
+      .single();
+
+    if (!opponentData) return null;
+
+    const [rosterResult, reservesResult] = await Promise.all([
+      supabase
+        .from('external_match_players')
+        .select('player_id, goals')
+        .eq('external_match_id', externalMatchData.id),
+      supabase
+        .from('external_match_reserves')
+        .select('player_id')
+        .eq('external_match_id', externalMatchData.id),
+    ]);
+
+    const roster: ExternalMatchPlayer[] = (rosterResult.data ?? [])
+      .map((r) => {
+        const player = playerMap.get(r.player_id);
+        return player ? { player, goals: r.goals } : null;
+      })
+      .filter((r): r is ExternalMatchPlayer => r !== null);
+
+    const reserves = (reservesResult.data ?? [])
+      .map((r) => playerMap.get(r.player_id))
+      .filter((p): p is Player => p !== undefined);
+
+    const externalMatch = externalMatchData as ExternalMatch;
+    const opponent = opponentData as ExternalTeam;
+
+    return {
+      event: {
+        ...eventData,
+        type: 'external_match' as const,
+        externalMatch,
+        opponent,
+        roster,
+        reserves,
+        location,
+      } as ExternalMatchWithDetails,
       eventNumber,
     };
   } else {
@@ -432,6 +490,37 @@ export default function EventDetailPage() {
     setSaving(false);
   }
 
+  async function handleExternalScoreChange(ourScore: number | null, theirScore: number | null) {
+    if (!event || event.type !== 'external_match') return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('external_matches')
+      .update({ our_score: ourScore, their_score: theirScore })
+      .eq('id', event.externalMatch.id);
+
+    if (!error) {
+      setEvent({ ...event, externalMatch: { ...event.externalMatch, our_score: ourScore, their_score: theirScore } });
+      if (ourScore != null && theirScore != null) {
+        setGlowingWinner(true);
+        setTimeout(() => setGlowingWinner(false), 4000);
+      }
+    }
+    setSaving(false);
+  }
+
+  async function handleSetGoals(playerId: number, goals: number) {
+    if (!event || event.type !== 'external_match') return;
+    const externalMatchId = event.externalMatch.id;
+    await mutate(() =>
+      supabase
+        .from('external_match_players')
+        .update({ goals })
+        .eq('external_match_id', externalMatchId)
+        .eq('player_id', playerId),
+    );
+  }
+
   async function handleAddTournamentMatch(teamAId: number, teamBId: number) {
     if (!event || event.type !== 'tournament') return;
     setSaving(true);
@@ -535,8 +624,14 @@ export default function EventDetailPage() {
     }
   }
 
-  const TypeIcon = event.type === 'match' ? SoccerBallIcon : event.type === 'tournament' ? TrophyIcon : BarbellIcon;
-  const typeLabel = event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : 'Entrenamiento';
+  const TypeIcon = event.type === 'match' ? SoccerBallIcon
+    : event.type === 'tournament' ? TrophyIcon
+    : event.type === 'external_match' ? ShieldIcon
+    : BarbellIcon;
+  const typeLabel = event.type === 'match' ? 'Partido'
+    : event.type === 'tournament' ? 'Torneo'
+    : event.type === 'external_match' ? 'Partido externo'
+    : 'Entrenamiento';
 
   return (
     <div>
@@ -892,6 +987,74 @@ export default function EventDetailPage() {
             saving={saving}
             glowingWinner={glowingWinner}
             onWinnerChange={handleTournamentWinnerChange}
+          />
+        </>
+      )}
+
+      {/* External match: our roster vs an external opponent. No awards/feedback. */}
+      {event.type === 'external_match' && (
+        <>
+          <EventMediaStrip eventId={event.id} />
+
+          <ExternalMatchRoster
+            roster={event.roster}
+            canEditParticipants={isModOrAdmin}
+            canEditGoals={isAdmin}
+            saving={saving}
+            availablePlayers={availablePlayers}
+            onAddPlayer={(playerId) => mutate(() =>
+              supabase.from('external_match_players').insert({ external_match_id: (event as ExternalMatchWithDetails).externalMatch.id, player_id: playerId }),
+            )}
+            onRemovePlayer={(playerId) => mutate(() =>
+              supabase.from('external_match_players').delete().eq('external_match_id', (event as ExternalMatchWithDetails).externalMatch.id).eq('player_id', playerId),
+            )}
+            onSetGoals={handleSetGoals}
+            moveDestinationsFor={(player): MoveDestination[] => [
+              {
+                label: 'Mover a suplentes',
+                onSelect: () => mutateMove(
+                  () => supabase.from('external_match_reserves').insert({ external_match_id: (event as ExternalMatchWithDetails).externalMatch.id, player_id: player.id }),
+                  () => supabase.from('external_match_players').delete().eq('external_match_id', (event as ExternalMatchWithDetails).externalMatch.id).eq('player_id', player.id),
+                ),
+              },
+            ]}
+          />
+
+          <ReservesList
+            reserves={event.reserves}
+            canEdit={isModOrAdmin}
+            saving={saving}
+            availablePlayers={availablePlayers}
+            onAddPlayer={(playerId) => mutate(() =>
+              supabase.from('external_match_reserves').insert({ external_match_id: event.externalMatch.id, player_id: playerId }),
+            )}
+            onRemovePlayer={(playerId) => mutate(() =>
+              supabase.from('external_match_reserves').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', playerId),
+            )}
+            moveDestinationsFor={(player): MoveDestination[] => [
+              {
+                label: 'Mover a titulares',
+                onSelect: () => mutateMove(
+                  () => supabase.from('external_match_players').insert({ external_match_id: (event as ExternalMatchWithDetails).externalMatch.id, player_id: player.id }),
+                  () => supabase.from('external_match_reserves').delete().eq('external_match_id', (event as ExternalMatchWithDetails).externalMatch.id).eq('player_id', player.id),
+                ),
+              },
+            ]}
+          />
+
+          <ExternalMatchScoreCard
+            match={event.externalMatch}
+            opponentName={event.opponent.name}
+            canEdit={isAdmin}
+            saving={saving}
+            glowing={glowingWinner}
+            onSave={handleExternalScoreChange}
+          />
+
+          <ExternalMatchHeadToHead
+            externalTeamId={event.opponent.id}
+            opponentName={event.opponent.name}
+            refreshToken={`${event.externalMatch.our_score}-${event.externalMatch.their_score}`}
           />
         </>
       )}

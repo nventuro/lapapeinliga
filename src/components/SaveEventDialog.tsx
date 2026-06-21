@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useNavigate } from 'react-router-dom';
-import type { Team, Player, ShirtColor, Location, LocationSelection } from '../types';
-import { isNewLocationComplete } from '../types';
+import type { Team, Player, ShirtColor, Location, LocationSelection, ExternalTeam, ExternalTeamSelection } from '../types';
+import { isNewLocationComplete, isExternalTeamSelectionComplete } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDateShort, isValidTime } from '../utils/dateUtils';
 import { shuffle } from '../utils/shuffle';
 import { defaultTeamName } from '../utils/teamSorter';
 import LocationPicker from './LocationPicker';
+import ExternalTeamPicker from './ExternalTeamPicker';
 import TimeInput from './TimeInput';
 import TeamNameColorControls from './TeamNameColorControls';
 
@@ -27,6 +28,7 @@ type SaveEventDialogProps = {
   | { type: 'match'; teams: Team[]; reserves: Player[] }
   | { type: 'tournament'; teams: Team[]; reserves: Player[] }
   | { type: 'training'; attendees: Player[]; coaches: Player[] }
+  | { type: 'external_match'; roster: Player[]; reserves: Player[] }
 );
 
 function initialTeamNames(count: number, suggestedNames: string[]): string[] {
@@ -147,6 +149,65 @@ async function insertTrainingChildren(
   return null;
 }
 
+async function insertExternalMatchChildren(
+  eventId: number,
+  externalTeamId: number,
+  roster: Player[],
+  reserves: Player[],
+): Promise<string | null> {
+  const { data: externalMatch, error: matchError } = await supabase
+    .from('external_matches')
+    .insert({ event_id: eventId, external_team_id: externalTeamId })
+    .select('id')
+    .single();
+
+  if (matchError || !externalMatch) return matchError?.message ?? 'Error al crear el partido.';
+
+  if (roster.length > 0) {
+    const { error } = await supabase
+      .from('external_match_players')
+      .insert(roster.map((p) => ({ external_match_id: externalMatch.id, player_id: p.id })));
+    if (error) return error.message;
+  }
+
+  if (reserves.length > 0) {
+    const { error } = await supabase
+      .from('external_match_reserves')
+      .insert(reserves.map((p) => ({ external_match_id: externalMatch.id, player_id: p.id })));
+    if (error) return error.message;
+  }
+
+  return null;
+}
+
+/** Resolves an opponent selection to an external_team id, creating it if new. */
+async function resolveExternalTeamId(
+  selection: ExternalTeamSelection,
+): Promise<{ id: number } | { error: string }> {
+  if (selection.type === 'existing') return { id: selection.externalTeamId };
+  if (selection.type !== 'new') return { error: 'Elegí el rival.' };
+
+  const name = selection.name.trim();
+  if (!name) return { error: 'Completá el nombre del rival.' };
+
+  // Reuse an existing opponent with the same name (case-insensitive) so the
+  // head-to-head record doesn't fork; the DB has a matching unique index.
+  const { data: existing } = await supabase
+    .from('external_teams')
+    .select('id')
+    .ilike('name', name)
+    .maybeSingle();
+  if (existing) return { id: existing.id };
+
+  const { data: created, error } = await supabase
+    .from('external_teams')
+    .insert({ name })
+    .select('id')
+    .single();
+  if (error || !created) return { error: error?.message ?? 'Error al crear el rival.' };
+  return { id: created.id };
+}
+
 export default function SaveEventDialog(props: SaveEventDialogProps) {
   const { onClose } = props;
   const navigate = useNavigate();
@@ -162,6 +223,8 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [cost, setCost] = useState('');
   const [payee, setPayee] = useState('');
+  const [externalTeams, setExternalTeams] = useState<ExternalTeam[]>([]);
+  const [opponentSelection, setOpponentSelection] = useState<ExternalTeamSelection>({ type: 'none' });
   const hasTeams = props.type === 'match' || props.type === 'tournament';
   const [teamNames, setTeamNames] = useState(() =>
     hasTeams ? initialTeamNames(props.teams.length, suggestedTeamNames) : [],
@@ -191,6 +254,13 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       if (data) setLocations(data as Location[]);
     });
   }, []);
+
+  useEffect(() => {
+    if (props.type !== 'external_match') return;
+    supabase.from('external_teams').select('id, name').order('name').then(({ data }) => {
+      if (data) setExternalTeams(data as ExternalTeam[]);
+    });
+  }, [props.type]);
 
   function handleTeamNameChange(index: number, value: string) {
     setTeamNames((prev) => {
@@ -232,12 +302,29 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       }
     }
 
+    if (props.type === 'external_match' && !isExternalTeamSelectionComplete(opponentSelection)) {
+      setError('Elegí el rival.');
+      return;
+    }
+
     if (!time || !isValidTime(time)) {
       setError('Completá el horario.');
       return;
     }
 
     setSaving(true);
+
+    // Resolve opponent (external matches only), before creating the event.
+    let externalTeamId: number | null = null;
+    if (props.type === 'external_match') {
+      const resolved = await resolveExternalTeamId(opponentSelection);
+      if ('error' in resolved) {
+        setError(resolved.error);
+        setSaving(false);
+        return;
+      }
+      externalTeamId = resolved.id;
+    }
 
     // 1. Resolve location (optional)
     let locationId: number | null = null;
@@ -288,6 +375,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     const childError =
       props.type === 'match' ? await insertMatchChildren(event.id, props.teams, props.reserves, teamNames, shirtColors)
       : props.type === 'tournament' ? await insertTournamentChildren(event.id, props.teams, props.reserves, teamNames)
+      : props.type === 'external_match' ? await insertExternalMatchChildren(event.id, externalTeamId!, props.roster, props.reserves)
       : await insertTrainingChildren(event.id, props.attendees, props.coaches);
     if (childError) {
       await supabase.from('events').delete().eq('id', event.id);
@@ -309,7 +397,10 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     >
       <form onSubmit={handleSave} className="p-6">
         <h2 className="text-xl font-bold mb-4">
-          {props.type === 'match' ? 'Guardar partido' : props.type === 'tournament' ? 'Guardar torneo' : 'Guardar entrenamiento'}
+          {props.type === 'match' ? 'Guardar partido'
+            : props.type === 'tournament' ? 'Guardar torneo'
+            : props.type === 'external_match' ? 'Guardar partido externo'
+            : 'Guardar entrenamiento'}
         </h2>
 
         <div className="space-y-4">
@@ -323,6 +414,17 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
               className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
+
+          {props.type === 'external_match' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Rival</label>
+              <ExternalTeamPicker
+                value={opponentSelection}
+                onChange={setOpponentSelection}
+                teams={externalTeams}
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1">Fecha</label>
@@ -399,6 +501,29 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
             </div>
           ))}
 
+          {props.type === 'external_match' && (
+            <>
+              <div className="border border-border rounded-lg p-3">
+                <h3 className="text-sm font-medium mb-2">Titulares ({props.roster.length})</h3>
+                <ul className="text-sm text-muted space-y-0.5">
+                  {[...props.roster].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+                    <li key={p.id}>{p.name}</li>
+                  ))}
+                </ul>
+              </div>
+              {props.reserves.length > 0 && (
+                <div className="border border-border rounded-lg p-3">
+                  <h3 className="text-sm font-medium mb-2">Suplentes ({props.reserves.length})</h3>
+                  <ul className="text-sm text-muted space-y-0.5">
+                    {[...props.reserves].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+                      <li key={p.id}>{p.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+
           {props.type === 'training' && (
             <>
               <div className="border border-border rounded-lg p-3">
@@ -435,7 +560,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
           </button>
           <button
             type="submit"
-            disabled={saving || !time || !isValidTime(time) || !isNewLocationComplete(locationSelection)}
+            disabled={saving || !time || !isValidTime(time) || !isNewLocationComplete(locationSelection) || (props.type === 'external_match' && !isExternalTeamSelectionComplete(opponentSelection))}
             className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Guardando...' : 'Guardar'}

@@ -9,6 +9,7 @@ export interface EventStats {
   awardCounts: Map<AwardType, Map<number, number>>;
   trainingsAttended: Map<number, number>;
   trainingsCoached: Map<number, number>;
+  externalMatchesPlayed: Map<number, number>;
   eventParticipants: number[][];
   loading: boolean;
   error: string | null;
@@ -20,6 +21,7 @@ export function useEventStats(): EventStats {
   const [awardCounts, setAwardCounts] = useState<Map<AwardType, Map<number, number>>>(new Map());
   const [trainingsAttended, setTrainingsAttended] = useState<Map<number, number>>(new Map());
   const [trainingsCoached, setTrainingsCoached] = useState<Map<number, number>>(new Map());
+  const [externalMatchesPlayed, setExternalMatchesPlayed] = useState<Map<number, number>>(new Map());
   const [eventParticipants, setEventParticipants] = useState<number[][]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,7 @@ export function useEventStats(): EventStats {
         matchesResult, teamsResult, teamPlayersResult, reservesResult,
         trainingsResult, attendeesResult, coachesResult,
         tournamentsResult, tournamentTeamsResult, tournamentTeamPlayersResult, tournamentReservesResult,
+        externalRosterResult, externalReservesResult,
         resolvedAwardsResult,
       ] = await Promise.all([
         supabase.from('matches').select('*'),
@@ -43,13 +46,16 @@ export function useEventStats(): EventStats {
         supabase.from('tournament_teams').select('id, tournament_id'),
         supabase.from('tournament_team_players').select('tournament_team_id, player_id'),
         supabase.from('tournament_reserves').select('tournament_id, player_id'),
+        supabase.from('external_match_players').select('player_id'),
+        supabase.from('external_match_reserves').select('player_id'),
         supabase.rpc('get_resolved_event_awards'),
       ]);
 
       const queryError = matchesResult.error || teamsResult.error || teamPlayersResult.error
         || reservesResult.error || trainingsResult.error || attendeesResult.error || coachesResult.error
         || tournamentsResult.error || tournamentTeamsResult.error || tournamentTeamPlayersResult.error
-        || tournamentReservesResult.error || resolvedAwardsResult.error;
+        || tournamentReservesResult.error || externalRosterResult.error || externalReservesResult.error
+        || resolvedAwardsResult.error;
       if (queryError) {
         setError(queryError.message);
         setLoading(false);
@@ -67,6 +73,8 @@ export function useEventStats(): EventStats {
       const tournamentTeams = tournamentTeamsResult.data!;
       const tournamentTeamPlayers = tournamentTeamPlayersResult.data!;
       const tournamentReserves = tournamentReservesResult.data!;
+      const externalRoster = externalRosterResult.data!;
+      const externalReserves = externalReservesResult.data!;
       const resolvedAwards = (resolvedAwardsResult.data ?? []) as { event_id: number; award_type: AwardType; player_id: number }[];
 
       // Games played: count from team players + reserves
@@ -143,6 +151,16 @@ export function useEventStats(): EventStats {
         coached.set(c.player_id, (coached.get(c.player_id) ?? 0) + 1);
       }
 
+      // External matches played: counted separately from internal games.
+      // Both the roster and the reserves count as an appearance.
+      const externalPlayed = new Map<number, number>();
+      for (const r of externalRoster) {
+        externalPlayed.set(r.player_id, (externalPlayed.get(r.player_id) ?? 0) + 1);
+      }
+      for (const r of externalReserves) {
+        externalPlayed.set(r.player_id, (externalPlayed.get(r.player_id) ?? 0) + 1);
+      }
+
       // Build per-event participant lists for gender ratio
       const participantsByEvent: number[][] = [];
 
@@ -190,13 +208,14 @@ export function useEventStats(): EventStats {
       setAwardCounts(perCategory);
       setTrainingsAttended(attended);
       setTrainingsCoached(coached);
+      setExternalMatchesPlayed(externalPlayed);
       setEventParticipants(participantsByEvent);
       setLoading(false);
     }
     fetchStats();
   }, []);
 
-  return { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, eventParticipants, loading, error };
+  return { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, externalMatchesPlayed, eventParticipants, loading, error };
 }
 
 /** Returns the set of player IDs sharing the highest count in the given map. */

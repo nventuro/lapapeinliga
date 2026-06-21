@@ -117,13 +117,27 @@ export function isNewLocationComplete(selection: LocationSelection): boolean {
   );
 }
 
+export type ExternalTeamSelection =
+  | { type: 'none' }
+  | { type: 'existing'; externalTeamId: number }
+  | { type: 'new'; name: string };
+
+export function isExternalTeamSelectionComplete(selection: ExternalTeamSelection): boolean {
+  if (selection.type === 'existing') return true;
+  if (selection.type === 'new') return !!selection.name.trim();
+  return false;
+}
+
 export const COST_MARKUP_MULTIPLIER = 1;
 export const COST_ROUNDING_NEAREST = 100;
 
 export const TOURNAMENT_WIN_POINTS = 3;
 export const TOURNAMENT_DRAW_POINTS = 1;
 
-export type EventType = 'match' | 'training' | 'tournament';
+export type EventType = 'match' | 'training' | 'tournament' | 'external_match';
+
+/** Display name for the papeinliga side in an external match. */
+export const OUR_TEAM_NAME = 'La Papeinliga';
 
 export type Event = {
   id: number;
@@ -178,6 +192,38 @@ export type MatchTeam = {
   players: Player[];
 };
 
+export type ExternalTeam = {
+  id: number;
+  name: string;
+};
+
+export type ExternalMatch = {
+  id: number;
+  event_id: number;
+  external_team_id: number;
+  our_score: number | null;
+  their_score: number | null;
+};
+
+/** A papeinliga player in an external match, with the goals they scored. */
+export type ExternalMatchPlayer = {
+  player: Player;
+  goals: number;
+};
+
+export type ExternalMatchResult = 'win' | 'loss' | 'draw';
+
+/**
+ * Derives the result for our side from the recorded scores, or null when the
+ * match has not been scored yet.
+ */
+export function externalMatchResult(match: ExternalMatch): ExternalMatchResult | null {
+  if (match.our_score == null || match.their_score == null) return null;
+  if (match.our_score > match.their_score) return 'win';
+  if (match.our_score < match.their_score) return 'loss';
+  return 'draw';
+}
+
 export type MatchWithDetails = Event & {
   type: 'match';
   match: Match;
@@ -203,7 +249,20 @@ export type TournamentWithDetails = Event & {
   location: Location | null;
 };
 
-export type EventWithDetails = MatchWithDetails | TrainingWithDetails | TournamentWithDetails;
+export type ExternalMatchWithDetails = Event & {
+  type: 'external_match';
+  externalMatch: ExternalMatch;
+  opponent: ExternalTeam;
+  roster: ExternalMatchPlayer[];
+  reserves: Player[];
+  location: Location | null;
+};
+
+export type EventWithDetails =
+  | MatchWithDetails
+  | TrainingWithDetails
+  | TournamentWithDetails
+  | ExternalMatchWithDetails;
 
 export function allParticipants(event: EventWithDetails): Player[] {
   if (event.type === 'match') {
@@ -211,6 +270,9 @@ export function allParticipants(event: EventWithDetails): Player[] {
   }
   if (event.type === 'tournament') {
     return [...event.teams.flatMap((t) => t.players), ...event.reserves];
+  }
+  if (event.type === 'external_match') {
+    return [...event.roster.map((r) => r.player), ...event.reserves];
   }
   return [...event.attendees, ...event.coaches];
 }

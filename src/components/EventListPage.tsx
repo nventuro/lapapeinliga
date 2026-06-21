@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { EventType } from '../types';
-import { COST_MARKUP_MULTIPLIER } from '../types';
+import { COST_MARKUP_MULTIPLIER, OUR_TEAM_NAME, externalMatchResult } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { SoccerBallIcon, BarbellIcon, TrophyIcon } from './icons';
+import { SoccerBallIcon, BarbellIcon, TrophyIcon, ShieldIcon } from './icons';
 import Tooltip from './Tooltip';
 
 interface MatchSubRow {
@@ -29,6 +29,15 @@ interface TournamentSubRow {
   tournament_reserves: { count: number }[];
 }
 
+interface ExternalMatchSubRow {
+  id: number;
+  our_score: number | null;
+  their_score: number | null;
+  external_team: { name: string } | null;
+  external_match_players: { count: number }[];
+  external_match_reserves: { count: number }[];
+}
+
 interface EventRow {
   id: number;
   short_id: string;
@@ -42,6 +51,7 @@ interface EventRow {
   matches: MatchSubRow | null;
   trainings: TrainingSubRow | null;
   tournaments: TournamentSubRow | null;
+  external_matches: ExternalMatchSubRow | null;
 }
 
 function totalParticipants(event: EventRow): number {
@@ -56,6 +66,12 @@ function totalParticipants(event: EventRow): number {
     const teamPlayers = event.tournaments.tournament_teams.reduce((sum, t) => sum + (t.tournament_team_players[0]?.count ?? 0), 0);
     const reserves = event.tournaments.tournament_reserves[0]?.count ?? 0;
     return teamPlayers + reserves;
+  }
+  if (event.type === 'external_match') {
+    if (!event.external_matches) return 0;
+    const roster = event.external_matches.external_match_players[0]?.count ?? 0;
+    const reserves = event.external_matches.external_match_reserves[0]?.count ?? 0;
+    return roster + reserves;
   }
   if (!event.trainings) return 0;
   return (event.trainings.training_attendees[0]?.count ?? 0) + (event.trainings.training_coaches[0]?.count ?? 0);
@@ -77,6 +93,7 @@ export default function EventListPage() {
           matches(id, winning_team_id, match_teams!match_teams_match_id_fkey(id, name, match_team_players(count)), match_reserves(count)),
           trainings(id, training_attendees(count), training_coaches(count)),
           tournaments(id, winning_team_id, tournament_teams!tournament_teams_tournament_id_fkey(id, name, tournament_team_players(count)), tournament_reserves(count)),
+          external_matches(id, our_score, their_score, external_team:external_teams(name), external_match_players(count), external_match_reserves(count)),
           location:locations(name)
         `);
       const { data, error } = await orderEvents(query, false);
@@ -120,6 +137,16 @@ export default function EventListPage() {
           const eventLabel = labels.get(event.id) ?? '?';
           const match = event.type === 'match' ? event.matches : null;
           const tournament = event.type === 'tournament' ? event.tournaments : null;
+          const externalMatch = event.type === 'external_match' ? event.external_matches : null;
+          const externalResult = externalMatch
+            ? externalMatchResult({
+                id: externalMatch.id,
+                event_id: event.id,
+                external_team_id: 0,
+                our_score: externalMatch.our_score,
+                their_score: externalMatch.their_score,
+              })
+            : null;
           const winnerTeam = match?.winning_team_id
             ? match.match_teams.find((t) => t.id === match.winning_team_id)
             : null;
@@ -133,13 +160,15 @@ export default function EventListPage() {
               to={`/fechas/${event.short_id}`}
               className="flex border border-border rounded-xl hover:border-neutral-hover transition-colors"
             >
-              <Tooltip label={event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : 'Entrenamiento'}>
+              <Tooltip label={event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : event.type === 'external_match' ? 'Partido externo' : 'Entrenamiento'}>
                 <div className="flex flex-col items-center justify-center gap-1 px-3 border-r border-border text-muted min-w-14">
                   <span className="text-xs font-semibold">#{eventLabel}</span>
                   {event.type === 'match' ? (
                     <SoccerBallIcon className="w-5 h-5" />
                   ) : event.type === 'tournament' ? (
                     <TrophyIcon className="w-5 h-5" />
+                  ) : event.type === 'external_match' ? (
+                    <ShieldIcon className="w-5 h-5" />
                   ) : (
                     <BarbellIcon className="w-5 h-5" />
                   )}
@@ -167,6 +196,11 @@ export default function EventListPage() {
                     {tournament.tournament_teams.map((t) => t.name).join(' / ')}
                   </p>
                 )}
+                {event.type === 'external_match' && externalMatch && (
+                  <p className="text-xs text-muted mt-1.5">
+                    {OUR_TEAM_NAME} vs {externalMatch.external_team?.name ?? 'Rival'}
+                  </p>
+                )}
                 {event.type === 'training' && (
                   <p className="text-xs text-muted mt-1.5">
                     {totalParticipants(event)} participantes
@@ -175,6 +209,11 @@ export default function EventListPage() {
                 {(winnerTeam || tournamentWinner) && (
                   <p className="text-sm font-medium text-primary mt-1">
                     Ganador: {(winnerTeam ?? tournamentWinner)!.name}
+                  </p>
+                )}
+                {externalMatch && externalResult && (
+                  <p className={`text-sm font-medium mt-1 ${externalResult === 'win' ? 'text-primary' : externalResult === 'loss' ? 'text-error' : 'text-muted'}`}>
+                    {externalResult === 'win' ? 'Ganamos' : externalResult === 'loss' ? 'Perdimos' : 'Empate'} {externalMatch.our_score} - {externalMatch.their_score}
                   </p>
                 )}
               {isAdmin && showCosts && event.cost != null && (() => {

@@ -29,7 +29,7 @@ export function useEventAwards(eventId: number | null, eventType: EventType | nu
     let cancelled = false;
 
     async function fetchAll() {
-      if (eventId == null || eventType == null || eventType === 'training') {
+      if (eventId == null || eventType == null || eventType === 'training' || eventType === 'external_match') {
         if (cancelled) return;
         setVoteWindow({ state: 'n/a', opens_at: null, closes_at: null, voter_count: 0 });
         setResults([]);

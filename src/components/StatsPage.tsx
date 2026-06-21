@@ -2,7 +2,7 @@ import type { Player, AwardType } from '../types';
 import { AWARD_TYPES, AWARD_LABELS, AWARD_DESCRIPTIONS, LEADERBOARD_MIN_DISPLAY } from '../types';
 import { useAppContext } from '../context/appContext';
 import { useEventStats } from '../hooks/useEventStats';
-import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, SpeakerphoneIcon } from './icons';
+import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, SpeakerphoneIcon, ShieldIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import Tooltip from './Tooltip';
@@ -108,7 +108,7 @@ function LeaderboardSection({
 
 export default function StatsPage() {
   const { players } = useAppContext();
-  const { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, eventParticipants, loading, error } = useEventStats();
+  const { gamesPlayed, gamesWon, awardCounts, trainingsAttended, trainingsCoached, externalMatchesPlayed, eventParticipants, loading, error } = useEventStats();
 
   if (loading) {
     return <p className="text-muted text-center py-8">Cargando estadísticas...</p>;
@@ -230,6 +230,14 @@ export default function StatsPage() {
           title="Partidos ganados"
           icon={<TrophyIcon className="w-5 h-5 text-gold" />}
           entries={toEntries(gamesWon)}
+        />
+
+        {/* External matches played (tracked separately from internal games) */}
+        <LeaderboardSection
+          title="Partidos vs externos"
+          description="Partidos jugados contra equipos de afuera"
+          icon={<ShieldIcon className="w-5 h-5 text-gold" />}
+          entries={toEntries(externalMatchesPlayed)}
         />
 
         {/* Total awards */}

@@ -8,6 +8,7 @@ import EventConfigurator from './EventConfigurator';
 import CoachAssignment from './CoachAssignment';
 import TeamBuildingDisplay from './TeamBuildingDisplay';
 import TrainingPreview from './TrainingPreview';
+import ExternalMatchPreview from './ExternalMatchPreview';
 import NoAccess from './NoAccess';
 import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 
@@ -108,6 +109,11 @@ export default function TeamSorterPage() {
     setEventType('training');
     setCoachIds(new Set());
     setStep('assign-coaches');
+  }, []);
+
+  const handleExternalMatch = useCallback(() => {
+    setEventType('external_match');
+    setStep('results');
   }, []);
 
   const handleCoachConfirm = useCallback(() => {
@@ -212,6 +218,7 @@ export default function TeamSorterPage() {
             onGenerate={generateTeams}
             onTournament={generateTournament}
             onTraining={handleTraining}
+            onExternalMatch={handleExternalMatch}
           />
           <button
             onClick={() => setStep('select')}
@@ -250,6 +257,13 @@ export default function TeamSorterPage() {
         <TrainingPreview
           attendees={trainingAttendees}
           coaches={trainingCoaches}
+          onReset={handleReset}
+        />
+      )}
+
+      {step === 'results' && eventType === 'external_match' && (
+        <ExternalMatchPreview
+          players={selectedPlayers}
           onReset={handleReset}
         />
       )}

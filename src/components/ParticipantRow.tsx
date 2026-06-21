@@ -19,6 +19,8 @@ interface ParticipantRowProps {
   disabled?: boolean;
   moveDestinations?: MoveDestination[];
   onRemove?: () => void;
+  /** Optional content rendered right-aligned, before the actions menu. */
+  trailing?: React.ReactNode;
 }
 
 export default function ParticipantRow({
@@ -28,6 +30,7 @@ export default function ParticipantRow({
   disabled = false,
   moveDestinations = [],
   onRemove,
+  trailing,
 }: ParticipantRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -83,8 +86,11 @@ export default function ParticipantRow({
           </Tooltip>
         );
       })}
-      {hasActions && (
-        <div className="relative ml-auto" ref={menuRef}>
+      {(trailing || hasActions) && (
+        <div className="ml-auto flex items-center gap-1">
+          {trailing}
+          {hasActions && (
+        <div className="relative" ref={menuRef}>
           <Tooltip label="Acciones">
             <button
               type="button"
@@ -122,6 +128,8 @@ export default function ParticipantRow({
                 </>
               )}
             </div>
+          )}
+        </div>
           )}
         </div>
       )}
