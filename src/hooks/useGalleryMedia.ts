@@ -1,11 +1,14 @@
 import { useState, useEffect, useReducer } from 'react';
-import type { MediaItem, MediaItemWithTags, MediaTag, TaggedPlayer } from '../types';
+import type { MediaItem, MediaItemWithTags, MediaTag, TaggedPlayer, Player } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface UseGalleryMediaParams {
   eventId: number | null;
   tagNames: string[];
   playerId: number | null;
+  // Public roster (players_public) used to resolve tagged-player names. The
+  // players table itself is admin-only, so we never embed it here.
+  players: Player[];
 }
 
 interface UseGalleryMediaResult {
@@ -15,7 +18,7 @@ interface UseGalleryMediaResult {
   refetch: () => void;
 }
 
-export function useGalleryMedia({ eventId, tagNames, playerId }: UseGalleryMediaParams): UseGalleryMediaResult {
+export function useGalleryMedia({ eventId, tagNames, playerId, players }: UseGalleryMediaParams): UseGalleryMediaResult {
   const [items, setItems] = useState<MediaItemWithTags[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +64,7 @@ export function useGalleryMedia({ eventId, tagNames, playerId }: UseGalleryMedia
           .in('media_id', mediaIds),
         supabase
           .from('media_player_tags')
-          .select('media_id, player_id, players(id, name)')
+          .select('media_id, player_id')
           .in('media_id', mediaIds),
       ]);
 
@@ -89,13 +92,15 @@ export function useGalleryMedia({ eventId, tagNames, playerId }: UseGalleryMedia
         tagsByMediaId.set(row.media_id, existing);
       }
 
-      // Build map of media_id → tagged players
+      // Build map of media_id → tagged players, resolving names from the
+      // public roster (the players table is admin-only and can't be embedded).
+      const playerById = new Map(players.map((p) => [p.id, p]));
       const playersByMediaId = new Map<number, TaggedPlayer[]>();
       for (const row of playerTagResult.data ?? []) {
-        const player = row.players as unknown as TaggedPlayer;
+        const player = playerById.get(row.player_id);
         if (!player) continue;
         const existing = playersByMediaId.get(row.media_id) ?? [];
-        existing.push(player);
+        existing.push({ id: player.id, name: player.name });
         playersByMediaId.set(row.media_id, existing);
       }
 
@@ -126,7 +131,7 @@ export function useGalleryMedia({ eventId, tagNames, playerId }: UseGalleryMedia
 
     doFetch();
     return () => { cancelled = true; };
-  }, [eventId, tagNames, playerId, refetchCount]);
+  }, [eventId, tagNames, playerId, refetchCount, players]);
 
   return { items, loading, error, refetch };
 }

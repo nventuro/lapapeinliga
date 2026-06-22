@@ -30,7 +30,7 @@ export default function GalleryPage() {
   const openMediaId = mediaIdParam ? Number(mediaIdParam) : null;
   const playerId = playerIdParam ? Number(playerIdParam) : null;
 
-  const { items, loading, refetch } = useGalleryMedia({ eventId, tagNames, playerId });
+  const { items, loading, refetch } = useGalleryMedia({ eventId, tagNames, playerId, players: allPlayers });
 
   const [showUpload, setShowUpload] = useState(false);
 
