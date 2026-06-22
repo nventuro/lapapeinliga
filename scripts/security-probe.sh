@@ -58,6 +58,23 @@ assert_public () {
   fi
 }
 
+# Assert a PUBLIC endpoint exposes EXACTLY the given columns (an allowlist:
+# fails if any column is ever added OR removed). $3 is the expected column set,
+# alphabetically sorted and comma-joined. Fail-closed: a future sensitive
+# column added here trips the test instead of silently leaking.
+assert_exact_columns () {
+  local desc="$1" path="$2" expected="$3" resp code body got
+  resp="$(fetch "$path")"
+  code="${resp##*$'\n'}"; body="${resp%$'\n'*}"
+  got="$(printf '%s' "$body" | jq -r 'if type=="array" and length>0 then (.[0]|keys|join(",")) else "__none__" end' 2>/dev/null)"
+  if [[ "$code" == "200" && "$got" == "$expected" ]]; then
+    echo "  PASS  $desc exposes exactly: $expected"
+  else
+    echo "  FAIL  $desc  (HTTP $code) columns=[$got] expected=[$expected]"
+    fails=$((fails + 1))
+  fi
+}
+
 echo "Probing $URL as anon..."
 echo "Sensitive player columns must NOT be readable:"
 assert_protected "players.email"           "players?select=email&limit=1"
@@ -73,14 +90,14 @@ assert_protected "event_award_resolutions" "event_award_resolutions?select=*&lim
 assert_protected "event_feedback"          "event_feedback?select=*&limit=1"
 assert_protected "award_types"             "award_types?select=*&limit=1"
 
-echo "Public roster view must expose ONLY safe columns (it is SECURITY DEFINER,"
-echo "so it bypasses RLS — a mis-added sensitive column would leak silently):"
-assert_protected "players_public.email"    "players_public?select=email&limit=1"
-assert_protected "players_public.rating"   "players_public?select=rating&limit=1"
-assert_protected "players_public.role"     "players_public?select=role&limit=1"
+echo "Event financial data must NOT be readable (moved off public events):"
+assert_protected "event_finances"          "event_finances?select=*&limit=1"
+assert_protected "events.cost (removed)"   "events?select=cost&limit=1"
+assert_protected "events.payee_alias_cbu"  "events?select=payee_alias_cbu&limit=1"
 
-echo "Public roster must STILL be readable:"
-assert_public    "players_public"          "players_public?select=id&limit=1"
+echo "Public roster view must expose EXACTLY its safe columns (it is SECURITY"
+echo "DEFINER, so it bypasses RLS — any column added to it would leak silently):"
+assert_exact_columns "players_public" "players_public?select=*&limit=1" "gender,id,name,tier"
 
 echo
 if [[ "$fails" -eq 0 ]]; then
