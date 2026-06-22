@@ -52,11 +52,11 @@ export default function ExternalMatchHeadToHead({
       <h3 className="font-bold text-lg mb-3">Historial vs {opponentName}</h3>
       <div className="flex gap-4 text-sm">
         <span className="flex items-center gap-1.5">
-          <span className="font-bold text-gold tabular-nums">{record.wins}</span>
+          <span className="font-bold text-success tabular-nums">{record.wins}</span>
           <span className="text-muted">ganados</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="font-bold tabular-nums">{record.draws}</span>
+          <span className="font-bold text-info tabular-nums">{record.draws}</span>
           <span className="text-muted">empatados</span>
         </span>
         <span className="flex items-center gap-1.5">
