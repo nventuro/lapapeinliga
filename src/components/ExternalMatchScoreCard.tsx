@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ExternalMatch } from '../types';
 import { OUR_TEAM_NAME, externalMatchResult } from '../types';
+import Confetti from './Confetti';
 
 interface ExternalMatchScoreCardProps {
   match: ExternalMatch;
@@ -34,7 +35,10 @@ export default function ExternalMatchScoreCard({
 
   const result = externalMatchResult(match);
   const resultLabel = result ? RESULT_LABELS[result] : 'Sin jugar';
-  const resultColor = result === 'win' ? 'text-gold' : result === 'loss' ? 'text-error' : 'text-muted';
+  const resultColor = result === 'win' ? 'text-success'
+    : result === 'loss' ? 'text-error'
+    : result === 'draw' ? 'text-info'
+    : 'text-muted';
 
   function handleSave() {
     const our = ourInput.trim() === '' ? null : parseInt(ourInput.trim(), 10);
@@ -53,8 +57,11 @@ export default function ExternalMatchScoreCard({
   const theirFilled = theirInput.trim() !== '';
   const valid = ourFilled === theirFilled;
 
+  const won = result === 'win';
+
   return (
-    <div className={`border rounded-lg p-4 mt-4 ${result ? 'border-border' : 'border-border'} ${glowing ? 'animate-gold-glow-pulse' : ''}`}>
+    <div className={`relative overflow-hidden rounded-lg p-4 mt-4 ${won ? 'border-2 border-gold bg-gold-subtle' : 'border border-border'} ${glowing ? 'animate-gold-glow-pulse' : ''}`}>
+      {won && <Confetti />}
       <h3 className="font-bold text-lg mb-4">Resultado</h3>
 
       <div className="flex items-center justify-center gap-3 text-center">

@@ -212,7 +212,7 @@ export default function EventListPage() {
                   </p>
                 )}
                 {externalMatch && externalResult && (
-                  <p className={`text-sm font-medium mt-1 ${externalResult === 'win' ? 'text-primary' : externalResult === 'loss' ? 'text-error' : 'text-muted'}`}>
+                  <p className={`text-sm font-medium mt-1 ${externalResult === 'win' ? 'text-success' : externalResult === 'loss' ? 'text-error' : 'text-info'}`}>
                     {externalResult === 'win' ? 'Ganamos' : externalResult === 'loss' ? 'Perdimos' : 'Empate'} {externalMatch.our_score} - {externalMatch.their_score}
                   </p>
                 )}

@@ -506,7 +506,8 @@ export default function EventDetailPage() {
 
     if (!error) {
       setEvent({ ...event, externalMatch: { ...event.externalMatch, our_score: ourScore, their_score: theirScore } });
-      if (ourScore != null && theirScore != null) {
+      // Celebrate only a win, not a loss or draw.
+      if (ourScore != null && theirScore != null && ourScore > theirScore) {
         setGlowingWinner(true);
         setTimeout(() => setGlowingWinner(false), 4000);
       }
