@@ -1,6 +1,6 @@
 import { MIN_PLAYERS, MIN_TOURNAMENT_PLAYERS, MIN_TOURNAMENT_TEAMS } from '../types';
 import { getValidTeamCounts } from '../utils/teamCalculator';
-import { BarbellIcon, ShieldIcon, SoccerBallIcon, TrophyIcon } from './icons';
+import { BarbellIcon, SwordsIcon, SoccerBallIcon, TrophyIcon } from './icons';
 
 interface EventConfiguratorProps {
   selectedCount: number;
@@ -70,7 +70,7 @@ export default function EventConfigurator({
           onClick={onExternalMatch}
           className="w-full py-3 px-4 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover transition-colors text-left flex items-center gap-2"
         >
-          <ShieldIcon className="w-5 h-5" />
+          <SwordsIcon className="w-5 h-5" />
           <span className="font-normal">
             Partido externo, {selectedCount} en nuestro equipo
           </span>

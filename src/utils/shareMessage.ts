@@ -8,7 +8,7 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   lines.push('*🏆 La Papeinliga*');
   lines.push('');
 
-  const typeEmoji = event.type === 'match' ? '⚽' : event.type === 'tournament' ? '🏆' : event.type === 'external_match' ? '🛡️' : '🏋️';
+  const typeEmoji = event.type === 'match' ? '⚽' : event.type === 'tournament' ? '🏆' : event.type === 'external_match' ? '⚔️' : '🏋️';
   const typeLabel = event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : event.type === 'external_match' ? 'Partido externo' : 'Entrenamiento';
   const namePart = event.name ? ` · ${event.name}` : '';
   lines.push(`Fecha ${eventNumber}${namePart} · ${typeEmoji} ${typeLabel}`);

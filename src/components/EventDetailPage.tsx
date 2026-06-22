@@ -7,7 +7,7 @@ import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, BarbellIcon, ShieldIcon } from './icons';
+import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, BarbellIcon, SwordsIcon } from './icons';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
 import TimeInput from './TimeInput';
 import Tooltip from './Tooltip';
@@ -626,7 +626,7 @@ export default function EventDetailPage() {
 
   const TypeIcon = event.type === 'match' ? SoccerBallIcon
     : event.type === 'tournament' ? TrophyIcon
-    : event.type === 'external_match' ? ShieldIcon
+    : event.type === 'external_match' ? SwordsIcon
     : BarbellIcon;
   const typeLabel = event.type === 'match' ? 'Partido'
     : event.type === 'tournament' ? 'Torneo'

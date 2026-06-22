@@ -6,7 +6,7 @@ import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { SoccerBallIcon, BarbellIcon, TrophyIcon, ShieldIcon } from './icons';
+import { SoccerBallIcon, BarbellIcon, TrophyIcon, SwordsIcon } from './icons';
 import Tooltip from './Tooltip';
 
 interface MatchSubRow {
@@ -168,7 +168,7 @@ export default function EventListPage() {
                   ) : event.type === 'tournament' ? (
                     <TrophyIcon className="w-5 h-5" />
                   ) : event.type === 'external_match' ? (
-                    <ShieldIcon className="w-5 h-5" />
+                    <SwordsIcon className="w-5 h-5" />
                   ) : (
                     <BarbellIcon className="w-5 h-5" />
                   )}

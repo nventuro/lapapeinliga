@@ -2,7 +2,7 @@ import type { Player, AwardType } from '../types';
 import { AWARD_TYPES, AWARD_LABELS, AWARD_DESCRIPTIONS, LEADERBOARD_MIN_DISPLAY } from '../types';
 import { useAppContext } from '../context/appContext';
 import { useEventStats } from '../hooks/useEventStats';
-import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, SpeakerphoneIcon, ShieldIcon } from './icons';
+import { TrophyIcon, SneakerIcon, MedalIcon, UserGroupIcon, GenderMaleIcon, GenderFemaleIcon, BarbellIcon, SpeakerphoneIcon, SwordsIcon } from './icons';
 import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import Tooltip from './Tooltip';
@@ -236,7 +236,7 @@ export default function StatsPage() {
         <LeaderboardSection
           title="Partidos vs externos"
           description="Partidos jugados contra equipos de afuera"
-          icon={<ShieldIcon className="w-5 h-5 text-gold" />}
+          icon={<SwordsIcon className="w-5 h-5 text-gold" />}
           entries={toEntries(externalMatchesPlayed)}
         />
 

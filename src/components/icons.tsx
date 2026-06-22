@@ -32,6 +32,7 @@ import {
   IconDotsVertical,
   IconPlus,
   IconAxe,
+  IconSwords,
 } from '@tabler/icons-react';
 
 interface IconProps {
@@ -182,4 +183,8 @@ export function PlusIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function AxeIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconAxe className={className} stroke={STROKE} />;
+}
+
+export function SwordsIcon({ className = 'w-4 h-4' }: IconProps) {
+  return <IconSwords className={className} stroke={STROKE} />;
 }
