@@ -73,6 +73,12 @@ assert_protected "event_award_resolutions" "event_award_resolutions?select=*&lim
 assert_protected "event_feedback"          "event_feedback?select=*&limit=1"
 assert_protected "award_types"             "award_types?select=*&limit=1"
 
+echo "Public roster view must expose ONLY safe columns (it is SECURITY DEFINER,"
+echo "so it bypasses RLS — a mis-added sensitive column would leak silently):"
+assert_protected "players_public.email"    "players_public?select=email&limit=1"
+assert_protected "players_public.rating"   "players_public?select=rating&limit=1"
+assert_protected "players_public.role"     "players_public?select=role&limit=1"
+
 echo "Public roster must STILL be readable:"
 assert_public    "players_public"          "players_public?select=id&limit=1"
 
