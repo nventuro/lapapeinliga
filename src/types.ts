@@ -254,7 +254,7 @@ export type ExternalMatchWithDetails = Event & {
   externalMatch: ExternalMatch;
   opponent: ExternalTeam;
   roster: ExternalMatchPlayer[];
-  reserves: Player[];
+  reserves: ExternalMatchPlayer[];
   location: Location | null;
 };
 
@@ -272,7 +272,7 @@ export function allParticipants(event: EventWithDetails): Player[] {
     return [...event.teams.flatMap((t) => t.players), ...event.reserves];
   }
   if (event.type === 'external_match') {
-    return [...event.roster.map((r) => r.player), ...event.reserves];
+    return [...event.roster, ...event.reserves].map((r) => r.player);
   }
   return [...event.attendees, ...event.coaches];
 }

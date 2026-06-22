@@ -134,9 +134,10 @@ function buildExternalMatchShareMessage(event: ExternalMatchWithDetails, eventNu
   if (event.reserves.length > 0) {
     lines.push('');
     lines.push('🔄 Suplentes');
-    const sorted = [...event.reserves].sort((a, b) => a.name.localeCompare(b.name));
-    for (const player of sorted) {
-      lines.push(`- ${player.name}`);
+    const sortedReserves = [...event.reserves].sort((a, b) => a.player.name.localeCompare(b.player.name));
+    for (const { player, goals } of sortedReserves) {
+      const goalSuffix = goals > 0 ? ` ${'⚽'.repeat(goals)}` : '';
+      lines.push(`- ${player.name}${goalSuffix}`);
     }
   }
 

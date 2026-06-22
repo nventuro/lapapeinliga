@@ -1,11 +1,12 @@
 import type { ExternalMatchPlayer, Player } from '../types';
-import { OUR_TEAM_NAME, comparePlayersByGenderThenName } from '../types';
+import { comparePlayersByGenderThenName } from '../types';
 import { GenderMaleIcon, GenderFemaleIcon, SoccerBallIcon, PlusIcon } from './icons';
 import ParticipantRow, { type MoveDestination } from './ParticipantRow';
 import AddParticipantControl from './AddParticipantControl';
 import Tooltip from './Tooltip';
 
-interface ExternalMatchRosterProps {
+interface ExternalMatchPlayerListProps {
+  title: string;
   roster: ExternalMatchPlayer[];
   canEditParticipants: boolean;
   canEditGoals: boolean;
@@ -15,6 +16,8 @@ interface ExternalMatchRosterProps {
   onAddPlayer: (playerId: number) => void;
   onRemovePlayer: (playerId: number) => void;
   onSetGoals: (playerId: number, goals: number) => void;
+  /** Hide the whole card when empty and not editable (used for reserves). */
+  hideWhenEmpty?: boolean;
 }
 
 function GoalsControl({
@@ -68,7 +71,8 @@ function GoalsControl({
   );
 }
 
-export default function ExternalMatchRoster({
+export default function ExternalMatchPlayerList({
+  title,
   roster,
   canEditParticipants,
   canEditGoals,
@@ -78,7 +82,10 @@ export default function ExternalMatchRoster({
   onAddPlayer,
   onRemovePlayer,
   onSetGoals,
-}: ExternalMatchRosterProps) {
+  hideWhenEmpty = false,
+}: ExternalMatchPlayerListProps) {
+  if (hideWhenEmpty && roster.length === 0 && !canEditParticipants) return null;
+
   const players = roster.map((r) => r.player);
   const maleCount = players.filter((p) => p.gender === 'male').length;
   const femaleCount = players.filter((p) => p.gender === 'female').length;
@@ -88,7 +95,10 @@ export default function ExternalMatchRoster({
 
   return (
     <div className="border border-border rounded-lg p-4 mt-6">
-      <h3 className="font-bold text-lg mb-3">{OUR_TEAM_NAME}</h3>
+      <h3 className="font-bold text-lg mb-3">
+        {title}
+        <span className="font-normal text-sm text-muted ml-2">({players.length})</span>
+      </h3>
       <ul className="space-y-1">
         {sorted.map(({ player }) => (
           <ParticipantRow
@@ -116,13 +126,15 @@ export default function ExternalMatchRoster({
           disabled={saving}
         />
       )}
-      <div className="mt-2 pt-2 border-t border-border-subtle text-sm text-muted">
-        <span>{players.length} jugador{players.length !== 1 ? 'es' : ''}</span>
-        {' · '}
-        <span>{maleCount}<GenderMaleIcon className="w-4 h-4 inline" /></span>
-        {' '}
-        <span>{femaleCount}<GenderFemaleIcon className="w-4 h-4 inline" /></span>
-      </div>
+      {players.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border-subtle text-sm text-muted">
+          <span>{players.length} jugador{players.length !== 1 ? 'es' : ''}</span>
+          {' · '}
+          <span>{maleCount}<GenderMaleIcon className="w-4 h-4 inline" /></span>
+          {' '}
+          <span>{femaleCount}<GenderFemaleIcon className="w-4 h-4 inline" /></span>
+        </div>
+      )}
     </div>
   );
 }

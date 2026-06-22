@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { EventWithDetails, MatchWithDetails, TournamentWithDetails, ExternalMatchWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, ExternalMatch, ExternalTeam, ExternalMatchPlayer, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
-import { allParticipants, COST_MARKUP_MULTIPLIER, isNewLocationComplete } from '../types';
+import { allParticipants, COST_MARKUP_MULTIPLIER, isNewLocationComplete, OUR_TEAM_NAME } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
@@ -19,7 +19,7 @@ import TournamentMatchList from './TournamentMatchList';
 import StandingsTable from './StandingsTable';
 import TournamentTeamCard from './TournamentTeamCard';
 import ResultsSection from './ResultsSection';
-import ExternalMatchRoster from './ExternalMatchRoster';
+import ExternalMatchPlayerList from './ExternalMatchPlayerList';
 import ExternalMatchScoreCard from './ExternalMatchScoreCard';
 import ExternalMatchHeadToHead from './ExternalMatchHeadToHead';
 import AwardsSection from './AwardsSection';
@@ -197,20 +197,20 @@ async function fetchEventData(
         .eq('external_match_id', externalMatchData.id),
       supabase
         .from('external_match_reserves')
-        .select('player_id')
+        .select('player_id, goals')
         .eq('external_match_id', externalMatchData.id),
     ]);
 
-    const roster: ExternalMatchPlayer[] = (rosterResult.data ?? [])
-      .map((r) => {
-        const player = playerMap.get(r.player_id);
-        return player ? { player, goals: r.goals } : null;
-      })
-      .filter((r): r is ExternalMatchPlayer => r !== null);
+    const toRosterEntries = (rows: { player_id: number; goals: number }[]): ExternalMatchPlayer[] =>
+      rows
+        .map((r) => {
+          const player = playerMap.get(r.player_id);
+          return player ? { player, goals: r.goals } : null;
+        })
+        .filter((r): r is ExternalMatchPlayer => r !== null);
 
-    const reserves = (reservesResult.data ?? [])
-      .map((r) => playerMap.get(r.player_id))
-      .filter((p): p is Player => p !== undefined);
+    const roster = toRosterEntries(rosterResult.data ?? []);
+    const reserves = toRosterEntries(reservesResult.data ?? []);
 
     const externalMatch = externalMatchData as ExternalMatch;
     const opponent = opponentData as ExternalTeam;
@@ -263,6 +263,11 @@ async function fetchEventData(
       eventNumber,
     };
   }
+}
+
+/** Looks up a player's goals within an external-match roster/reserve list. */
+function goalsFor(list: ExternalMatchPlayer[], playerId: number): number {
+  return list.find((r) => r.player.id === playerId)?.goals ?? 0;
 }
 
 export default function EventDetailPage() {
@@ -509,12 +514,16 @@ export default function EventDetailPage() {
     setSaving(false);
   }
 
-  async function handleSetGoals(playerId: number, goals: number) {
+  async function handleSetGoals(
+    table: 'external_match_players' | 'external_match_reserves',
+    playerId: number,
+    goals: number,
+  ) {
     if (!event || event.type !== 'external_match') return;
     const externalMatchId = event.externalMatch.id;
     await mutate(() =>
       supabase
-        .from('external_match_players')
+        .from(table)
         .update({ goals })
         .eq('external_match_id', externalMatchId)
         .eq('player_id', playerId),
@@ -996,47 +1005,52 @@ export default function EventDetailPage() {
         <>
           <EventMediaStrip eventId={event.id} />
 
-          <ExternalMatchRoster
+          <ExternalMatchPlayerList
+            title={OUR_TEAM_NAME}
             roster={event.roster}
             canEditParticipants={isModOrAdmin}
             canEditGoals={isAdmin}
             saving={saving}
             availablePlayers={availablePlayers}
             onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('external_match_players').insert({ external_match_id: (event as ExternalMatchWithDetails).externalMatch.id, player_id: playerId }),
+              supabase.from('external_match_players').insert({ external_match_id: event.externalMatch.id, player_id: playerId }),
             )}
             onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('external_match_players').delete().eq('external_match_id', (event as ExternalMatchWithDetails).externalMatch.id).eq('player_id', playerId),
+              supabase.from('external_match_players').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', playerId),
             )}
-            onSetGoals={handleSetGoals}
+            onSetGoals={(playerId, goals) => handleSetGoals('external_match_players', playerId, goals)}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Mover a suplentes',
                 onSelect: () => mutateMove(
-                  () => supabase.from('external_match_reserves').insert({ external_match_id: (event as ExternalMatchWithDetails).externalMatch.id, player_id: player.id }),
-                  () => supabase.from('external_match_players').delete().eq('external_match_id', (event as ExternalMatchWithDetails).externalMatch.id).eq('player_id', player.id),
+                  () => supabase.from('external_match_reserves').insert({ external_match_id: event.externalMatch.id, player_id: player.id, goals: goalsFor(event.roster, player.id) }),
+                  () => supabase.from('external_match_players').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', player.id),
                 ),
               },
             ]}
           />
 
-          <ReservesList
-            reserves={event.reserves}
-            canEdit={isModOrAdmin}
+          <ExternalMatchPlayerList
+            title="Suplentes"
+            roster={event.reserves}
+            canEditParticipants={isModOrAdmin}
+            canEditGoals={isAdmin}
             saving={saving}
             availablePlayers={availablePlayers}
+            hideWhenEmpty
             onAddPlayer={(playerId) => mutate(() =>
               supabase.from('external_match_reserves').insert({ external_match_id: event.externalMatch.id, player_id: playerId }),
             )}
             onRemovePlayer={(playerId) => mutate(() =>
               supabase.from('external_match_reserves').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', playerId),
             )}
+            onSetGoals={(playerId, goals) => handleSetGoals('external_match_reserves', playerId, goals)}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Mover a titulares',
                 onSelect: () => mutateMove(
-                  () => supabase.from('external_match_players').insert({ external_match_id: (event as ExternalMatchWithDetails).externalMatch.id, player_id: player.id }),
-                  () => supabase.from('external_match_reserves').delete().eq('external_match_id', (event as ExternalMatchWithDetails).externalMatch.id).eq('player_id', player.id),
+                  () => supabase.from('external_match_players').insert({ external_match_id: event.externalMatch.id, player_id: player.id, goals: goalsFor(event.reserves, player.id) }),
+                  () => supabase.from('external_match_reserves').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', player.id),
                 ),
               },
             ]}

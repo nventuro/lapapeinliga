@@ -18,7 +18,8 @@ export function AppProvider({
   const [currentPlayerId, setCurrentPlayerId] = useState<number | null>(null);
   const [showRatings, setShowRatingsState] = useState(false);
   const [showCosts, setShowCostsState] = useState(false);
-  const [adminMode, setAdminMode] = useState(true);
+  // Default to the non-admin (preview) experience; admins opt in via the avatar menu.
+  const [adminMode, setAdminMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
