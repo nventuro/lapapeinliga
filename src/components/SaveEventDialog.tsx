@@ -359,8 +359,6 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
         played_at: date,
         played_at_time: time,
         location_id: locationId,
-        cost: cost.trim() ? parseInt(cost.trim(), 10) : null,
-        payee_alias_cbu: payee.trim() || null,
       })
       .select('id, short_id')
       .single();
@@ -369,6 +367,21 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       setError(eventError?.message ?? 'Error al crear la fecha.');
       setSaving(false);
       return;
+    }
+
+    // Financial details live in the mod/admin-only event_finances table.
+    const costValue = cost.trim() ? parseInt(cost.trim(), 10) : null;
+    const payeeValue = payee.trim() || null;
+    if (costValue != null || payeeValue != null) {
+      const { error: financesError } = await supabase
+        .from('event_finances')
+        .insert({ event_id: event.id, cost: costValue, payee_alias_cbu: payeeValue });
+      if (financesError) {
+        await supabase.from('events').delete().eq('id', event.id);
+        setError(financesError.message);
+        setSaving(false);
+        return;
+      }
     }
 
     // Insert child records. If any step fails, delete the event (cascades to all children).

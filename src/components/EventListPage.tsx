@@ -54,6 +54,12 @@ interface EventRow {
   external_matches: ExternalMatchSubRow | null;
 }
 
+// cost/payee live in the mod/admin-only event_finances table; PostgREST embeds
+// it (null for non-mods via RLS) and we flatten it back onto the row.
+type RawEventRow = Omit<EventRow, 'cost' | 'payee_alias_cbu'> & {
+  event_finances: { cost: number | null; payee_alias_cbu: string | null } | null;
+};
+
 function totalParticipants(event: EventRow): number {
   if (event.type === 'match') {
     if (!event.matches) return 0;
@@ -90,6 +96,7 @@ export default function EventListPage() {
         .from('events')
         .select(`
           *,
+          event_finances(cost, payee_alias_cbu),
           matches(id, winning_team_id, match_teams!match_teams_match_id_fkey(id, name, match_team_players(count)), match_reserves(count)),
           trainings(id, training_attendees(count), training_coaches(count)),
           tournaments(id, winning_team_id, tournament_teams!tournament_teams_tournament_id_fkey(id, name, tournament_team_players(count)), tournament_reserves(count)),
@@ -101,7 +108,13 @@ export default function EventListPage() {
       if (error) {
         setError(error.message);
       } else if (data) {
-        const rows = data as EventRow[];
+        const rows: EventRow[] = (data as RawEventRow[]).map(
+          ({ event_finances, ...rest }) => ({
+            ...rest,
+            cost: event_finances?.cost ?? null,
+            payee_alias_cbu: event_finances?.payee_alias_cbu ?? null,
+          }),
+        );
         setEvents(rows);
         setLabels(buildEventLabels([...rows].reverse()));
       }

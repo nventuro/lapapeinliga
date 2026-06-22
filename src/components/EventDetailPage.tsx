@@ -39,13 +39,22 @@ async function fetchEventData(
   shortId: string,
   players: Player[],
 ): Promise<EventPageData | null> {
-  const { data: eventData, error: eventError } = await supabase
+  const { data: eventRow, error: eventError } = await supabase
     .from('events')
-    .select('*')
+    .select('*, event_finances(cost, payee_alias_cbu)')
     .eq('short_id', shortId)
     .single();
 
-  if (eventError || !eventData) return null;
+  if (eventError || !eventRow) return null;
+
+  // cost/payee live in the mod/admin-only event_finances table (null for
+  // non-mods via RLS); flatten the embedded row so downstream reads event.cost.
+  const { event_finances, ...eventBase } = eventRow;
+  const eventData = {
+    ...eventBase,
+    cost: event_finances?.cost ?? null,
+    payee_alias_cbu: event_finances?.payee_alias_cbu ?? null,
+  };
 
   const eventId = eventData.id;
 
@@ -447,10 +456,22 @@ export default function EventDetailPage() {
 
     const { error } = await supabase
       .from('events')
-      .update({ name: nameValue, played_at_time: editTime, location_id: locationId, cost: costValue, payee_alias_cbu: payeeValue })
+      .update({ name: nameValue, played_at_time: editTime, location_id: locationId })
       .eq('id', event.id);
 
+    // Financial fields live in the mod/admin-only event_finances table.
+    let ok = !error;
     if (!error) {
+      const { error: financesError } = await supabase
+        .from('event_finances')
+        .upsert(
+          { event_id: event.id, cost: costValue, payee_alias_cbu: payeeValue },
+          { onConflict: 'event_id' },
+        );
+      ok = !financesError;
+    }
+
+    if (ok) {
       setEvent({ ...event, name: nameValue, played_at_time: editTime, location_id: locationId, location, cost: costValue, payee_alias_cbu: payeeValue });
       closeDetailsEditor();
     }
