@@ -42,6 +42,12 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Per-player claim invite link (admin issues it for an unclaimed player).
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
   // Batched preference changes
   const existingPrefs = player
     ? preferences.filter(
@@ -129,6 +135,43 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
       }
     }
     return true;
+  }
+
+  async function handleGenerateLink() {
+    if (!player) return;
+    setGeneratingLink(true);
+    setLinkError(null);
+    setLinkCopied(false);
+
+    const { data, error: rpcError } = await supabase.rpc('generate_player_claim_token', {
+      p_player_id: player.id,
+    });
+
+    if (rpcError || !data) {
+      setLinkError(rpcError?.message ?? 'No se pudo generar el link.');
+      setGeneratingLink(false);
+      return;
+    }
+
+    const link = `${window.location.origin}/vincular?p=${player.id}&t=${data}`;
+    setInviteLink(link);
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+    } catch {
+      // Clipboard may be unavailable; the link is shown for manual copy.
+    }
+    setGeneratingLink(false);
+  }
+
+  async function handleCopyLink() {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setLinkCopied(true);
+    } catch {
+      setLinkError('No se pudo copiar; copiá el link manualmente.');
+    }
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -326,6 +369,44 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                   Vinculá un email primero para asignar un rol.
                 </p>
               )}
+            </div>
+          )}
+
+          {player && !player.email && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Link de invitación</label>
+              {inviteLink ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={inviteLink}
+                    onFocus={(e) => e.target.select()}
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-surface text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="px-3 py-2 rounded-lg font-medium text-sm border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors"
+                  >
+                    Copiar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGenerateLink}
+                  disabled={generatingLink}
+                  className="w-full px-3 py-2 rounded-lg font-medium text-sm border border-border text-on-surface bg-surface hover:bg-border-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generatingLink ? 'Generando...' : 'Generar link de invitación'}
+                </button>
+              )}
+              {linkCopied && <p className="text-xs text-success mt-1">Link copiado al portapapeles.</p>}
+              {linkError && <p className="text-xs text-error mt-1">{linkError}</p>}
+              <p className="text-xs text-muted mt-1">
+                Enviale este link al jugador para que vincule su cuenta. Vence al usarse y solo sirve para este jugador.
+              </p>
             </div>
           )}
         </div>
