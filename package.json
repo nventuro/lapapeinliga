@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "db:link": "set -a && . ./.env && supabase link --project-ref $SUPABASE_PROJECT_REF",
     "db:push": "set -a && . ./.env && supabase db push",
-    "db:migration:new": "supabase migration new"
+    "db:migration:new": "supabase migration new",
+    "db:security-check": "bash scripts/security-probe.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
