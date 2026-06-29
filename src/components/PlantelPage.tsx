@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Player, AwardType } from '../types';
-import { PLAYER_TIERS, TIER_GROUP_LABELS, AWARD_TYPES, AWARD_LABELS } from '../types';
+import { groupPlayersForRoster, AWARD_TYPES, AWARD_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
 import { useEventStats, getLeaderIds } from '../hooks/useEventStats';
@@ -81,17 +81,11 @@ export default function PlantelPage() {
         </div>
       )}
 
-      {PLAYER_TIERS.map((tier, index) => {
-        const tierPlayers = players
-          .filter((p) => p.tier === tier)
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        if (tierPlayers.length === 0) return null;
-
+      {groupPlayersForRoster(players, isAdmin).map(({ key, label, players: tierPlayers }, index) => {
         return (
-          <div key={tier}>
+          <div key={key}>
             {index > 0 && <div className="my-4 border-t border-border-subtle" />}
-            <h3 className="text-sm font-semibold text-muted mb-2">{TIER_GROUP_LABELS[tier]}</h3>
+            {label && <h3 className="text-sm font-semibold text-muted mb-2">{label}</h3>}
             <ul className="space-y-1">
               {tierPlayers.map((player) => (
                 <li

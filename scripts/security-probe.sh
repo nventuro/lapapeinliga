@@ -99,6 +99,10 @@ echo "Public roster view must expose EXACTLY its safe columns (it is SECURITY"
 echo "DEFINER, so it bypasses RLS — any column added to it would leak silently):"
 assert_exact_columns "players_public" "players_public?select=*&limit=1" "gender,id,name,tier"
 
+echo "The core/sporadic tier distinction is admin-only — anon must see neither"
+echo "(guests stay visible; core/sporadic are masked to NULL in players_public):"
+assert_protected "players_public.tier core/sporadic" "players_public?select=id&tier=in.(core,sporadic)&limit=1"
+
 echo
 if [[ "$fails" -eq 0 ]]; then
   echo "OK: all security probes passed."

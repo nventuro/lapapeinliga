@@ -57,13 +57,42 @@ export interface Player {
   name: string;
   gender: 'male' | 'female';
   rating: number | null; // 1-10, null for unrated guests
-  tier: PlayerTier;
+  tier: PlayerTier | null; // null when masked: the core/sporadic distinction is admin-only (guests are still 'guest')
   email: string | null; // linked Google account, only visible to admins
   role: UserRole; // admin-only column, absent from players_public
 }
 
 export function isGuest(player: Player): boolean {
   return player.tier === 'guest';
+}
+
+export type RosterGroup = { key: string; label: string; players: Player[] };
+
+/**
+ * Groups players for roster display, each group sorted by name.
+ *
+ * When `showTiers` is true (admins) the full core/sporadic/guest split is shown.
+ * Otherwise the core-vs-sporadic distinction is hidden: every non-guest
+ * collapses into a single unlabeled group and only guests remain separately
+ * identified. This mirrors the masking enforced in `players_public` (where
+ * non-admin callers see `tier` as 'guest' or null) and also covers an admin
+ * previewing as a non-admin, whose data still holds the real tiers.
+ */
+export function groupPlayersForRoster(players: Player[], showTiers: boolean): RosterGroup[] {
+  const byName = (a: Player, b: Player) => a.name.localeCompare(b.name);
+  if (showTiers) {
+    return PLAYER_TIERS
+      .map((tier) => ({
+        key: tier,
+        label: TIER_GROUP_LABELS[tier],
+        players: players.filter((p) => p.tier === tier).sort(byName),
+      }))
+      .filter((g) => g.players.length > 0);
+  }
+  return [
+    { key: 'members', label: '', players: players.filter((p) => p.tier !== 'guest').sort(byName) },
+    { key: 'guest', label: TIER_GROUP_LABELS.guest, players: players.filter((p) => p.tier === 'guest').sort(byName) },
+  ].filter((g) => g.players.length > 0);
 }
 
 export function effectiveRating(player: Player): number {
