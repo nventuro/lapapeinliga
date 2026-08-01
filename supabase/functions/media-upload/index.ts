@@ -24,10 +24,15 @@ const corsHeaders = {
 // outside these prefixes — or requesting a presigned URL for an arbitrary
 // content type. Without this the key is fully attacker-controlled.
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const ALLOWED_UPLOADS: { keyRe: RegExp; contentType: string }[] = [
-  { keyRe: new RegExp(`^full/${UUID}\\.jpg$`), contentType: "image/jpeg" },
-  { keyRe: new RegExp(`^thumb/${UUID}\\.jpg$`), contentType: "image/jpeg" },
-  { keyRe: new RegExp(`^video/${UUID}\\.webm$`), contentType: "video/webm" },
+// Per-type size caps. The declared size is baked into the presigned URL as a
+// signed Content-Length, so R2 rejects a PUT whose body doesn't match — the
+// cap is enforced by storage, not just declared here.
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+const ALLOWED_UPLOADS: { keyRe: RegExp; contentType: string; maxBytes: number }[] = [
+  { keyRe: new RegExp(`^full/${UUID}\\.jpg$`), contentType: "image/jpeg", maxBytes: MAX_IMAGE_BYTES },
+  { keyRe: new RegExp(`^thumb/${UUID}\\.jpg$`), contentType: "image/jpeg", maxBytes: MAX_IMAGE_BYTES },
+  { keyRe: new RegExp(`^video/${UUID}\\.webm$`), contentType: "video/webm", maxBytes: MAX_VIDEO_BYTES },
 ];
 const MAX_UPLOAD_KEYS = 10;
 const MAX_DELETE_KEYS = 200;
@@ -35,11 +40,17 @@ const MAX_DELETE_KEYS = 200;
 // a traversal or an arbitrary path.
 const DELETE_KEY_RE = /^(full|thumb|video)\/[A-Za-z0-9._-]+\.(jpg|webp|png|webm)$/;
 
-function isValidUpload(file: unknown): file is { key: string; contentType: string } {
+function isValidUpload(
+  file: unknown,
+): file is { key: string; contentType: string; size: number } {
   if (typeof file !== "object" || file === null) return false;
   const f = file as Record<string, unknown>;
-  return typeof f.key === "string" && typeof f.contentType === "string" &&
-    ALLOWED_UPLOADS.some((a) => a.keyRe.test(f.key as string) && a.contentType === f.contentType);
+  if (typeof f.key !== "string" || typeof f.contentType !== "string") return false;
+  if (typeof f.size !== "number" || !Number.isInteger(f.size) || f.size <= 0) return false;
+  const allowed = ALLOWED_UPLOADS.find(
+    (a) => a.keyRe.test(f.key as string) && a.contentType === f.contentType,
+  );
+  return allowed !== undefined && (f.size as number) <= allowed.maxBytes;
 }
 
 function getS3Client(): S3Client {
@@ -87,7 +98,10 @@ Deno.serve(async (req) => {
   const requiredRole = req.method === "DELETE" ? "is_admin" : "is_mod_or_admin";
   const { allowed, debug } = await verifyRole(req.headers.get("Authorization"), requiredRole);
   if (!allowed) {
-    return new Response(JSON.stringify({ error: "Unauthorized", debug }), {
+    // Details go to the function logs only — the response stays generic so the
+    // endpoint can't be used to probe env/config/RPC state.
+    console.error(`media-upload: ${requiredRole} check failed: ${debug}`);
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -110,15 +124,49 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Overwrite protection: a presigned PUT for a key that already backs a
+      // media row would silently replace that object's bytes. Reject any
+      // request touching a key the media table already references. Uses the
+      // service-role client so the check can't be affected by RLS changes.
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      // Keys are shape-validated above (hex UUIDs, no quotes/commas), so they
+      // are safe to embed in a PostgREST filter list.
+      const keyList = `(${files.map((f) => `"${f.key}"`).join(",")})`;
+      const { data: existing, error: existingError } = await admin
+        .from("media")
+        .select("id")
+        .or(`storage_path.in.${keyList},thumbnail_path.in.${keyList}`)
+        .limit(1);
+      if (existingError) {
+        console.error(`media-upload: existing-key check failed: ${existingError.message}`);
+        return new Response(JSON.stringify({ error: "Internal error" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (existing !== null && existing.length > 0) {
+        return new Response(JSON.stringify({ error: "Conflict" }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const urls = await Promise.all(
         files.map(async (file) => {
           const command = new PutObjectCommand({
             Bucket: R2_BUCKET,
             Key: file.key,
             ContentType: file.contentType,
+            ContentLength: file.size,
           });
+          // Signing Content-Length pins the upload to the declared size: a PUT
+          // with a different body length fails R2's signature check.
           const uploadUrl = await getSignedUrl(s3, command, {
             expiresIn: PRESIGNED_URL_EXPIRY,
+            signableHeaders: new Set(["content-length"]),
           });
           return {
             key: file.key,
@@ -163,12 +211,11 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    // Log the real error; never echo internals (SDK/env details) to the caller.
+    console.error("media-upload: unhandled error:", err);
+    return new Response(JSON.stringify({ error: "Internal error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

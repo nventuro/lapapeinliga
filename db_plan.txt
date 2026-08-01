@@ -1,0 +1,73 @@
+DB RESTRUCTURE PLAN (deferred)
+==============================
+
+Context: the five event types are implemented as parallel copy-pasted plumbing.
+Eight roster/junction tables (match_team_players, match_reserves,
+training_attendees, training_coaches, tournament_team_players,
+tournament_reserves, external_match_players, external_match_reserves), each
+with a near-identical RLS block, five near-identical removal-check trigger
+functions (20260417130000), and an event_participants view that has been
+rebuilt wholesale three times and now has 8 UNION branches (20260621120000).
+Adding a participant-bearing event type today touches ~7 database objects.
+This plan collapses that. Do it when event types next grow, or when the
+per-type plumbing needs its next non-trivial change.
+
+1. Single event_participants TABLE (replaces the 8 junction tables + view)
+   - Shape: (event_id FK -> events, player_id FK -> players,
+     kind text CHECK IN ('team_member','reserve','attendee','coach'),
+     team_id bigint NULL, goals int NOT NULL DEFAULT 0,
+     PRIMARY KEY (event_id, player_id)).
+   - team_id references a unified teams table (see 2) and is non-null only for
+     kind='team_member'. goals is only meaningful for external matches; a CHECK
+     tied to the event type can wait for the capabilities table (see 3).
+   - One RLS block (mods insert/delete, world read), ONE removal-integrity
+     trigger instead of five, and the awards/cost/tagging code already keys on
+     exactly (event_id, player_id) so client changes are mechanical.
+   - Migration: INSERT INTO the new table from all 8 old tables (the current
+     view's UNION branches are exactly the backfill query), swap the view name
+     to the table, drop the old tables. Client: useEventDetail's select
+     becomes one embed; TeamRosterConfig (src/components/teamRosterConfig.ts)
+     collapses to a single config.
+
+2. Unified event teams table
+   - match_teams and tournament_teams differ only by shirt_color. One table:
+     (id, event_id, name, shirt_color NULL) + UNIQUE (event_id, id) so
+     winner/fixture FKs stay composite (the 20260802100001 pattern).
+   - tournament_matches then references (event_id, team_x_id).
+
+3. event_type capabilities reference table ("make capabilities data, not code")
+   - event_type(type PK, votable bool, has_participants bool, has_finances
+     bool); events.type gets an FK to it.
+   - _event_vote_window reads `votable` instead of the hardcoded
+     IN ('match','tournament') (which as of 20260802100000 exists in ONE place,
+     mirrored by the write RPCs; the reference table removes even that echo).
+   - Client mirror: hasParticipantList/hasFinances/hasAwards in src/types.ts
+     stay as the compile-time mirror (same pattern as AwardType vs award_types).
+   - Adding event type #6 then costs: one row here + one client union member,
+     with the compiler (unhandledEventType) pointing at every dispatch site.
+
+4. Decisions to make consciously (cheap, independent of the above)
+   - Social-event visibility: events/locations are anon-readable, which is fine
+     for rented pitches but a social event can carry someone's home address in
+     locations.maps_url with an exact date/time, world-readable while signed
+     out. Decide: acceptable (private group, obscure URL) or gate social rows
+     (policy `type <> 'social' OR auth.role() = 'authenticated'`).
+   - Player deletion still CASCADEs through rosters, votes and media tags
+     (only event_award_resolutions is RESTRICT as of 20260802100001). If
+     history matters, consider soft-delete (players.deleted_at) instead of row
+     deletion; stats already tolerate missing players.
+   - media_tags.name is case-SENSITIVE unique ('Asado' and 'asado' fork);
+     locations.name and team names have no uniqueness at all (the "new
+     location" flow can create duplicate venues). Add lower(name) unique
+     indexes where duplicates hurt, with a dedup backfill first.
+   - No audit columns exist anywhere (created_at/created_by); with three
+     privilege tiers writing, nothing attributes a change. Add created_at
+     DEFAULT now() broadly; created_by via a default from auth.jwt() on the
+     tables mods write.
+   - events.short_id (28 bits) has no collision retry: an unlucky INSERT just
+     fails. Wrap generation in a retry loop inside a SECURITY DEFINER helper,
+     or accept the ~1-in-thousands failure.
+
+Sequencing sketch: 3 (reference table, no data movement) -> 1+2 in one
+migration with backfill inside a transaction -> drop old tables once a deploy
+cycle has proven the new paths -> 4 items independently, anytime.
