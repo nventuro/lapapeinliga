@@ -43,7 +43,7 @@ function PlayerRow({ player, isSelected, isLocked, showRating, onTap, onToggleLo
       <GenderIcon gender={player.gender} />
       <span>{player.name}</span>
       {isGuest(player) && <InvBadge />}
-      {showRating && <RatingBadge rating={player.rating} className="ml-auto" />}
+      {showRating && <RatingBadge rating={player.rating ?? null} className="ml-auto" />}
       <Tooltip label={isLocked ? 'Desbloquear jugador' : 'Bloquear jugador'}>
         <button
           onClick={(e) => { e.stopPropagation(); onToggleLock(player.id); }}

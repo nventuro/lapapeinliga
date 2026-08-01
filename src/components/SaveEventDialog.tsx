@@ -1,25 +1,25 @@
-import { useState, useRef, useEffect } from 'react';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useState, useEffect } from 'react';
+import { useModalDialog } from '../hooks/useModalDialog';
 import { useNavigate } from 'react-router-dom';
-import type { Team, Player, ShirtColor, Location, LocationSelection, ExternalTeam, ExternalTeamSelection } from '../types';
-import { EVENT_TYPE_LABELS, hasFinances, isNewLocationComplete, isExternalTeamSelectionComplete, unhandledEventType } from '../types';
+import type { Team, Player, ShirtColor, Location, ExternalTeam, ExternalTeamSelection } from '../types';
+import { EVENT_TYPE_LABELS, compareByName, hasFinances, isNewLocationComplete, isExternalTeamSelectionComplete, unhandledEventType } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { formatDateShort, isValidTime } from '../utils/dateUtils';
+import { isValidTime, toLocalISODate } from '../utils/dateUtils';
+import { parseCostInput } from '../utils/costUtils';
 import { shuffle } from '../utils/shuffle';
 import { defaultTeamName } from '../utils/teamSorter';
-import LocationPicker from './LocationPicker';
+import EventFieldsForm from './EventFieldsForm';
+import { resolveLocationSelection, useEventFieldsState } from '../hooks/useEventFields';
 import ExternalTeamPicker from './ExternalTeamPicker';
-import TimeInput from './TimeInput';
 import TeamNameColorControls from './TeamNameColorControls';
 
 function nextSaturday(): string {
   const today = new Date();
-  const day = today.getDay();
-  const diff = (6 - day + 7) % 7;
+  const diff = (6 - today.getDay() + 7) % 7;
   const sat = new Date(today);
-  sat.setDate(today.getDate() + (diff === 0 ? 0 : diff));
-  return sat.toISOString().slice(0, 10);
+  sat.setDate(today.getDate() + diff);
+  return toLocalISODate(sat);
 }
 
 type SaveEventDialogProps = {
@@ -36,6 +36,19 @@ function initialTeamNames(count: number, suggestedNames: string[]): string[] {
   const shuffled = shuffle(suggestedNames);
   return Array.from({ length: count }, (_, i) =>
     i < shuffled.length ? shuffled[i] : defaultTeamName(i),
+  );
+}
+
+function RosterPreview({ title, players }: { title: string; players: Player[] }) {
+  return (
+    <div className="border border-border rounded-lg p-3">
+      <h3 className="text-sm font-medium mb-2">{title} ({players.length})</h3>
+      <ul className="text-sm text-muted space-y-0.5">
+        {[...players].sort(compareByName).map((p) => (
+          <li key={p.id}>{p.name}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -212,18 +225,11 @@ async function resolveExternalTeamId(
 export default function SaveEventDialog(props: SaveEventDialogProps) {
   const { onClose } = props;
   const navigate = useNavigate();
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  useBodyScrollLock();
+  const { dialogRef, backdropClick } = useModalDialog(onClose);
   const { teamNames: suggestedTeamNames } = useAppContext();
 
-  const [name, setName] = useState('');
-  const [date, setDate] = useState(nextSaturday);
-  const [time, setTime] = useState('');
-  const [locationSelection, setLocationSelection] = useState<LocationSelection>({ type: 'none' });
+  const fields = useEventFieldsState({ date: nextSaturday() });
   const [locations, setLocations] = useState<Location[]>([]);
-  const [cost, setCost] = useState('');
-  const [payee, setPayee] = useState('');
   const [externalTeams, setExternalTeams] = useState<ExternalTeam[]>([]);
   const [opponentSelection, setOpponentSelection] = useState<ExternalTeamSelection>({ type: 'none' });
   const hasTeams = props.type === 'match' || props.type === 'tournament';
@@ -237,20 +243,6 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   const [error, setError] = useState<string | null>(null);
   // Social events have nobody to split a cost among, so they skip the money fields.
   const showFinances = hasFinances(props.type);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) {
-      dialog.showModal();
-    }
-
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      onClose();
-    };
-    dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
-  }, [onClose]);
 
   useEffect(() => {
     supabase.from('locations').select('*').order('name').then(({ data }) => {
@@ -310,8 +302,16 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       return;
     }
 
-    if (!time || !isValidTime(time)) {
+    if (!fields.time || !isValidTime(fields.time)) {
       setError('Completá el horario.');
+      return;
+    }
+
+    // Validate the cost before writing anything, so a bad value can't leave a
+    // half-created event behind.
+    const costParsed = showFinances ? parseCostInput(fields.cost) : { value: null, error: null };
+    if (costParsed.error) {
+      setError(costParsed.error);
       return;
     }
 
@@ -330,38 +330,22 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     }
 
     // 1. Resolve location (optional)
-    let locationId: number | null = null;
-    if (locationSelection.type === 'existing') {
-      locationId = locationSelection.locationId;
-    } else if (locationSelection.type === 'new') {
-      if (!locationSelection.name.trim() || !locationSelection.mapsUrl.trim()) {
-        setError('Completá el nombre y el link de Google Maps de la cancha.');
-        setSaving(false);
-        return;
-      }
-      const { data: newLoc, error: locError } = await supabase
-        .from('locations')
-        .insert({ name: locationSelection.name.trim(), maps_url: locationSelection.mapsUrl.trim() })
-        .select('id')
-        .single();
-
-      if (locError || !newLoc) {
-        setError(locError?.message ?? 'Error al crear la cancha.');
-        setSaving(false);
-        return;
-      }
-      locationId = newLoc.id;
+    const resolved = await resolveLocationSelection(fields.locationSelection);
+    if ('error' in resolved) {
+      setError(resolved.error);
+      setSaving(false);
+      return;
     }
 
     // 2. Insert event
     const { data: event, error: eventError } = await supabase
       .from('events')
       .insert({
-        name: name.trim() || null,
+        name: fields.name.trim() || null,
         type: props.type,
-        played_at: date,
-        played_at_time: time,
-        location_id: locationId,
+        played_at: fields.date,
+        played_at_time: fields.time,
+        location_id: resolved.locationId,
       })
       .select('id, short_id')
       .single();
@@ -373,8 +357,8 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     }
 
     // Financial details live in the mod/admin-only event_finances table.
-    const costValue = showFinances && cost.trim() ? parseInt(cost.trim(), 10) : null;
-    const payeeValue = (showFinances && payee.trim()) || null;
+    const costValue = costParsed.value;
+    const payeeValue = (showFinances && fields.payee.trim()) || null;
     if (costValue != null || payeeValue != null) {
       const { error: financesError } = await supabase
         .from('event_finances')
@@ -408,10 +392,8 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50"
-      onClick={(e) => {
-        if (e.target === dialogRef.current) props.onClose();
-      }}
+      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-on-surface/50"
+      onClick={backdropClick}
     >
       <form onSubmit={handleSave} className="p-6">
         <h2 className="text-xl font-bold mb-4">
@@ -419,17 +401,6 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
         </h2>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nombre (opcional)</label>
-            <input
-              type="text"
-              placeholder={props.type === 'social' ? 'Ej: Asado de fin de año' : 'Ej: Copa de Verano'}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
           {props.type === 'external_match' && (
             <div>
               <label className="block text-sm font-medium mb-1">Rival</label>
@@ -441,66 +412,14 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Fecha</label>
-            <div>
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className="sr-only"
-              />
-              <div
-                onClick={() => dateInputRef.current?.showPicker()}
-                className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer"
-              >
-                {formatDateShort(date)}
-              </div>
-            </div>
-          </div>
+          <EventFieldsForm
+            fields={fields}
+            locations={locations}
+            showDate
+            showFinances={showFinances}
+            namePlaceholder={props.type === 'social' ? 'Ej: Asado de fin de año' : 'Ej: Copa de Verano'}
+          />
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Horario</label>
-            <TimeInput value={time} onChange={setTime} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Cancha (opcional)</label>
-            <LocationPicker
-              value={locationSelection}
-              onChange={setLocationSelection}
-              locations={locations}
-            />
-          </div>
-
-          {showFinances && (
-            <>
-              <div>
-                <label className="block text-sm font-medium mb-1">Costo</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Ej: 15000"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
-                <input
-                  type="text"
-                  placeholder="Alias o CBU"
-                  value={payee}
-                  onChange={(e) => setPayee(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </>
-          )}
 
           {hasTeams && teamNames.map((teamName, i) => (
             <div key={i} className="border border-border rounded-lg p-3">
@@ -522,45 +441,15 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
 
           {props.type === 'external_match' && (
             <>
-              <div className="border border-border rounded-lg p-3">
-                <h3 className="text-sm font-medium mb-2">Titulares ({props.roster.length})</h3>
-                <ul className="text-sm text-muted space-y-0.5">
-                  {[...props.roster].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
-                    <li key={p.id}>{p.name}</li>
-                  ))}
-                </ul>
-              </div>
-              {props.reserves.length > 0 && (
-                <div className="border border-border rounded-lg p-3">
-                  <h3 className="text-sm font-medium mb-2">Suplentes ({props.reserves.length})</h3>
-                  <ul className="text-sm text-muted space-y-0.5">
-                    {[...props.reserves].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
-                      <li key={p.id}>{p.name}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <RosterPreview title="Titulares" players={props.roster} />
+              {props.reserves.length > 0 && <RosterPreview title="Suplentes" players={props.reserves} />}
             </>
           )}
 
           {props.type === 'training' && (
             <>
-              <div className="border border-border rounded-lg p-3">
-                <h3 className="text-sm font-medium mb-2">Jugadores ({props.attendees.length})</h3>
-                <ul className="text-sm text-muted space-y-0.5">
-                  {[...props.attendees].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
-                    <li key={p.id}>{p.name}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="border border-border rounded-lg p-3">
-                <h3 className="text-sm font-medium mb-2">Entrenadores ({props.coaches.length})</h3>
-                <ul className="text-sm text-muted space-y-0.5">
-                  {[...props.coaches].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
-                    <li key={p.id}>{p.name}</li>
-                  ))}
-                </ul>
-              </div>
+              <RosterPreview title="Jugadores" players={props.attendees} />
+              <RosterPreview title="Entrenadores" players={props.coaches} />
             </>
           )}
         </div>
@@ -579,7 +468,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
           </button>
           <button
             type="submit"
-            disabled={saving || !time || !isValidTime(time) || !isNewLocationComplete(locationSelection) || (props.type === 'external_match' && !isExternalTeamSelectionComplete(opponentSelection))}
+            disabled={saving || !fields.time || !isValidTime(fields.time) || !isNewLocationComplete(fields.locationSelection) || (props.type === 'external_match' && !isExternalTeamSelectionComplete(opponentSelection))}
             className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Guardando...' : 'Guardar'}

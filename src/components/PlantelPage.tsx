@@ -142,7 +142,7 @@ export default function PlantelPage() {
                       </Tooltip>
                     );
                   })}
-                  {showRatings && <RatingBadge rating={player.rating} pill={false} className="text-sm text-muted" />}
+                  {showRatings && <RatingBadge rating={player.rating ?? null} pill={false} className="text-sm text-muted" />}
                   {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0 ml-auto">
                       <Tooltip label="Editar jugador">

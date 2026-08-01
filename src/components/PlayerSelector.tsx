@@ -85,7 +85,7 @@ export default function PlayerSelector({
                     />
                     <GenderIcon gender={player.gender} />
                     <span className="font-medium">{player.name}</span>
-                    {showRatings && <RatingBadge rating={player.rating} className="ml-auto" />}
+                    {showRatings && <RatingBadge rating={player.rating ?? null} className="ml-auto" />}
                   </label>
                 </li>
               ))}

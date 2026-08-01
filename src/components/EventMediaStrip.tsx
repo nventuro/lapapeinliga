@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EVENT_MEDIA_PREVIEW_COUNT } from '../types';
 import type { MediaItem } from '../types';
 import { supabase } from '../lib/supabase';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { useAppContext } from '../context/appContext';
 import { PhotosIcon, UploadIcon } from './icons';
+import MediaThumbnail from './MediaThumbnail';
 import MediaUploadDialog from './MediaUploadDialog';
 import Tooltip from './Tooltip';
 
@@ -15,41 +17,29 @@ interface EventMediaStripProps {
 export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
   const { isModOrAdmin } = useAppContext();
   const navigate = useNavigate();
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
 
-  useEffect(() => {
-    async function fetchMedia() {
-      const { data } = await supabase
-        .from('media')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('taken_at', { ascending: false })
-        .order('id', { ascending: false });
-      if (data) setItems(data as MediaItem[]);
-      setLoading(false);
-    }
-    fetchMedia();
-  }, [eventId]);
-
-  function refetchMedia() {
-    supabase
+  const { data, loading, refetch: refetchMedia } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase
       .from('media')
       .select('*')
       .eq('event_id', eventId)
       .order('taken_at', { ascending: false })
-      .order('id', { ascending: false })
-      .then(({ data }) => {
-        if (data) setItems(data as MediaItem[]);
-      });
-  }
+      .order('id', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data as MediaItem[];
+  }, [eventId]);
+  const items = data ?? [];
+  // Only the FIRST load hides the strip: a refetch (e.g. after each uploaded
+  // item) keeps previous data, and returning null then would unmount the open
+  // MediaUploadDialog mid-batch.
+  const initialLoading = loading && data === null;
 
   function handleItemClick(item: MediaItem) {
     navigate(`/galeria?event=${eventId}&media=${item.id}`);
   }
 
-  if (loading) return null;
+  if (initialLoading) return null;
 
   // Empty state: show upload button for admins, nothing for non-admins
   if (items.length === 0 && !isModOrAdmin) return null;
@@ -95,23 +85,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
                 onClick={() => handleItemClick(item)}
                 className="aspect-square rounded-lg overflow-hidden bg-border-subtle"
               >
-                {item.media_type === 'video' ? (
-                  <video
-                    src={item.thumbnail_path}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <img
-                    src={item.thumbnail_path}
-                    alt={item.caption ?? ''}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                )}
+                <MediaThumbnail item={item} imgClassName="w-full h-full object-cover" />
               </button>
             ))}
           </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ExternalMatch } from '../types';
-import { OUR_TEAM_NAME, externalMatchResult } from '../types';
+import { EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, externalMatchResult } from '../types';
 import Confetti from './Confetti';
 
 interface ExternalMatchScoreCardProps {
@@ -11,12 +11,6 @@ interface ExternalMatchScoreCardProps {
   glowing: boolean;
   onSave: (ourScore: number | null, theirScore: number | null) => void;
 }
-
-const RESULT_LABELS = {
-  win: 'Ganamos',
-  loss: 'Perdimos',
-  draw: 'Empate',
-} as const;
 
 function scoreToInput(value: number | null): string {
   return value == null ? '' : String(value);
@@ -33,8 +27,19 @@ export default function ExternalMatchScoreCard({
   const [ourInput, setOurInput] = useState(() => scoreToInput(match.our_score));
   const [theirInput, setTheirInput] = useState(() => scoreToInput(match.their_score));
 
-  const result = externalMatchResult(match);
-  const resultLabel = result ? RESULT_LABELS[result] : 'Sin jugar';
+  // Resync when the record changes underneath us (another admin saved a score,
+  // or a participant edit reloaded the event); otherwise "Guardar" would
+  // silently overwrite their result with our stale initial values. This is the
+  // render-time "adjust state when props change" pattern from the React docs.
+  const [syncedScores, setSyncedScores] = useState({ our: match.our_score, their: match.their_score });
+  if (syncedScores.our !== match.our_score || syncedScores.their !== match.their_score) {
+    setSyncedScores({ our: match.our_score, their: match.their_score });
+    setOurInput(scoreToInput(match.our_score));
+    setTheirInput(scoreToInput(match.their_score));
+  }
+
+  const result = externalMatchResult(match.our_score, match.their_score);
+  const resultLabel = result ? EXTERNAL_RESULT_LABELS[result] : 'Sin jugar';
   const resultColor = result === 'win' ? 'text-success'
     : result === 'loss' ? 'text-error'
     : result === 'draw' ? 'text-info'

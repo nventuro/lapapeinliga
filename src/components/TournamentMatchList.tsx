@@ -86,7 +86,7 @@ export default function TournamentMatchList({
                 <span className="font-medium flex-1 text-right">{teamName(teams, match.team_a_id)}</span>
 
                 <span className="font-bold shrink-0">
-                  {match.score_a !== null ? `${match.score_a} - ${match.score_b}` : 'vs'}
+                  {match.score_a !== null && match.score_b !== null ? `${match.score_a} - ${match.score_b}` : 'vs'}
                 </span>
 
                 <span className="font-medium flex-1">{teamName(teams, match.team_b_id)}</span>

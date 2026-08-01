@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AwardResult, AwardType, EventAwardWindow, EventType, Player } from '../types';
-import { AWARD_DESCRIPTIONS, AWARD_LABELS, AWARD_TYPES } from '../types';
+import { AWARD_DESCRIPTIONS, AWARD_LABELS, AWARD_TYPES, hasAwards } from '../types';
 import { AWARD_ICONS } from './awardIcons';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
 import { formatDateTime } from '../utils/dateUtils';
@@ -61,7 +61,7 @@ export default function AwardsSection({
     return () => clearInterval(interval);
   }, [voteWindow?.state]);
 
-  if (eventType === 'training') return null;
+  if (!hasAwards(eventType)) return null;
   if (!voteWindow || voteWindow.state === 'n/a') return null;
 
   function findResult(award: AwardType): AwardResult | undefined {

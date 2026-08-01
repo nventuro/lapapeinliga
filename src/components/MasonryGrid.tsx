@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { MediaItemWithTags } from '../types';
 import { useWindowWidth } from '../hooks/useWindowWidth';
+import MediaThumbnail from './MediaThumbnail';
 
 /** Tailwind's `sm` breakpoint in pixels. */
 const SM_BREAKPOINT = 640;
@@ -53,23 +54,7 @@ export default function MasonryGrid({ items, onItemClick }: MasonryGridProps) {
               onClick={() => onItemClick(item)}
               className="w-full rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer block"
             >
-              {item.media_type === 'video' ? (
-                <video
-                  src={item.thumbnail_path}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full block"
-                />
-              ) : (
-                <img
-                  src={item.thumbnail_path}
-                  alt={item.caption ?? ''}
-                  className="w-full block"
-                  loading="lazy"
-                />
-              )}
+              <MediaThumbnail item={item} imgClassName="w-full block" />
             </button>
           ))}
         </div>

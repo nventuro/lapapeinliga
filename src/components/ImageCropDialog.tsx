@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalDialog } from '../hooks/useModalDialog';
 import ReactCrop from 'react-image-crop';
 import type { Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -51,8 +51,9 @@ function isFullImage(crop: Crop | undefined): boolean {
 }
 
 export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageCropDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  useBodyScrollLock();
+  // Deliberately no backdrop-click close: a stray tap outside must not throw
+  // away an in-progress crop selection.
+  const { dialogRef } = useModalDialog(onClose);
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
   const [cropping, setCropping] = useState(false);
@@ -61,18 +62,6 @@ export default function ImageCropDialog({ src, onClose, onCrop, onSkip }: ImageC
   const [currentSrc, setCurrentSrc] = useState(src);
   // The blob from the most recent crop (null = no crops applied yet)
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
-
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      onClose();
-    };
-    dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
-  }, [onClose]);
 
   // Clean up object URLs we create
   useEffect(() => {

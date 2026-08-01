@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
 import type { ExternalMatch } from '../types';
 import { externalMatchResult } from '../types';
 import { supabase } from '../lib/supabase';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 
 interface ExternalMatchHeadToHeadProps {
   externalTeamId: number;
@@ -15,7 +15,7 @@ type Tally = { wins: number; draws: number; losses: number; played: number };
 function tally(matches: ExternalMatch[]): Tally {
   const t: Tally = { wins: 0, draws: 0, losses: 0, played: 0 };
   for (const m of matches) {
-    const result = externalMatchResult(m);
+    const result = externalMatchResult(m.our_score, m.their_score);
     if (!result) continue;
     t.played++;
     if (result === 'win') t.wins++;
@@ -30,19 +30,13 @@ export default function ExternalMatchHeadToHead({
   opponentName,
   refreshToken,
 }: ExternalMatchHeadToHeadProps) {
-  const [record, setRecord] = useState<Tally | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    supabase
+  const { data: record } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase
       .from('external_matches')
       .select('id, event_id, external_team_id, our_score, their_score')
-      .eq('external_team_id', externalTeamId)
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        setRecord(tally(data as ExternalMatch[]));
-      });
-    return () => { cancelled = true; };
+      .eq('external_team_id', externalTeamId);
+    if (error) throw new Error(error.message);
+    return tally(data as ExternalMatch[]);
   }, [externalTeamId, refreshToken]);
 
   if (!record || record.played === 0) return null;

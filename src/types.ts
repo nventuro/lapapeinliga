@@ -1,6 +1,8 @@
 export const MIN_TEAM_SIZE = 5;
 export const MAX_TEAM_SIZE = 9;
 export const MIN_TEAMS = 2;
+/** A regular (non-tournament) match is always exactly two teams. */
+export const MATCH_TEAM_COUNT = 2;
 export const MIN_GENDER_PER_TEAM = 1;
 export const MIN_PLAYERS = MIN_TEAM_SIZE * MIN_TEAMS;
 export const MIN_TOURNAMENT_TEAMS = 3;
@@ -12,6 +14,12 @@ export const MAX_RATING_SPREAD = 0.75;
 export const DEFAULT_UNRATED_RATING = 4;
 
 export const LEADERBOARD_MIN_DISPLAY = 10;
+
+/** Max length for player names; the database enforces the same cap. */
+export const MAX_PLAYER_NAME_LENGTH = 80;
+
+/** How long the winner card glows after a result is recorded. */
+export const WINNER_GLOW_MS = 4000;
 
 // Scoring weights for team assignment optimization
 export const WEIGHT_RATING = 10;
@@ -56,10 +64,16 @@ export interface Player {
   id: number;
   name: string;
   gender: 'male' | 'female';
-  rating: number | null; // 1-10, null for unrated guests
   tier: PlayerTier | null; // null when masked: the core/sporadic distinction is admin-only (guests are still 'guest')
-  email: string | null; // linked Google account, only visible to admins
-  role: UserRole; // admin-only column, absent from players_public
+  /**
+   * Admin-only columns. Non-admin sessions read from `players_public`, which
+   * does not serve these, so they are undefined there — optional so any code
+   * that needs them is forced to handle the non-admin case instead of finding
+   * `undefined` at runtime behind a lying type.
+   */
+  rating?: number | null; // 1-10, null for unrated guests
+  email?: string | null; // linked Google account
+  role?: UserRole;
 }
 
 export function isGuest(player: Player): boolean {
@@ -79,7 +93,7 @@ export type RosterGroup = { key: string; label: string; players: Player[] };
  * previewing as a non-admin, whose data still holds the real tiers.
  */
 export function groupPlayersForRoster(players: Player[], showTiers: boolean): RosterGroup[] {
-  const byName = (a: Player, b: Player) => a.name.localeCompare(b.name);
+  const byName = compareByName;
   if (showTiers) {
     return PLAYER_TIERS
       .map((tier) => ({
@@ -101,10 +115,15 @@ export function effectiveRating(player: Player): number {
 
 const GENDER_ORDER: Record<Player['gender'], number> = { male: 0, female: 1 };
 
+/** Canonical alphabetical comparator for anything with a name (players, teams, tags). */
+export function compareByName(a: { name: string }, b: { name: string }): number {
+  return a.name.localeCompare(b.name);
+}
+
 export function comparePlayersByGenderThenName(a: Player, b: Player): number {
   const genderDiff = GENDER_ORDER[a.gender] - GENDER_ORDER[b.gender];
   if (genderDiff !== 0) return genderDiff;
-  return a.name.localeCompare(b.name);
+  return compareByName(a, b);
 }
 
 export type PreferenceType = 'prefer_with' | 'strongly_prefer_with' | 'prefer_not_with';
@@ -215,6 +234,17 @@ export function hasAwards(type: EventType): boolean {
 /** Display name for the papeinliga side in an external match. */
 export const OUR_TEAM_NAME = 'La Papeinliga';
 
+/**
+ * Financial details, from the mod/admin-only `event_finances` table. `null`
+ * when no row exists or the caller cannot see it. Cost and payee are kept
+ * together because they are only meaningful as a pair ("send $X to Y") —
+ * never spread them back into independent top-level fields.
+ */
+export type EventFinances = {
+  cost: number | null;
+  payee_alias_cbu: string | null;
+};
+
 export type Event = {
   id: number;
   short_id: string;
@@ -223,8 +253,7 @@ export type Event = {
   played_at: string;
   played_at_time: string;
   location_id: number | null;
-  cost: number | null;
-  payee_alias_cbu: string | null;
+  finances: EventFinances | null;
 };
 
 export type Match = {
@@ -289,14 +318,21 @@ export type ExternalMatchPlayer = {
 
 export type ExternalMatchResult = 'win' | 'loss' | 'draw';
 
+export const EXTERNAL_RESULT_LABELS: Record<ExternalMatchResult, string> = {
+  win: 'Ganamos',
+  loss: 'Perdimos',
+  draw: 'Empate',
+};
+
 /**
  * Derives the result for our side from the recorded scores, or null when the
- * match has not been scored yet.
+ * match has not been scored yet. Takes the scores directly (not the row) so
+ * call sites never need to fabricate an `ExternalMatch` to use it.
  */
-export function externalMatchResult(match: ExternalMatch): ExternalMatchResult | null {
-  if (match.our_score == null || match.their_score == null) return null;
-  if (match.our_score > match.their_score) return 'win';
-  if (match.our_score < match.their_score) return 'loss';
+export function externalMatchResult(ourScore: number | null, theirScore: number | null): ExternalMatchResult | null {
+  if (ourScore == null || theirScore == null) return null;
+  if (ourScore > theirScore) return 'win';
+  if (ourScore < theirScore) return 'loss';
   return 'draw';
 }
 
@@ -410,6 +446,16 @@ export const EQUIPO_TAG_NAME = 'equipo';
 
 export const THUMBNAIL_MAX_WIDTH = 400;
 export const FULL_IMAGE_MAX_WIDTH = 1600;
+
+// Upload size caps; the media-upload edge function enforces the same limits
+// server-side by signing the Content-Length of each presigned upload.
+export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+// Video processing
+export const VIDEO_BOOMERANG_DEFAULT_SECONDS = 3;
+export const VIDEO_MIN_TRIM_GAP_SECONDS = 0.2;
+export const VIDEO_PROCESSING_FPS = 15;
 
 export const EVENT_MEDIA_PREVIEW_COUNT = 3;
 

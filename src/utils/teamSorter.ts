@@ -51,10 +51,48 @@ function generateInitialAssignment(
   const freePlayers = players.filter((p) => !lockedIds.has(p.id));
 
   if (enforceGender) {
-    const females = shuffle(freePlayers.filter((p) => p.gender === 'female'));
-    const males = shuffle(freePlayers.filter((p) => p.gender === 'male'));
+    // Decide who starts as a reserve BEFORE the gender-ordered deal. Dealing
+    // females first and taking the leftovers as reserves would make the initial
+    // reserves all-male whenever both genders are present — and since the
+    // objective never scores reserves, hill-climbing has no gradient to undo
+    // that bias. Instead pick reserves uniformly from the free pool, skipping
+    // only players whose gender is still needed to reach the per-team minimum.
+    const capacity = teams.reduce((sum, t) => sum + Math.max(0, perTeam - t.players.length), 0);
+    const reserveCount = Math.max(0, freePlayers.length - capacity);
 
-    // Round-robin ALL free players of each gender across teams
+    // Needs are per team, not global: a locked player only satisfies the
+    // minimum of the team they're locked into, so two females locked into team
+    // A still leave team B needing one from the free pool.
+    const countFemales = (ps: Player[]) => ps.filter((p) => p.gender === 'female').length;
+    const neededFemales = teams.reduce(
+      (sum, t) => sum + Math.max(0, MIN_GENDER_PER_TEAM - countFemales(t.players)), 0);
+    const neededMales = teams.reduce(
+      (sum, t) => sum + Math.max(0, MIN_GENDER_PER_TEAM - (t.players.length - countFemales(t.players))), 0);
+
+    const shuffledFree = shuffle(freePlayers);
+    let assignableFemales = countFemales(shuffledFree);
+    let assignableMales = shuffledFree.length - assignableFemales;
+    const initialReserves: Player[] = [];
+    const toAssign: Player[] = [];
+    for (const player of shuffledFree) {
+      const isFemale = player.gender === 'female';
+      const genderStillSpare = isFemale
+        ? assignableFemales - 1 >= neededFemales
+        : assignableMales - 1 >= neededMales;
+      if (initialReserves.length < reserveCount && genderStillSpare) {
+        initialReserves.push(player);
+        if (isFemale) assignableFemales--;
+        else assignableMales--;
+      } else {
+        toAssign.push(player);
+      }
+    }
+    reserves.push(...initialReserves);
+
+    const females = toAssign.filter((p) => p.gender === 'female');
+    const males = toAssign.filter((p) => p.gender === 'male');
+
+    // Round-robin the assignable players of each gender across teams
     for (const pool of [females, males]) {
       let teamIdx = 0;
       for (const player of pool) {
@@ -72,9 +110,9 @@ function generateInitialAssignment(
       }
     }
 
-    // Collect anyone not assigned as reserves
+    // Safety net: anyone still unassigned (all teams full) becomes a reserve
     const assigned = new Set(teams.flatMap((t) => t.players.map((p) => p.id)));
-    for (const p of freePlayers) {
+    for (const p of toAssign) {
       if (!assigned.has(p.id)) reserves.push(p);
     }
     return { teams, reserves };
@@ -95,10 +133,17 @@ function generateInitialAssignment(
   return { teams, reserves };
 }
 
-/** Check whether the gender hard constraint is feasible. */
-function canEnforceGender(players: Player[], teamCount: number): boolean {
-  const maleCount = players.filter((p) => p.gender === 'male').length;
-  const femaleCount = players.filter((p) => p.gender === 'female').length;
+/**
+ * Check whether the gender hard constraint is feasible. Players locked to the
+ * reserves can never help satisfy a per-team minimum, so they must not count —
+ * otherwise the constraint stays "on" while being unsatisfiable, every swap
+ * fails validation, and hill-climbing returns the raw initial assignment with
+ * no rating balancing at all.
+ */
+function canEnforceGender(players: Player[], teamCount: number, locks: PlayerLocks): boolean {
+  const assignable = players.filter((p) => locks.get(p.id) !== 'reserves');
+  const maleCount = assignable.filter((p) => p.gender === 'male').length;
+  const femaleCount = assignable.filter((p) => p.gender === 'female').length;
   return maleCount >= teamCount * MIN_GENDER_PER_TEAM &&
     femaleCount >= teamCount * MIN_GENDER_PER_TEAM;
 }
@@ -254,18 +299,43 @@ export function sortTeams(
   preferences: PlayerPreference[] = [],
   locks: PlayerLocks = new Map(),
 ): SortResult {
-  const enforceGender = canEnforceGender(players, teamCount);
+  // Locks can outlive the state they were created against (team count lowered,
+  // players removed after locking): a lock to a team index that no longer
+  // exists would crash the initial placement, so treat it as unlocked.
+  const validLocks: PlayerLocks = new Map(
+    [...locks].filter(([, dest]) => dest === 'reserves' || dest < teamCount),
+  );
+
+  const enforceGender = canEnforceGender(players, teamCount, validLocks);
 
   let bestTeams: Team[] | null = null;
   let bestReserves: Player[] | null = null;
   let bestTotalScore = -Infinity;
+  let bestSatisfiesGender = false;
 
   for (let start = 0; start < HILL_CLIMB_STARTS; start++) {
-    const initial = generateInitialAssignment(players, teamCount, enforceGender, locks);
-    const result = hillClimb(initial.teams, initial.reserves, preferences, enforceGender, locks);
+    let runEnforceGender = enforceGender;
+    let initial = generateInitialAssignment(players, teamCount, runEnforceGender, validLocks);
+    // Locks can make the constraint set unsatisfiable in ways the headcount
+    // check can't see (e.g. a full locked team with no room for a required
+    // gender). If even the initial layout is invalid, drop the gender
+    // constraint for this run instead of letting hill-climbing reject every
+    // candidate and hand back the raw shuffle unoptimized.
+    if (runEnforceGender && !isValid(initial.teams, runEnforceGender)) {
+      runEnforceGender = false;
+      initial = generateInitialAssignment(players, teamCount, runEnforceGender, validLocks);
+    }
+    const result = hillClimb(initial.teams, initial.reserves, preferences, runEnforceGender, validLocks);
 
-    if (result.totalScore > bestTotalScore) {
+    // A run that kept the gender constraint always beats one that had to drop
+    // it, no matter the score — otherwise an unconstrained run's higher rating
+    // balance would silently win with an all-male team.
+    const satisfiesGender = !enforceGender || isValid(result.teams, true);
+    const better = (satisfiesGender && !bestSatisfiesGender)
+      || (satisfiesGender === bestSatisfiesGender && result.totalScore > bestTotalScore);
+    if (better) {
       bestTotalScore = result.totalScore;
+      bestSatisfiesGender = satisfiesGender;
       bestTeams = result.teams;
       bestReserves = result.reserves;
     }

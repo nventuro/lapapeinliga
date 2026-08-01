@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { AwardType, Player } from '../types';
-import { AWARD_LABELS } from '../types';
+import { AWARD_LABELS, compareByName } from '../types';
 import { AWARD_ICONS } from './awardIcons';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalDialog } from '../hooks/useModalDialog';
 
 interface TiebreakerDialogProps {
   award: AwardType;
@@ -12,23 +12,9 @@ interface TiebreakerDialogProps {
 }
 
 export default function TiebreakerDialog({ award, tiedCandidates, onResolve, onClose }: TiebreakerDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const { dialogRef, backdropClick } = useModalDialog(onClose);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useBodyScrollLock();
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) {
-      dialog.showModal();
-    }
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      onClose();
-    };
-    dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
-  }, [onClose]);
 
   async function handlePick(playerId: number) {
     setSaving(true);
@@ -43,15 +29,13 @@ export default function TiebreakerDialog({ award, tiedCandidates, onResolve, onC
   }
 
   const Icon = AWARD_ICONS[award];
-  const sorted = [...tiedCandidates].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = [...tiedCandidates].sort(compareByName);
 
   return (
     <dialog
       ref={dialogRef}
-      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50"
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
+      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-on-surface/50"
+      onClick={backdropClick}
     >
       <div className="p-6" tabIndex={-1}>
         <h2 className="flex items-center gap-2 text-xl font-bold mb-1">

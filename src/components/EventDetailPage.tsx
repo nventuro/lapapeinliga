@@ -1,303 +1,70 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
-import type { Event, EventWithDetails, MatchWithDetails, TournamentWithDetails, ExternalMatchWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, ExternalMatch, ExternalTeam, ExternalMatchPlayer, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
-import { allParticipants, COST_MARKUP_MULTIPLIER, EVENT_TYPE_LABELS, hasFinances, isNewLocationComplete, OUR_TEAM_NAME, unhandledEventType } from '../types';
-import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
+import type { AwardType, Location } from '../types';
+import { allParticipants, EVENT_TYPE_LABELS, hasFinances, isNewLocationComplete, OUR_TEAM_NAME, WINNER_GLOW_MS } from '../types';
+import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
-import { formatPesos, perPlayerCost } from '../utils/costUtils';
+import { parseCostInput } from '../utils/costUtils';
 import { EditIcon, WhatsAppIcon } from './icons';
 import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
-import TimeInput from './TimeInput';
 import Tooltip from './Tooltip';
-import BuiltTeamDisplay from './BuiltTeamDisplay';
 import ConfettiBurst from './ConfettiBurst';
-import LocationPicker from './LocationPicker';
+import CostSummary from './CostSummary';
+import EventFieldsForm from './EventFieldsForm';
 import EventMediaStrip from './EventMediaStrip';
+import TeamEventSection from './TeamEventSection';
+import { MATCH_ROSTER_CONFIG, TOURNAMENT_ROSTER_CONFIG } from './teamRosterConfig';
+import { resolveLocationSelection, useEventFieldsState } from '../hooks/useEventFields';
 import TournamentMatchList from './TournamentMatchList';
 import StandingsTable from './StandingsTable';
-import TournamentTeamCard from './TournamentTeamCard';
-import ResultsSection from './ResultsSection';
 import ExternalMatchPlayerList from './ExternalMatchPlayerList';
 import ExternalMatchScoreCard from './ExternalMatchScoreCard';
 import ExternalMatchHeadToHead from './ExternalMatchHeadToHead';
 import AwardsSection from './AwardsSection';
 import EventFeedbackAdminSection from './EventFeedbackAdminSection';
-import ReservesList from './ReservesList';
-import TrainingParticipantsList from './TrainingParticipantsList';
+import ParticipantListCard from './ParticipantListCard';
 import type { MoveDestination } from './ParticipantRow';
 import { useEventAwards } from '../hooks/useEventAwards';
+import { useEventDetail } from '../hooks/useEventDetail';
 import { useEventFeedback } from '../hooks/useEventFeedback';
-
-type EventPageData = {
-  event: EventWithDetails;
-  eventNumber: string;
-};
-
-async function fetchEventData(
-  shortId: string,
-  players: Player[],
-): Promise<EventPageData | null> {
-  const { data: eventRow, error: eventError } = await supabase
-    .from('events')
-    .select('*, event_finances(cost, payee_alias_cbu)')
-    .eq('short_id', shortId)
-    .single();
-
-  if (eventError || !eventRow) return null;
-
-  // cost/payee live in the mod/admin-only event_finances table (null for
-  // non-mods via RLS); flatten the embedded row so downstream reads event.cost.
-  const { event_finances, ...eventBase } = eventRow;
-  const eventData: Event = {
-    ...eventBase,
-    cost: event_finances?.cost ?? null,
-    payee_alias_cbu: event_finances?.payee_alias_cbu ?? null,
-  };
-
-  const eventId = eventData.id;
-
-  // Fetch location (nullable — not every event has a venue)
-  let location: Location | null = null;
-  if (eventData.location_id != null) {
-    const { data: locData } = await supabase
-      .from('locations')
-      .select('*')
-      .eq('id', eventData.location_id)
-      .single();
-    if (locData) location = locData as Location;
-  }
-
-  // Fetch all events for labeling
-  const allEventsResult = await orderEvents(supabase.from('events').select('id, played_at'), true);
-  const allRows = (allEventsResult.data ?? []) as { id: number; played_at: string }[];
-  const labels = buildEventLabels(allRows);
-  const eventNumber = labels.get(eventId) ?? '?';
-
-  const playerMap = new Map(players.map((p) => [p.id, p]));
-
-  if (eventData.type === 'match') {
-    // Fetch match child
-    const { data: matchData } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('event_id', eventId)
-      .single();
-
-    if (!matchData) return null;
-
-    const { data: teamsData } = await supabase
-      .from('match_teams')
-      .select('id, match_id, name, shirt_color')
-      .eq('match_id', matchData.id)
-      .order('id');
-
-    const [teamPlayersResult, reservesResult] = await Promise.all([
-      supabase
-        .from('match_team_players')
-        .select('match_team_id, player_id')
-        .in('match_team_id', (teamsData ?? []).map((t) => t.id)),
-      supabase
-        .from('match_reserves')
-        .select('player_id')
-        .eq('match_id', matchData.id),
-    ]);
-
-    const teams: MatchTeam[] = (teamsData ?? []).map((team) => ({
-      ...team,
-      players: (teamPlayersResult.data ?? [])
-        .filter((tp) => tp.match_team_id === team.id)
-        .map((tp) => playerMap.get(tp.player_id))
-        .filter((p): p is Player => p !== undefined),
-    }));
-
-    const reserves = (reservesResult.data ?? [])
-      .map((r) => playerMap.get(r.player_id))
-      .filter((p): p is Player => p !== undefined);
-
-    const match: Match = matchData as Match;
-
-    return {
-      event: { ...eventData, type: 'match' as const, match, teams, reserves, location } as MatchWithDetails,
-      eventNumber,
-    };
-  } else if (eventData.type === 'tournament') {
-    // Tournament
-    const { data: tournamentData } = await supabase
-      .from('tournaments')
-      .select('*')
-      .eq('event_id', eventId)
-      .single();
-
-    if (!tournamentData) return null;
-
-    const { data: teamsData } = await supabase
-      .from('tournament_teams')
-      .select('id, tournament_id, name')
-      .eq('tournament_id', tournamentData.id)
-      .order('id');
-
-    const [teamPlayersResult, reservesResult, matchesResult] = await Promise.all([
-      supabase
-        .from('tournament_team_players')
-        .select('tournament_team_id, player_id')
-        .in('tournament_team_id', (teamsData ?? []).map((t) => t.id)),
-      supabase
-        .from('tournament_reserves')
-        .select('player_id')
-        .eq('tournament_id', tournamentData.id),
-      supabase
-        .from('tournament_matches')
-        .select('*')
-        .eq('tournament_id', tournamentData.id)
-        .order('id'),
-    ]);
-
-    const teams: TournamentTeam[] = (teamsData ?? []).map((team) => ({
-      ...team,
-      players: (teamPlayersResult.data ?? [])
-        .filter((tp) => tp.tournament_team_id === team.id)
-        .map((tp) => playerMap.get(tp.player_id))
-        .filter((p): p is Player => p !== undefined),
-    }));
-
-    const reserves = (reservesResult.data ?? [])
-      .map((r) => playerMap.get(r.player_id))
-      .filter((p): p is Player => p !== undefined);
-
-    const tournament: Tournament = tournamentData as Tournament;
-    const tournamentMatches: TournamentMatch[] = (matchesResult.data ?? []) as TournamentMatch[];
-
-    return {
-      event: {
-        ...eventData,
-        type: 'tournament' as const,
-        tournament,
-        teams,
-        reserves,
-        tournamentMatches,
-        location,
-      } as TournamentWithDetails,
-      eventNumber,
-    };
-  } else if (eventData.type === 'external_match') {
-    // External match
-    const { data: externalMatchData } = await supabase
-      .from('external_matches')
-      .select('*')
-      .eq('event_id', eventId)
-      .single();
-
-    if (!externalMatchData) return null;
-
-    const { data: opponentData } = await supabase
-      .from('external_teams')
-      .select('id, name')
-      .eq('id', externalMatchData.external_team_id)
-      .single();
-
-    if (!opponentData) return null;
-
-    const [rosterResult, reservesResult] = await Promise.all([
-      supabase
-        .from('external_match_players')
-        .select('player_id, goals')
-        .eq('external_match_id', externalMatchData.id),
-      supabase
-        .from('external_match_reserves')
-        .select('player_id, goals')
-        .eq('external_match_id', externalMatchData.id),
-    ]);
-
-    const toRosterEntries = (rows: { player_id: number; goals: number }[]): ExternalMatchPlayer[] =>
-      rows
-        .map((r) => {
-          const player = playerMap.get(r.player_id);
-          return player ? { player, goals: r.goals } : null;
-        })
-        .filter((r): r is ExternalMatchPlayer => r !== null);
-
-    const roster = toRosterEntries(rosterResult.data ?? []);
-    const reserves = toRosterEntries(reservesResult.data ?? []);
-
-    const externalMatch = externalMatchData as ExternalMatch;
-    const opponent = opponentData as ExternalTeam;
-
-    return {
-      event: {
-        ...eventData,
-        type: 'external_match' as const,
-        externalMatch,
-        opponent,
-        roster,
-        reserves,
-        location,
-      } as ExternalMatchWithDetails,
-      eventNumber,
-    };
-  } else if (eventData.type === 'social') {
-    // Social event: no child record, no participants — just the event and its photos.
-    return {
-      event: { ...eventData, type: 'social' as const, location },
-      eventNumber,
-    };
-  } else if (eventData.type === 'training') {
-    const { data: trainingData } = await supabase
-      .from('trainings')
-      .select('*')
-      .eq('event_id', eventId)
-      .single();
-
-    if (!trainingData) return null;
-
-    const [attendeesResult, coachesResult] = await Promise.all([
-      supabase
-        .from('training_attendees')
-        .select('player_id')
-        .eq('training_id', trainingData.id),
-      supabase
-        .from('training_coaches')
-        .select('player_id')
-        .eq('training_id', trainingData.id),
-    ]);
-
-    const attendees = (attendeesResult.data ?? [])
-      .map((a) => playerMap.get(a.player_id))
-      .filter((p): p is Player => p !== undefined);
-
-    const coaches = (coachesResult.data ?? [])
-      .map((c) => playerMap.get(c.player_id))
-      .filter((p): p is Player => p !== undefined);
-
-    const training: Training = trainingData as Training;
-
-    return {
-      event: { ...eventData, type: 'training' as const, training, attendees, coaches, location },
-      eventNumber,
-    };
-  } else {
-    // A type this build doesn't know: render as "not found" instead of crashing.
-    return unhandledEventType(eventData.type, null);
-  }
-}
+import { useEventsIndex } from '../hooks/useEventsIndex';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import type { ExternalMatchPlayer } from '../types';
 
 /** Looks up a player's goals within an external-match roster/reserve list. */
 function goalsFor(list: ExternalMatchPlayer[], playerId: number): number {
   return list.find((r) => r.player.id === playerId)?.goals ?? 0;
 }
 
+type MutationOp = () => PromiseLike<{ error: { message: string } | null }>;
+
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { players, isAdmin, isModOrAdmin, showCosts } = useAppContext();
 
-  const [event, setEvent] = useState<EventWithDetails | null>(null);
-  const [eventNumber, setEventNumber] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { event, loading, error, refetch } = useEventDetail(id);
+  const { labels, loading: labelsLoading } = useEventsIndex();
+  // Empty while the index loads, so the header/share can't emit "Fecha #?".
+  const eventNumber = event && !labelsLoading ? (labels.get(event.id) ?? '?') : '';
+
   const [saving, setSaving] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  // Winner glow: single timer, cleared on re-trigger and unmount.
   const [glowingWinner, setGlowingWinner] = useState(false);
+  const glowTimerRef = useRef<number | null>(null);
+  const triggerGlow = useCallback(() => {
+    setGlowingWinner(true);
+    if (glowTimerRef.current != null) clearTimeout(glowTimerRef.current);
+    glowTimerRef.current = window.setTimeout(() => setGlowingWinner(false), WINNER_GLOW_MS);
+  }, []);
+  useEffect(() => () => {
+    if (glowTimerRef.current != null) clearTimeout(glowTimerRef.current);
+  }, []);
 
   const awards = useEventAwards(event?.id ?? null, event?.type ?? null);
   const feedback = useEventFeedback(
@@ -310,90 +77,53 @@ export default function EventDetailPage() {
   // Details editing state
   const [editingDetails, setEditingDetails] = useState(false);
   const [closingDetails, setClosingDetails] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editTime, setEditTime] = useState('');
-  const [editCost, setEditCost] = useState('');
-  const [editPayee, setEditPayee] = useState('');
-  const [editLocationSelection, setEditLocationSelection] = useState<LocationSelection>({ type: 'none' });
-  const [allLocations, setAllLocations] = useState<Location[]>([]);
+  const [editError, setEditError] = useState<string | null>(null);
+  const editFields = useEventFieldsState();
+  const { data: allLocations, refetch: refetchLocations } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase.from('locations').select('*').order('name');
+    if (error) throw new Error(error.message);
+    return data as Location[];
+  }, [], { enabled: isAdmin });
 
   const participants = event ? allParticipants(event) : [];
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-
-    async function load() {
-      const data = await fetchEventData(id!, players);
-      if (!cancelled) {
-        setEvent(data?.event ?? null);
-        setEventNumber(data?.eventNumber ?? '');
-        setLoading(false);
-      }
-    }
-    load();
-
-    return () => { cancelled = true; };
-  }, [id, players]);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    supabase.from('locations').select('*').order('name').then(({ data }) => {
-      if (data) setAllLocations(data as Location[]);
-    });
-  }, [isAdmin]);
-
-  // Re-fetches the event payload from DB. Used after participant edits to
-  // reflect the new team composition without managing per-table state.
-  async function reloadEvent() {
-    if (!id) return;
-    const data = await fetchEventData(id, players);
-    if (data) {
-      setEvent(data.event);
-      setEventNumber(data.eventNumber);
-    }
-  }
+  const participantIds = new Set(participants.map((p) => p.id));
+  const availablePlayers = event ? players.filter((p) => !participantIds.has(p.id)) : [];
 
   // Wraps a single supabase mutation with saving state + error surfacing +
   // reload. The trigger that protects award integrity raises a plain
   // Postgres error; its message comes through as `error.message` here.
-  async function mutate(op: () => PromiseLike<{ error: { message: string } | null }>) {
+  async function mutate(op: MutationOp, options: { glow?: boolean } = {}) {
     setSaving(true);
+    setMutationError(null);
     const { error } = await op();
     if (error) {
-      alert(error.message);
-      setSaving(false);
-      return;
+      setMutationError(error.message);
+    } else {
+      refetch();
+      if (options.glow) triggerGlow();
     }
-    await reloadEvent();
     setSaving(false);
   }
 
   // For moves: always insert-then-delete so the deferred integrity trigger
   // sees the player still in event_participants at the DELETE's commit.
-  async function mutateMove(
-    insertOp: () => PromiseLike<{ error: { message: string } | null }>,
-    deleteOp: () => PromiseLike<{ error: { message: string } | null }>,
-  ) {
+  async function mutateMove(insertOp: MutationOp, deleteOp: MutationOp) {
     setSaving(true);
+    setMutationError(null);
     const ins = await insertOp();
     if (ins.error) {
-      alert(ins.error.message);
+      setMutationError(ins.error.message);
       setSaving(false);
       return;
     }
     const del = await deleteOp();
     if (del.error) {
-      alert(del.error.message);
-      setSaving(false);
-      return;
+      setMutationError(del.error.message);
+    } else {
+      refetch();
     }
-    await reloadEvent();
     setSaving(false);
   }
-
-  const participantIds = event ? new Set(allParticipants(event).map((p) => p.id)) : new Set<number>();
-  const availablePlayers = event ? players.filter((p) => !participantIds.has(p.id)) : [];
 
   function closeDetailsEditor() {
     setClosingDetails(true);
@@ -408,234 +138,117 @@ export default function EventDetailPage() {
 
   function openDetailsEditor() {
     if (!event) return;
-    setEditName(event.name ?? '');
-    setEditTime(event.played_at_time.slice(0, 5));
-    setEditCost(event.cost != null ? String(event.cost) : '');
-    setEditPayee(event.payee_alias_cbu ?? '');
-    setEditLocationSelection(event.location_id != null ? { type: 'existing', locationId: event.location_id } : { type: 'none' });
+    editFields.setName(event.name ?? '');
+    editFields.setTime(event.played_at_time.slice(0, 5));
+    editFields.setCost(event.finances?.cost != null ? String(event.finances.cost) : '');
+    editFields.setPayee(event.finances?.payee_alias_cbu ?? '');
+    editFields.setLocationSelection(
+      event.location_id != null ? { type: 'existing', locationId: event.location_id } : { type: 'none' },
+    );
+    setEditError(null);
     setEditingDetails(true);
   }
 
   async function handleSaveDetails() {
     if (!event) return;
-    if (!editTime || !isValidTime(editTime)) return;
-    setSaving(true);
+    if (!editFields.time || !isValidTime(editFields.time)) return;
+    setEditError(null);
 
-    // Resolve location (optional)
-    let locationId: number | null = null;
-    let location: Location | null = null;
-
-    if (editLocationSelection.type === 'existing') {
-      locationId = editLocationSelection.locationId;
-      const found = allLocations.find((l) => l.id === locationId);
-      if (!found) {
-        setSaving(false);
-        return;
-      }
-      location = found;
-    } else if (editLocationSelection.type === 'new') {
-      if (!editLocationSelection.name.trim() || !editLocationSelection.mapsUrl.trim()) {
-        setSaving(false);
-        return;
-      }
-
-      const { data: newLoc, error: locError } = await supabase
-        .from('locations')
-        .insert({
-          name: editLocationSelection.name.trim(),
-          maps_url: editLocationSelection.mapsUrl.trim(),
-        })
-        .select('*')
-        .single();
-
-      if (locError || !newLoc) {
-        setSaving(false);
-        return;
-      }
-
-      const created = newLoc as Location;
-      location = created;
-      locationId = created.id;
-      setAllLocations((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-    }
-
-    const nameValue = editName.trim() || null;
     // Social events never carry a cost: the editor hides both fields.
     const editsFinances = hasFinances(event.type);
-    const costValue = editsFinances && editCost.trim() ? parseInt(editCost.trim(), 10) : null;
-    const payeeValue = (editsFinances && editPayee.trim()) || null;
+    const costParsed = editsFinances ? parseCostInput(editFields.cost) : { value: null, error: null };
+    if (costParsed.error) {
+      setEditError(costParsed.error);
+      return;
+    }
 
-    const { error } = await supabase
+    setSaving(true);
+
+    const resolved = await resolveLocationSelection(editFields.locationSelection);
+    if ('error' in resolved) {
+      setEditError(resolved.error);
+      setSaving(false);
+      return;
+    }
+    if (resolved.created) refetchLocations();
+
+    const { error: eventError } = await supabase
       .from('events')
-      .update({ name: nameValue, played_at_time: editTime, location_id: locationId })
+      .update({
+        name: editFields.name.trim() || null,
+        played_at_time: editFields.time,
+        location_id: resolved.locationId,
+      })
       .eq('id', event.id);
+    if (eventError) {
+      setEditError(eventError.message);
+      setSaving(false);
+      return;
+    }
 
     // Financial fields live in the mod/admin-only event_finances table.
-    let ok = !error;
-    if (!error && editsFinances) {
+    if (editsFinances) {
       const { error: financesError } = await supabase
         .from('event_finances')
         .upsert(
-          { event_id: event.id, cost: costValue, payee_alias_cbu: payeeValue },
+          { event_id: event.id, cost: costParsed.value, payee_alias_cbu: editFields.payee.trim() || null },
           { onConflict: 'event_id' },
         );
-      ok = !financesError;
-    }
-
-    if (ok) {
-      setEvent({ ...event, name: nameValue, played_at_time: editTime, location_id: locationId, location, cost: costValue, payee_alias_cbu: payeeValue });
-      closeDetailsEditor();
-    }
-    setSaving(false);
-  }
-
-  async function handleWinnerChange(teamId: number | null) {
-    if (!event || event.type !== 'match') return;
-    setSaving(true);
-
-    const { error } = await supabase
-      .from('matches')
-      .update({ winning_team_id: teamId })
-      .eq('id', event.match.id);
-
-    if (!error) {
-      setEvent({ ...event, match: { ...event.match, winning_team_id: teamId } });
-      if (teamId !== null) {
-        setGlowingWinner(true);
-        setTimeout(() => setGlowingWinner(false), 4000);
+      if (financesError) {
+        // The event row was already updated; surface the partial failure
+        // instead of silently keeping the editor open with no explanation.
+        setEditError(`Se guardaron los detalles pero no el costo: ${financesError.message}`);
+        setSaving(false);
+        return;
       }
     }
+
+    refetch();
+    closeDetailsEditor();
     setSaving(false);
   }
 
-  async function handleTournamentWinnerChange(teamId: number | null) {
-    if (!event || event.type !== 'tournament') return;
-    setSaving(true);
-
-    const { error } = await supabase
-      .from('tournaments')
-      .update({ winning_team_id: teamId })
-      .eq('id', event.tournament.id);
-
-    if (!error) {
-      setEvent({ ...event, tournament: { ...event.tournament, winning_team_id: teamId } });
-      if (teamId !== null) {
-        setGlowingWinner(true);
-        setTimeout(() => setGlowingWinner(false), 4000);
-      }
-    }
-    setSaving(false);
-  }
-
-  async function handleExternalScoreChange(ourScore: number | null, theirScore: number | null) {
-    if (!event || event.type !== 'external_match') return;
-    setSaving(true);
-
-    const { error } = await supabase
-      .from('external_matches')
-      .update({ our_score: ourScore, their_score: theirScore })
-      .eq('id', event.externalMatch.id);
-
-    if (!error) {
-      setEvent({ ...event, externalMatch: { ...event.externalMatch, our_score: ourScore, their_score: theirScore } });
-      // Celebrate only a win, not a loss or draw.
-      if (ourScore != null && theirScore != null && ourScore > theirScore) {
-        setGlowingWinner(true);
-        setTimeout(() => setGlowingWinner(false), 4000);
-      }
-    }
-    setSaving(false);
-  }
-
-  async function handleSetGoals(
-    table: 'external_match_players' | 'external_match_reserves',
-    playerId: number,
-    goals: number,
-  ) {
-    if (!event || event.type !== 'external_match') return;
-    const externalMatchId = event.externalMatch.id;
-    await mutate(() =>
-      supabase
-        .from(table)
-        .update({ goals })
-        .eq('external_match_id', externalMatchId)
-        .eq('player_id', playerId),
+  function handleSetWinner(table: 'matches' | 'tournaments', rowId: number, teamId: number | null) {
+    return mutate(
+      () => supabase.from(table).update({ winning_team_id: teamId }).eq('id', rowId),
+      { glow: teamId !== null },
     );
   }
 
-  async function handleAddTournamentMatch(teamAId: number, teamBId: number) {
-    if (!event || event.type !== 'tournament') return;
-    setSaving(true);
-
-    const { data, error } = await supabase
-      .from('tournament_matches')
-      .insert({ tournament_id: event.tournament.id, team_a_id: teamAId, team_b_id: teamBId })
-      .select('*')
-      .single();
-
-    if (!error && data) {
-      const newMatch = data as TournamentMatch;
-      setEvent({ ...event, tournamentMatches: [...event.tournamentMatches, newMatch] });
-    }
-    setSaving(false);
-  }
-
-  async function handleUpdateTournamentMatchScore(matchId: number, scoreA: number | null, scoreB: number | null) {
-    if (!event || event.type !== 'tournament') return;
-    setSaving(true);
-
-    const { error } = await supabase
-      .from('tournament_matches')
-      .update({ score_a: scoreA, score_b: scoreB })
-      .eq('id', matchId);
-
-    if (!error) {
-      setEvent({
-        ...event,
-        tournamentMatches: event.tournamentMatches.map((m) =>
-          m.id === matchId ? { ...m, score_a: scoreA, score_b: scoreB } : m,
-        ),
-      });
-    }
-    setSaving(false);
-  }
-
-  async function handleDeleteTournamentMatch(matchId: number) {
-    if (!event || event.type !== 'tournament') return;
-    setSaving(true);
-
-    const { error } = await supabase
-      .from('tournament_matches')
-      .delete()
-      .eq('id', matchId);
-
-    if (!error) {
-      setEvent({
-        ...event,
-        tournamentMatches: event.tournamentMatches.filter((m) => m.id !== matchId),
-      });
-    }
-    setSaving(false);
+  function handleSetGoals(
+    table: 'external_match_players' | 'external_match_reserves',
+    externalMatchId: number,
+    playerId: number,
+    goals: number,
+  ) {
+    return mutate(() =>
+      supabase.from(table).update({ goals }).eq('external_match_id', externalMatchId).eq('player_id', playerId),
+    );
   }
 
   async function handleDelete() {
     if (!event) return;
-
-    const { error } = await supabase
-      .from('events')
-      .delete()
-      .eq('id', event.id);
-
+    const { error } = await supabase.from('events').delete().eq('id', event.id);
     if (error) {
-      alert(`Error al eliminar: ${error.message}`);
+      setMutationError(`Error al eliminar: ${error.message}`);
       return;
     }
-
     navigate('/fechas');
   }
 
-  if (loading) {
+  if (loading && !event) {
     return <p className="text-muted text-center py-8">Cargando fecha...</p>;
+  }
+
+  // A full-screen error only when there is nothing to show: a failed REFETCH
+  // (e.g. flaky connection after a mutation) keeps the loaded event on screen
+  // and surfaces the error in the banner below instead.
+  if (error && !event) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-error">Error al cargar la fecha: {error}</p>
+      </div>
+    );
   }
 
   if (!event) {
@@ -646,13 +259,11 @@ export default function EventDetailPage() {
     );
   }
 
-  // Match/tournament derived values
-  const winnerTeam = event.type === 'match' && event.match.winning_team_id
-    ? event.teams.find((t) => t.id === event.match.winning_team_id)
-    : null;
-  const tournamentWinnerTeam = event.type === 'tournament' && event.tournament.winning_team_id
-    ? event.teams.find((t) => t.id === event.tournament.winning_team_id)
-    : null;
+  // Keep mutation controls disabled until the post-mutation refetch lands:
+  // otherwise there's a window where stale rosters render with re-enabled
+  // buttons and a double-tap inserts twice.
+  const busy = saving || loading;
+  const bannerError = mutationError ?? error;
 
   // Build the "gold icon per player" map from the voting results. Only
   // categories with a confirmed winner (either from votes or a resolution)
@@ -671,17 +282,48 @@ export default function EventDetailPage() {
   // Social events have no cost split, so their editor and share message drop
   // the financial fields entirely.
   const showFinances = hasFinances(event.type);
+  // The share message embeds who to pay, so it needs an alias/CBU — except
+  // for social events, whose message is just the date, time and place.
+  const canShare = (event.finances?.payee_alias_cbu != null || !showFinances) && eventNumber !== '';
+
+  const awardsAndMedia = (
+    <>
+      <AwardsSection
+        eventType={event.type}
+        participants={participants}
+        voteWindow={awards.voteWindow}
+        results={awards.results}
+        myVotes={awards.myVotes}
+        loading={awards.loading}
+        onCastVote={awards.castVote}
+        onClearVote={awards.clearVote}
+        onResolveTie={awards.resolveTie}
+        feedbackBody={feedback.myBody}
+        feedbackLoading={feedback.loading}
+        onSubmitFeedback={feedback.submit}
+        onClearFeedback={feedback.clear}
+      />
+      {isAdmin && (
+        <EventFeedbackAdminSection bodies={feedback.adminBodies} loading={feedback.loading} />
+      )}
+      <EventMediaStrip eventId={event.id} />
+    </>
+  );
 
   return (
     <div>
       {glowingWinner && <ConfettiBurst />}
       <h2 className="text-xl font-bold">
-        Fecha #{eventNumber}{event.name ? ` · ${event.name}` : ''}
+        Fecha #{eventNumber || '…'}{event.name ? ` · ${event.name}` : ''}
       </h2>
       <p className="flex items-center gap-1.5 text-sm text-muted mt-1">
         <TypeIcon className="w-4 h-4" />
         {typeLabel} — {formatDate(event.played_at)}
       </p>
+
+      {bannerError && (
+        <p className="text-sm text-error mt-2">{bannerError}</p>
+      )}
 
       {/* Event details box (display or edit mode) */}
       {editingDetails ? (
@@ -689,56 +331,13 @@ export default function EventDetailPage() {
           className={`border border-border rounded-lg p-4 mt-3 space-y-3 ${closingDetails ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
           onAnimationEnd={handleEditorAnimationEnd}
         >
-          <div>
-            <label className="block text-sm font-medium mb-1">Nombre (opcional)</label>
-            <input
-              type="text"
-              placeholder="Ej: Copa de Verano"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              disabled={saving}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Horario</label>
-            <TimeInput value={editTime} onChange={setEditTime} disabled={saving} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Cancha (opcional)</label>
-            <LocationPicker
-              value={editLocationSelection}
-              onChange={setEditLocationSelection}
-              locations={allLocations}
-            />
-          </div>
-          {showFinances && (
-            <>
-              <div>
-                <label className="block text-sm font-medium mb-1">Costo</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Ej: 15000"
-                  value={editCost}
-                  onChange={(e) => setEditCost(e.target.value)}
-                  disabled={saving}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
-                <input
-                  type="text"
-                  placeholder="Alias o CBU"
-                  value={editPayee}
-                  onChange={(e) => setEditPayee(e.target.value)}
-                  disabled={saving}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </>
-          )}
+          <EventFieldsForm
+            fields={editFields}
+            locations={allLocations ?? []}
+            showFinances={showFinances}
+            disabled={busy}
+          />
+          {editError && <p className="text-sm text-error">{editError}</p>}
           <div className="flex gap-2">
             <button
               type="button"
@@ -750,176 +349,88 @@ export default function EventDetailPage() {
             <button
               type="button"
               onClick={handleSaveDetails}
-              disabled={saving || !editTime || !isValidTime(editTime) || !isNewLocationComplete(editLocationSelection)}
+              disabled={busy || !editFields.time || !isValidTime(editFields.time) || !isNewLocationComplete(editFields.locationSelection)}
               className="flex-1 py-2 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors text-sm"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
         </div>
-      ) : (() => {
-        const hasCost = isAdmin && showCosts && event.cost != null;
-        // The share message embeds who to pay, so it needs an alias/CBU — except
-        // for social events, whose message is just the date, time and place.
-        const canShare = event.payee_alias_cbu != null || !showFinances;
-        return (
-          <div className="border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p>
-                  {event.location ? (
-                    <>
-                      <a
-                        href={event.location.maps_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:text-primary-hover underline underline-offset-2"
-                      >
-                        {event.location.name}
-                      </a>
-                      {' · '}
-                    </>
-                  ) : null}
-                  {formatTime(event.played_at_time)}
-                </p>
-                {hasCost && (
-                  <p className="flex flex-wrap gap-x-4">
-                    <span>Total: {formatPesos(event.cost!)}</span>
-                    <span>Inflado: {formatPesos(event.cost! * COST_MARKUP_MULTIPLIER)}</span>
-                    {participants.length > 0 && (
-                      <span>Por jugador: {formatPesos(perPlayerCost(event.cost!, participants.length))}</span>
-                    )}
-                    {event.payee_alias_cbu && <span>Pagó: {event.payee_alias_cbu}</span>}
-                  </p>
-                )}
-              </div>
-              {isModOrAdmin && (
-                <div className="flex items-center gap-1 shrink-0 self-start">
-                  {isAdmin && (
-                    <Tooltip label="Editar detalles">
-                      <button
-                        type="button"
-                        onClick={openDetailsEditor}
-                        className="p-1 rounded text-muted hover:text-on-surface transition-colors"
-                      >
-                        <EditIcon className="w-4 h-4" />
-                      </button>
-                    </Tooltip>
-                  )}
-                  <Tooltip label={canShare ? 'Compartir por WhatsApp' : 'Completá alias/CBU para compartir'}>
-                    <button
-                      type="button"
-                      onClick={() => openWhatsAppShare(buildEventShareMessage(event, eventNumber))}
-                      disabled={!canShare}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
+      ) : (
+        <div className="border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p>
+                {event.location ? (
+                  <>
+                    <a
+                      href={event.location.maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary-hover underline underline-offset-2"
                     >
-                      Compartir
-                      <WhatsAppIcon className="w-4 h-4" />
-                    </button>
-                  </Tooltip>
-                </div>
+                      {event.location.name}
+                    </a>
+                    {' · '}
+                  </>
+                ) : null}
+                {formatTime(event.played_at_time)}
+              </p>
+              {isAdmin && showCosts && (
+                <CostSummary finances={event.finances} participantCount={participants.length} className="gap-x-4" />
               )}
             </div>
+            {isModOrAdmin && (
+              <div className="flex items-center gap-1 shrink-0 self-start">
+                {isAdmin && (
+                  <Tooltip label="Editar detalles">
+                    <button
+                      type="button"
+                      onClick={openDetailsEditor}
+                      className="p-1 rounded text-muted hover:text-on-surface transition-colors"
+                    >
+                      <EditIcon className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
+                )}
+                <Tooltip label={canShare ? 'Compartir por WhatsApp' : 'Completá alias/CBU para compartir'}>
+                  <button
+                    type="button"
+                    onClick={() => openWhatsAppShare(buildEventShareMessage(event, eventNumber))}
+                    disabled={!canShare}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
+                  >
+                    Compartir
+                    <WhatsAppIcon className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+              </div>
+            )}
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* Match: Teams */}
       {event.type === 'match' && (
         <>
-          <AwardsSection
-            eventType={event.type}
-            participants={participants}
-            voteWindow={awards.voteWindow}
-            results={awards.results}
-            myVotes={awards.myVotes}
-            loading={awards.loading}
-            onCastVote={awards.castVote}
-            onClearVote={awards.clearVote}
-            onResolveTie={awards.resolveTie}
-            feedbackBody={feedback.myBody}
-            feedbackLoading={feedback.loading}
-            onSubmitFeedback={feedback.submit}
-            onClearFeedback={feedback.clear}
-          />
-
-          {isAdmin && (
-            <EventFeedbackAdminSection bodies={feedback.adminBodies} loading={feedback.loading} />
-          )}
-
-          <EventMediaStrip eventId={event.id} />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            {event.teams.map((team) => {
-              const matchEvent = event as MatchWithDetails;
-              return (
-                <BuiltTeamDisplay
-                  key={team.id}
-                  team={team}
-                  isWinner={team.id === matchEvent.match.winning_team_id}
-                  playerAwards={playerAwards}
-                  canEdit={isModOrAdmin}
-                  saving={saving}
-                  availablePlayers={availablePlayers}
-                  canEditTeam={isAdmin}
-                  onSaveTeam={(name, shirtColor) => mutate(() =>
-                    supabase.from('match_teams').update({ name, ...(shirtColor ? { shirt_color: shirtColor } : {}) }).eq('id', team.id),
-                  )}
-                  onAddPlayer={(playerId) => mutate(() =>
-                    supabase.from('match_team_players').insert({ match_team_id: team.id, player_id: playerId }),
-                  )}
-                  onRemovePlayer={(playerId) => mutate(() =>
-                    supabase.from('match_team_players').delete().eq('match_team_id', team.id).eq('player_id', playerId),
-                  )}
-                  moveDestinationsFor={(player): MoveDestination[] => [
-                    ...matchEvent.teams.filter((t) => t.id !== team.id).map((otherTeam) => ({
-                      label: `Mover a ${otherTeam.name}`,
-                      onSelect: () => mutateMove(
-                        () => supabase.from('match_team_players').insert({ match_team_id: otherTeam.id, player_id: player.id }),
-                        () => supabase.from('match_team_players').delete().eq('match_team_id', team.id).eq('player_id', player.id),
-                      ),
-                    })),
-                    {
-                      label: 'Mover a suplentes',
-                      onSelect: () => mutateMove(
-                        () => supabase.from('match_reserves').insert({ match_id: matchEvent.match.id, player_id: player.id }),
-                        () => supabase.from('match_team_players').delete().eq('match_team_id', team.id).eq('player_id', player.id),
-                      ),
-                    },
-                  ]}
-                />
-              );
-            })}
-          </div>
-
-          <ReservesList
-            reserves={event.reserves}
-            canEdit={isModOrAdmin}
-            saving={saving}
-            availablePlayers={availablePlayers}
-            onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('match_reserves').insert({ match_id: event.match.id, player_id: playerId }),
-            )}
-            onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('match_reserves').delete().eq('match_id', event.match.id).eq('player_id', playerId),
-            )}
-            moveDestinationsFor={(player): MoveDestination[] => (event as MatchWithDetails).teams.map((team) => ({
-              label: `Mover a ${team.name}`,
-              onSelect: () => mutateMove(
-                () => supabase.from('match_team_players').insert({ match_team_id: team.id, player_id: player.id }),
-                () => supabase.from('match_reserves').delete().eq('match_id', (event as MatchWithDetails).match.id).eq('player_id', player.id),
-              ),
-            }))}
-          />
-
-          <ResultsSection
-            winningTeamId={event.match.winning_team_id}
+          {awardsAndMedia}
+          <TeamEventSection
+            config={MATCH_ROSTER_CONFIG}
+            parentId={event.match.id}
             teams={event.teams}
-            winnerTeamName={winnerTeam?.name ?? null}
-            canEdit={isModOrAdmin}
-            saving={saving}
+            reserves={event.reserves}
+            winningTeamId={event.match.winning_team_id}
+            playerAwards={playerAwards}
+            availablePlayers={availablePlayers}
+            saving={busy}
             glowingWinner={glowingWinner}
-            onWinnerChange={handleWinnerChange}
+            canEditRoster={isModOrAdmin}
+            canEditTeam={isAdmin}
+            showAverageRating
+            gridClassName="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6"
+            mutate={mutate}
+            mutateMove={mutateMove}
+            onWinnerChange={(teamId) => handleSetWinner('matches', event.match.id, teamId)}
           />
         </>
       )}
@@ -927,112 +438,41 @@ export default function EventDetailPage() {
       {/* Tournament */}
       {event.type === 'tournament' && (
         <>
-          <AwardsSection
-            eventType={event.type}
-            participants={participants}
-            voteWindow={awards.voteWindow}
-            results={awards.results}
-            myVotes={awards.myVotes}
-            loading={awards.loading}
-            onCastVote={awards.castVote}
-            onClearVote={awards.clearVote}
-            onResolveTie={awards.resolveTie}
-            feedbackBody={feedback.myBody}
-            feedbackLoading={feedback.loading}
-            onSubmitFeedback={feedback.submit}
-            onClearFeedback={feedback.clear}
-          />
-
-          {isAdmin && (
-            <EventFeedbackAdminSection bodies={feedback.adminBodies} loading={feedback.loading} />
-          )}
-
-          <EventMediaStrip eventId={event.id} />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-            {event.teams.map((team) => {
-              const tournamentEvent = event as TournamentWithDetails;
-              return (
-                <TournamentTeamCard
-                  key={team.id}
-                  team={team}
-                  isWinner={team.id === tournamentEvent.tournament.winning_team_id}
-                  playerAwards={playerAwards}
-                  canEdit={isModOrAdmin}
-                  saving={saving}
-                  availablePlayers={availablePlayers}
-                  canEditTeam={isAdmin}
-                  onSaveTeam={(name) => mutate(() =>
-                    supabase.from('tournament_teams').update({ name }).eq('id', team.id),
-                  )}
-                  onAddPlayer={(playerId) => mutate(() =>
-                    supabase.from('tournament_team_players').insert({ tournament_team_id: team.id, player_id: playerId }),
-                  )}
-                  onRemovePlayer={(playerId) => mutate(() =>
-                    supabase.from('tournament_team_players').delete().eq('tournament_team_id', team.id).eq('player_id', playerId),
-                  )}
-                  moveDestinationsFor={(player): MoveDestination[] => [
-                    ...tournamentEvent.teams.filter((t) => t.id !== team.id).map((otherTeam) => ({
-                      label: `Mover a ${otherTeam.name}`,
-                      onSelect: () => mutateMove(
-                        () => supabase.from('tournament_team_players').insert({ tournament_team_id: otherTeam.id, player_id: player.id }),
-                        () => supabase.from('tournament_team_players').delete().eq('tournament_team_id', team.id).eq('player_id', player.id),
-                      ),
-                    })),
-                    {
-                      label: 'Mover a suplentes',
-                      onSelect: () => mutateMove(
-                        () => supabase.from('tournament_reserves').insert({ tournament_id: tournamentEvent.tournament.id, player_id: player.id }),
-                        () => supabase.from('tournament_team_players').delete().eq('tournament_team_id', team.id).eq('player_id', player.id),
-                      ),
-                    },
-                  ]}
-                />
-              );
-            })}
-          </div>
-
-          <ReservesList
+          {awardsAndMedia}
+          <TeamEventSection
+            config={TOURNAMENT_ROSTER_CONFIG}
+            parentId={event.tournament.id}
+            teams={event.teams}
             reserves={event.reserves}
-            canEdit={isModOrAdmin}
-            saving={saving}
-            availablePlayers={availablePlayers}
-            onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('tournament_reserves').insert({ tournament_id: event.tournament.id, player_id: playerId }),
-            )}
-            onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('tournament_reserves').delete().eq('tournament_id', event.tournament.id).eq('player_id', playerId),
-            )}
-            moveDestinationsFor={(player): MoveDestination[] => (event as TournamentWithDetails).teams.map((team) => ({
-              label: `Mover a ${team.name}`,
-              onSelect: () => mutateMove(
-                () => supabase.from('tournament_team_players').insert({ tournament_team_id: team.id, player_id: player.id }),
-                () => supabase.from('tournament_reserves').delete().eq('tournament_id', (event as TournamentWithDetails).tournament.id).eq('player_id', player.id),
-              ),
-            }))}
-          />
-
-          <TournamentMatchList
-            teams={event.teams}
-            matches={event.tournamentMatches}
-            canEdit={isModOrAdmin}
-            saving={saving}
-            onAddMatch={handleAddTournamentMatch}
-            onUpdateScore={handleUpdateTournamentMatchScore}
-            onDeleteMatch={handleDeleteTournamentMatch}
-          />
-
-          <StandingsTable teams={event.teams} matches={event.tournamentMatches} />
-
-          <ResultsSection
             winningTeamId={event.tournament.winning_team_id}
-            teams={event.teams}
-            winnerTeamName={tournamentWinnerTeam?.name ?? null}
-            canEdit={isModOrAdmin}
-            saving={saving}
+            playerAwards={playerAwards}
+            availablePlayers={availablePlayers}
+            saving={busy}
             glowingWinner={glowingWinner}
-            onWinnerChange={handleTournamentWinnerChange}
-          />
+            canEditRoster={isModOrAdmin}
+            canEditTeam={isAdmin}
+            gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"
+            mutate={mutate}
+            mutateMove={mutateMove}
+            onWinnerChange={(teamId) => handleSetWinner('tournaments', event.tournament.id, teamId)}
+          >
+            <TournamentMatchList
+              teams={event.teams}
+              matches={event.tournamentMatches}
+              canEdit={isModOrAdmin}
+              saving={busy}
+              onAddMatch={(teamAId, teamBId) => mutate(() =>
+                supabase.from('tournament_matches').insert({ tournament_id: event.tournament.id, team_a_id: teamAId, team_b_id: teamBId }),
+              )}
+              onUpdateScore={(matchId, scoreA, scoreB) => mutate(() =>
+                supabase.from('tournament_matches').update({ score_a: scoreA, score_b: scoreB }).eq('id', matchId),
+              )}
+              onDeleteMatch={(matchId) => mutate(() =>
+                supabase.from('tournament_matches').delete().eq('id', matchId),
+              )}
+            />
+            <StandingsTable teams={event.teams} matches={event.tournamentMatches} />
+          </TeamEventSection>
         </>
       )}
 
@@ -1046,7 +486,7 @@ export default function EventDetailPage() {
             roster={event.roster}
             canEditParticipants={isModOrAdmin}
             canEditGoals={isAdmin}
-            saving={saving}
+            saving={busy}
             availablePlayers={availablePlayers}
             onAddPlayer={(playerId) => mutate(() =>
               supabase.from('external_match_players').insert({ external_match_id: event.externalMatch.id, player_id: playerId }),
@@ -1054,7 +494,7 @@ export default function EventDetailPage() {
             onRemovePlayer={(playerId) => mutate(() =>
               supabase.from('external_match_players').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', playerId),
             )}
-            onSetGoals={(playerId, goals) => handleSetGoals('external_match_players', playerId, goals)}
+            onSetGoals={(playerId, goals) => handleSetGoals('external_match_players', event.externalMatch.id, playerId, goals)}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Mover a suplentes',
@@ -1071,7 +511,7 @@ export default function EventDetailPage() {
             roster={event.reserves}
             canEditParticipants={isModOrAdmin}
             canEditGoals={isAdmin}
-            saving={saving}
+            saving={busy}
             availablePlayers={availablePlayers}
             hideWhenEmpty
             onAddPlayer={(playerId) => mutate(() =>
@@ -1080,7 +520,7 @@ export default function EventDetailPage() {
             onRemovePlayer={(playerId) => mutate(() =>
               supabase.from('external_match_reserves').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', playerId),
             )}
-            onSetGoals={(playerId, goals) => handleSetGoals('external_match_reserves', playerId, goals)}
+            onSetGoals={(playerId, goals) => handleSetGoals('external_match_reserves', event.externalMatch.id, playerId, goals)}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Mover a titulares',
@@ -1096,9 +536,13 @@ export default function EventDetailPage() {
             match={event.externalMatch}
             opponentName={event.opponent.name}
             canEdit={isAdmin}
-            saving={saving}
+            saving={busy}
             glowing={glowingWinner}
-            onSave={handleExternalScoreChange}
+            onSave={(ourScore, theirScore) => mutate(
+              () => supabase.from('external_matches').update({ our_score: ourScore, their_score: theirScore }).eq('id', event.externalMatch.id),
+              // Celebrate only a win, not a loss or draw.
+              { glow: ourScore != null && theirScore != null && ourScore > theirScore },
+            )}
           />
 
           <ExternalMatchHeadToHead
@@ -1112,11 +556,11 @@ export default function EventDetailPage() {
       {/* Training: Attendees and Coaches */}
       {event.type === 'training' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-          <TrainingParticipantsList
+          <ParticipantListCard
             title="Jugadores"
-            participants={event.attendees}
+            players={event.attendees}
             canEdit={isModOrAdmin}
-            saving={saving}
+            saving={busy}
             availablePlayers={availablePlayers}
             onAddPlayer={(playerId) => mutate(() =>
               supabase.from('training_attendees').insert({ training_id: event.training.id, player_id: playerId }),
@@ -1135,11 +579,11 @@ export default function EventDetailPage() {
             ]}
           />
 
-          <TrainingParticipantsList
+          <ParticipantListCard
             title="Entrenadores"
-            participants={event.coaches}
+            players={event.coaches}
             canEdit={isModOrAdmin}
-            saving={saving}
+            saving={busy}
             availablePlayers={availablePlayers}
             onAddPlayer={(playerId) => mutate(() =>
               supabase.from('training_coaches').insert({ training_id: event.training.id, player_id: playerId }),

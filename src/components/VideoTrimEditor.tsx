@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { VIDEO_BOOMERANG_DEFAULT_SECONDS, VIDEO_MIN_TRIM_GAP_SECONDS } from '../types';
 import { createBoomerang } from '../utils/videoProcessing';
 
 interface VideoTrimEditorProps {
@@ -13,20 +14,17 @@ export default function VideoTrimEditor({ file, onConfirm }: VideoTrimEditorProp
   const [endTime, setEndTime] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const previewUrl = useRef<string>('');
-
-  // Create object URL for the video
-  useEffect(() => {
-    previewUrl.current = URL.createObjectURL(file);
-    return () => URL.revokeObjectURL(previewUrl.current);
-  }, [file]);
+  // Memo, not a ref-in-effect: the URL must exist during the first render
+  // (the <video> src is read then; a ref set in an effect would leave it "").
+  const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(previewUrl), [previewUrl]);
 
   // Set duration once video loads
   const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     setDuration(video.duration);
-    setEndTime(Math.min(video.duration, 3)); // Default to 3 seconds or full duration
+    setEndTime(Math.min(video.duration, VIDEO_BOOMERANG_DEFAULT_SECONDS));
   }, []);
 
   // Boomerang preview: play forward then reverse in the trimmed region
@@ -82,7 +80,7 @@ export default function VideoTrimEditor({ file, onConfirm }: VideoTrimEditorProp
       <div className="rounded-lg overflow-hidden bg-on-surface">
         <video
           ref={videoRef}
-          src={previewUrl.current}
+          src={previewUrl}
           onLoadedMetadata={handleLoadedMetadata}
           autoPlay
           loop
@@ -105,7 +103,7 @@ export default function VideoTrimEditor({ file, onConfirm }: VideoTrimEditorProp
               value={startTime}
               onChange={(e) => {
                 const val = Number(e.target.value);
-                setStartTime(Math.min(val, endTime - 0.2));
+                setStartTime(Math.min(val, endTime - VIDEO_MIN_TRIM_GAP_SECONDS));
               }}
               className="flex-1 accent-primary"
             />
@@ -121,7 +119,7 @@ export default function VideoTrimEditor({ file, onConfirm }: VideoTrimEditorProp
               value={endTime}
               onChange={(e) => {
                 const val = Number(e.target.value);
-                setEndTime(Math.max(val, startTime + 0.2));
+                setEndTime(Math.max(val, startTime + VIDEO_MIN_TRIM_GAP_SECONDS));
               }}
               className="flex-1 accent-primary"
             />

@@ -1,7 +1,7 @@
-import type { Event } from '../types';
+import { formatDateShort } from '../utils/dateUtils';
 
 interface EventSelectProps {
-  events: Event[];
+  events: { id: number; name: string | null; played_at: string }[];
   eventLabels: Map<number, string>;
   value: string;
   onChange: (value: string) => void;
@@ -18,7 +18,7 @@ export default function EventSelect({ events, eventLabels, value, onChange, empt
       <option value="">{emptyLabel}</option>
       {events.map((event) => (
         <option key={event.id} value={event.id}>
-          Fecha {eventLabels.get(event.id) ?? event.id}{event.name ? ` — ${event.name}` : ''} ({event.played_at})
+          Fecha {eventLabels.get(event.id) ?? event.id}{event.name ? ` — ${event.name}` : ''} ({formatDateShort(event.played_at)})
         </option>
       ))}
     </select>

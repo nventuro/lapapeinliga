@@ -1,15 +1,15 @@
-import type { MatchTeam, Player, AwardType, ShirtColor } from '../types';
+import type { Player, AwardType, ShirtColor } from '../types';
 import { comparePlayersByGenderThenName } from '../types';
 import { teamAverageRating } from '../utils/scoring';
 import { useAppContext } from '../context/appContext';
-import { GenderMaleIcon, GenderFemaleIcon } from './icons';
 import Confetti from './Confetti';
 import EditableTeamName from './EditableTeamName';
+import GenderCountFooter from './GenderCountFooter';
 import ParticipantRow, { type MoveDestination } from './ParticipantRow';
 import AddParticipantControl from './AddParticipantControl';
 
-interface BuiltTeamDisplayProps {
-  team: MatchTeam;
+interface TeamCardProps {
+  team: { id: number; name: string; shirt_color?: ShirtColor; players: Player[] };
   isWinner: boolean;
   playerAwards: Map<number, AwardType[]>;
   canEdit?: boolean;
@@ -20,9 +20,16 @@ interface BuiltTeamDisplayProps {
   onRemovePlayer?: (playerId: number) => void;
   canEditTeam?: boolean;
   onSaveTeam?: (name: string, shirtColor?: ShirtColor) => void;
+  /** Show the admin-only team rating average in the header (regular matches). */
+  showAverageRating?: boolean;
 }
 
-export default function BuiltTeamDisplay({
+/**
+ * A team's roster card on the event detail page. Shared between regular
+ * matches (shirt color + rating average) and tournaments — they render the
+ * same card, so a change here fixes both.
+ */
+export default function TeamCard({
   team,
   isWinner,
   playerAwards,
@@ -34,10 +41,9 @@ export default function BuiltTeamDisplay({
   onRemovePlayer,
   canEditTeam = false,
   onSaveTeam,
-}: BuiltTeamDisplayProps) {
+  showAverageRating = false,
+}: TeamCardProps) {
   const { isAdmin, showRatings } = useAppContext();
-  const maleCount = team.players.filter((p) => p.gender === 'male').length;
-  const femaleCount = team.players.filter((p) => p.gender === 'female').length;
 
   return (
     <div
@@ -50,7 +56,7 @@ export default function BuiltTeamDisplay({
         name={team.name}
         shirtColor={team.shirt_color}
         isWinner={isWinner}
-        trailing={isAdmin && showRatings ? (
+        trailing={showAverageRating && isAdmin && showRatings ? (
           <span className="text-sm text-muted shrink-0">
             Promedio: {teamAverageRating(team).toFixed(1)}
           </span>
@@ -79,17 +85,7 @@ export default function BuiltTeamDisplay({
           disabled={saving}
         />
       )}
-      <div className="mt-2 pt-2 border-t border-border-subtle text-sm text-muted">
-        <span>{team.players.length} jugador{team.players.length !== 1 ? 'es' : ''}</span>
-        {' · '}
-        <span>
-          {maleCount}<GenderMaleIcon className="w-4 h-4 inline" />
-        </span>
-        {' '}
-        <span>
-          {femaleCount}<GenderFemaleIcon className="w-4 h-4 inline" />
-        </span>
-      </div>
+      <GenderCountFooter players={team.players} />
     </div>
   );
 }

@@ -42,6 +42,9 @@ export function useUploadQueue({
   const processingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const failedItemsRef = useRef<Map<string, QueueItem>>(new Map());
+  // Every item ever enqueued, so interrupted uploads (whose QueueItem is gone
+  // with the dead processQueue run) can still be resurrected for retry.
+  const allItemsRef = useRef<Map<string, QueueItem>>(new Map());
   // Stable refs for callback values so processQueue always sees latest
   const onItemUploadedRef = useRef(onItemUploaded);
   useEffect(() => {
@@ -62,25 +65,36 @@ export function useUploadQueue({
     if (processingRef.current) return;
     processingRef.current = true;
 
-    if (!abortControllerRef.current) {
-      abortControllerRef.current = new AbortController();
-    }
-    const signal = abortControllerRef.current.signal;
-
+    // Outer loop: an enqueue that races an aborted run's teardown lands in
+    // the queue after abort() cleared it but while processing was still true,
+    // so its own processQueue() call no-oped. Re-checking here picks those
+    // items up with a fresh controller instead of stranding them in 'queued'.
     while (queueRef.current.length > 0) {
-      const item = queueRef.current.shift()!;
-      updateStatus(item.entry.id, 'uploading');
+      if (!abortControllerRef.current) {
+        abortControllerRef.current = new AbortController();
+      }
+      const signal = abortControllerRef.current.signal;
+      if (signal.aborted) break;
 
-      try {
-        await uploadSingleFile(item.entry, item.eventId, item.date, signal);
-        updateStatus(item.entry.id, 'done');
-        failedItemsRef.current.delete(item.entry.id);
-        onItemUploadedRef.current();
-      } catch (err) {
-        if (signal.aborted) break;
-        const message = err instanceof Error ? err.message : String(err);
-        updateStatus(item.entry.id, 'failed', message);
-        failedItemsRef.current.set(item.entry.id, item);
+      while (queueRef.current.length > 0) {
+        const item = queueRef.current.shift()!;
+        updateStatus(item.entry.id, 'uploading');
+
+        try {
+          await uploadSingleFile(item.entry, item.eventId, item.date, signal);
+          updateStatus(item.entry.id, 'done');
+          failedItemsRef.current.delete(item.entry.id);
+          onItemUploadedRef.current();
+        } catch (err) {
+          // On abort the item still must leave 'uploading', or it counts as
+          // active forever and the dialog's close button never re-enables.
+          const message = signal.aborted
+            ? 'Subida cancelada'
+            : err instanceof Error ? err.message : String(err);
+          updateStatus(item.entry.id, 'failed', message);
+          failedItemsRef.current.set(item.entry.id, item);
+          if (signal.aborted) break;
+        }
       }
     }
 
@@ -95,6 +109,7 @@ export function useUploadQueue({
       date,
     };
     queueRef.current.push(item);
+    allItemsRef.current.set(entry.id, item);
     updateStatus(entry.id, 'queued');
     processQueue();
   }, [eventId, date, updateStatus, processQueue]);
@@ -114,11 +129,22 @@ export function useUploadQueue({
 
   const abort = useCallback(() => {
     abortControllerRef.current?.abort();
+    // A fresh controller for anything enqueued later: without this, every
+    // future enqueue would see the already-aborted signal and dead-end.
+    abortControllerRef.current = null;
+    // Queued items are dropped from the queue but must not stay 'queued' in
+    // the UI; park them as failed so retry can pick them up.
+    for (const item of queueRef.current) {
+      updateStatus(item.entry.id, 'failed', 'Subida cancelada');
+      failedItemsRef.current.set(item.entry.id, item);
+    }
     queueRef.current = [];
-  }, []);
+  }, [updateStatus]);
 
   // Visibility recovery: when tab becomes visible again, check if in-flight upload completed
   useEffect(() => {
+    let cancelled = false;
+
     function handleVisibilityChange() {
       if (document.visibilityState !== 'visible') return;
 
@@ -129,32 +155,38 @@ export function useUploadQueue({
       }
       if (uploading.length === 0) return;
 
-      for (const id of uploading) {
-        // Check if media row with this UUID exists in storage_path
-        supabase
-          .from('media')
-          .select('id')
-          .or(`storage_path.like.%${id}%,thumbnail_path.like.%${id}%`)
-          .limit(1)
-          .then(({ data }) => {
-            if (data && data.length > 0) {
+      // One probe for all of them: each item's UUID appears in its storage_path.
+      // (Ids are client-generated UUIDs, so interpolating them is safe.)
+      supabase
+        .from('media')
+        .select('storage_path')
+        .or(uploading.map((id) => `storage_path.like.%${id}%`).join(','))
+        .then(({ data, error }) => {
+          if (cancelled || error) return;
+          const found = (id: string) => (data ?? []).some((row) => row.storage_path.includes(id));
+          for (const id of uploading) {
+            if (found(id)) {
               // Upload completed while we were backgrounded
               updateStatus(id, 'done');
               failedItemsRef.current.delete(id);
               onItemUploadedRef.current();
             } else if (!processingRef.current) {
-              // Upload didn't complete and we're not processing — mark as failed for retry
-              const failedItem = failedItemsRef.current.get(id);
-              if (failedItem) {
-                updateStatus(id, 'failed', 'Subida interrumpida, reintentá');
-              }
+              // No row and nothing is processing: the upload was interrupted.
+              // The QueueItem died with the interrupted run, so resurrect it
+              // from allItemsRef to make retry possible.
+              const item = allItemsRef.current.get(id);
+              if (item) failedItemsRef.current.set(id, item);
+              updateStatus(id, 'failed', 'Subida interrumpida, reintentá');
             }
-          });
-      }
+          }
+        });
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [statuses, updateStatus]);
 
   // Derive counts from statuses

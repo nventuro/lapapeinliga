@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useState, useEffect, useMemo } from 'react';
+import { useModalDialog } from '../hooks/useModalDialog';
 import { useUploadQueue } from '../hooks/useUploadQueue';
+import { useEventsIndex } from '../hooks/useEventsIndex';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { EQUIPO_TAG_NAME } from '../types';
-import type { Event as AppEvent, MediaTag, TaggedPlayer } from '../types';
+import type { MediaTag, TaggedPlayer } from '../types';
 import type { UploadFileEntry } from '../utils/mediaUpload';
 import { supabase } from '../lib/supabase';
-import { orderEvents, buildEventLabels } from '../lib/supabase';
-import { formatDateShort } from '../utils/dateUtils';
+import { toLocalISODate } from '../utils/dateUtils';
+import DateField from './DateField';
 import TagInput from './TagInput';
 import VideoTrimEditor from './VideoTrimEditor';
 import EventSelect from './EventSelect';
@@ -22,14 +24,10 @@ interface MediaUploadDialogProps {
 }
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalISODate(new Date());
 }
 
 export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEventId }: MediaUploadDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  useBodyScrollLock();
-
   // Step 1: batch metadata
   const [date, setDate] = useState(todayISO);
   const [selectedEventId, setSelectedEventId] = useState<string>(
@@ -43,12 +41,17 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
-  // Events for dropdown
-  const [events, setEvents] = useState<AppEvent[]>([]);
-  const [eventLabels, setEventLabels] = useState<Map<number, string>>(new Map());
+  // Events for dropdown (shown newest-first)
+  const { events: eventsAsc, labels: eventLabels } = useEventsIndex();
+  const events = useMemo(() => [...eventsAsc].reverse(), [eventsAsc]);
 
   // All tags for autocomplete
-  const [allTags, setAllTags] = useState<MediaTag[]>([]);
+  const { data: allTagsData, refetch: refetchTags } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase.from('media_tags').select('*').order('name');
+    if (error) throw new Error(error.message);
+    return data as MediaTag[];
+  }, []);
+  const allTags = allTagsData ?? [];
 
   const { players: allPlayers } = useAppContext();
   const eventId = selectedEventId ? Number(selectedEventId) : null;
@@ -58,38 +61,26 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   );
   const queue = useUploadQueue({ eventId, date, onItemUploaded });
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
-
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      handleClose();
-    };
-    dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    async function fetchData() {
-      const [eventsResult, tagsResult] = await Promise.all([
-        orderEvents(supabase.from('events').select('*'), true),
-        supabase.from('media_tags').select('*').order('name'),
-      ]);
-      if (eventsResult.data) {
-        const evts = eventsResult.data as AppEvent[];
-        setEventLabels(buildEventLabels(evts));
-        setEvents([...evts].reverse());
-        if (prefilledEventId) {
-          const prefilled = evts.find((e) => e.id === prefilledEventId);
-          if (prefilled) setDate(prefilled.played_at);
-        }
-      }
-      if (tagsResult.data) setAllTags(tagsResult.data as MediaTag[]);
+  function handleClose() {
+    if (!queue.isIdle) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
     }
-    fetchData();
-  }, [prefilledEventId]);
+  }
+
+  // Every close attempt goes through handleClose (confirm-if-uploading),
+  // including Escape and backdrop clicks.
+  const { dialogRef, backdropClick } = useModalDialog(handleClose);
+
+  // Default the date to the prefilled event's date once the index loads
+  // (render-time adjust; runs once when the event row appears).
+  const prefilledEvent = prefilledEventId ? eventsAsc.find((e) => e.id === prefilledEventId) : undefined;
+  const [prefilledDateApplied, setPrefilledDateApplied] = useState(false);
+  if (!prefilledDateApplied && prefilledEvent) {
+    setPrefilledDateApplied(true);
+    setDate(prefilledEvent.played_at);
+  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files;
@@ -172,9 +163,8 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
       .select()
       .single();
     if (error || !data) return null;
-    const tag = data as MediaTag;
-    setAllTags((prev) => [...prev, tag].sort((a, b) => a.name.localeCompare(b.name)));
-    return tag;
+    refetchTags();
+    return data as MediaTag;
   }
 
   // Find the index of the next pending file after currentIndex
@@ -198,36 +188,27 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   }
 
   function handleSkip() {
-    // Remove this file from the list
     const skippedId = files[currentIndex].id;
-    setFiles((prev) => {
-      const next = [...prev];
-      next.splice(currentIndex, 1);
-      return next;
-    });
+    const next = files.filter((f) => f.id !== skippedId);
+    setFiles(next);
 
-    // Find next file to edit. After splice, currentIndex might point to the next file already.
-    // But we need to recalculate since the array shifted.
-    const remaining = files.filter((f) => f.id !== skippedId && !queue.statuses.has(f.id));
+    const remaining = next.filter((f) => !queue.statuses.has(f.id));
     if (remaining.length === 0) {
-      // No more files to edit
-      if (queue.doneCount > 0 || queue.activeCount > 0) {
+      // Nothing left to edit. If anything was enqueued — including uploads
+      // that already failed — show the summary; closing here would hide the
+      // errors and the retry button.
+      if (queue.statuses.size > 0) {
         setStep(3);
       } else {
-        // Nothing uploaded and nothing left — just close
         onClose();
       }
+      return;
     }
-    // If there are remaining files, currentIndex now points to the next one
-    // (or needs adjustment if we were at the end)
-  }
 
-  function handleClose() {
-    if (!queue.isIdle) {
-      setShowCloseConfirm(true);
-    } else {
-      onClose();
-    }
+    // Move to the first still-pending file. Under the sequential flow that is
+    // the file that slid into currentIndex, but compute it instead of assuming
+    // it — a stale index past the end would render a blank editor.
+    setCurrentIndex(next.findIndex((f) => !queue.statuses.has(f.id)));
   }
 
   function confirmClose() {
@@ -250,9 +231,14 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  // Track preview load state so we surface errors instead of showing a blank area
+  // Track preview load state so we surface errors instead of showing a blank
+  // area; resets whenever the previewed file changes (render-time adjust).
   const [previewState, setPreviewState] = useState<'loading' | 'loaded' | 'error'>('loading');
-  useEffect(() => { setPreviewState('loading'); }, [previewUrl]);
+  const [lastPreviewUrl, setLastPreviewUrl] = useState(previewUrl);
+  if (lastPreviewUrl !== previewUrl) {
+    setLastPreviewUrl(previewUrl);
+    setPreviewState('loading');
+  }
 
   const isLastPending = currentFile ? findNextPending(currentIndex) === null : true;
   const canSubmitCurrent = currentFile && (!currentFile.isVideo || currentFile.processedBlob);
@@ -274,9 +260,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     <dialog
       ref={dialogRef}
       className="fixed m-auto w-full max-w-lg max-h-[100dvh] rounded-xl border border-border bg-surface shadow-xl backdrop:bg-on-surface/50 flex flex-col overflow-hidden"
-      onClick={(e) => {
-        if (e.target === dialogRef.current) handleClose();
-      }}
+      onClick={backdropClick}
     >
       {/* Header */}
       <div className="shrink-0 px-6 pt-6 pb-3">
@@ -334,22 +318,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
           {!selectedEventId && (
             <div>
               <label className="block text-sm font-medium mb-1">Fecha</label>
-              <div>
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  className="sr-only"
-                />
-                <div
-                  onClick={() => dateInputRef.current?.showPicker()}
-                  className="px-3 py-2 rounded-lg border border-border bg-surface text-on-surface cursor-pointer"
-                >
-                  {formatDateShort(date)}
-                </div>
-              </div>
+              <DateField value={date} onChange={setDate} />
             </div>
           )}
 

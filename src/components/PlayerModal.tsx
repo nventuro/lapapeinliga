@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useState } from 'react';
+import { useModalDialog } from '../hooks/useModalDialog';
 import type { Player, PlayerPreference, PreferenceType, PlayerTier, UserRole } from '../types';
 import { MIN_RATING, MAX_RATING, DEFAULT_UNRATED_RATING, PLAYER_TIERS, TIER_LABELS, USER_ROLES, USER_ROLE_LABELS } from '../types';
 import { supabase } from '../lib/supabase';
@@ -31,8 +31,7 @@ interface PendingPreference {
 
 export default function PlayerModal({ player, onClose }: PlayerModalProps) {
   const { players, preferences, refetchData } = useAppContext();
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  useBodyScrollLock();
+  const { dialogRef, backdropClick } = useModalDialog(onClose);
 
   const [name, setName] = useState(player?.name ?? '');
   const [gender, setGender] = useState<'male' | 'female'>(player?.gender ?? 'male');
@@ -61,20 +60,6 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
   // Preference add form state
   const [newPrefPlayerId, setNewPrefPlayerId] = useState<number | ''>('');
   const [newPrefType, setNewPrefType] = useState<PreferenceType>('prefer_with');
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) {
-      dialog.showModal();
-    }
-
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      onClose();
-    };
-    dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
-  }, [onClose]);
 
   function prefKey(pref: PlayerPreference): string {
     return `${pref.player_a_id}-${pref.player_b_id}`;
@@ -269,10 +254,8 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-black/50"
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
+      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-md backdrop:bg-on-surface/50"
+      onClick={backdropClick}
     >
       {/* autoFocus on the form prevents showModal() from focusing the first
            input, which would trigger the mobile keyboard */}
@@ -314,7 +297,7 @@ export default function PlayerModal({ player, onClose }: PlayerModalProps) {
                 const newTier = e.target.value as PlayerTier;
                 setTier(newTier);
                 if (newTier !== 'guest' && rating === null) {
-                  setRating(5);
+                  setRating(DEFAULT_UNRATED_RATING);
                 }
               }}
               className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"

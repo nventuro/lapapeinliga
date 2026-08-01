@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/appContext';
-import type { Event, MediaItemWithTags, MediaTag, TaggedPlayer } from '../types';
+import type { MediaItemWithTags, MediaTag, TaggedPlayer } from '../types';
+import { compareByName } from '../types';
 import { useGalleryMedia } from '../hooks/useGalleryMedia';
 import { useEventParticipants } from '../hooks/useEventParticipants';
+import { useEventsIndex } from '../hooks/useEventsIndex';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { supabase } from '../lib/supabase';
-import { orderEvents, buildEventLabels } from '../lib/supabase';
 import { PhotosIcon, UploadIcon } from './icons';
 import MasonryGrid from './MasonryGrid';
 import Lightbox from './Lightbox';
@@ -34,56 +36,30 @@ export default function GalleryPage() {
 
   const [showUpload, setShowUpload] = useState(false);
 
-  // Fetch events for the dropdown filter
-  const [events, setEvents] = useState<Event[]>([]);
-  const [eventLabels, setEventLabels] = useState<Map<number, string>>(new Map());
+  // Events for the dropdown filter (shown newest-first)
+  const { events: eventsAsc, labels: eventLabels } = useEventsIndex();
+  const events = useMemo(() => [...eventsAsc].reverse(), [eventsAsc]);
 
-  useEffect(() => {
-    async function fetchEvents() {
-      const { data: ascRows } = await orderEvents(
-        supabase.from('events').select('*'),
-        true,
-      );
-      if (ascRows) {
-        setEventLabels(buildEventLabels(ascRows as Event[]));
-        setEvents([...(ascRows as Event[])].reverse());
-      }
-    }
-    fetchEvents();
+  // All available tags
+  const { data: allTagsData } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase.from('media_tags').select('*').order('name');
+    if (error) throw new Error(error.message);
+    return data as MediaTag[];
   }, []);
+  const allTags = allTagsData ?? [];
 
-  // Fetch all available tags
-  const [allTags, setAllTags] = useState<MediaTag[]>([]);
-
-  useEffect(() => {
-    async function fetchTags() {
-      const { data } = await supabase.from('media_tags').select('*').order('name');
-      if (data) setAllTags(data as MediaTag[]);
-    }
-    fetchTags();
-  }, []);
-
-  // Fetch players that have at least one tagged photo (for the search filter candidates)
-  const [taggedPlayerIds, setTaggedPlayerIds] = useState<Set<number>>(new Set());
-  const { players } = useAppContext();
-
-  useEffect(() => {
-    async function fetchTaggedPlayers() {
-      const { data } = await supabase
-        .from('media_player_tags')
-        .select('player_id');
-      if (data) {
-        setTaggedPlayerIds(new Set(data.map((r: { player_id: number }) => r.player_id)));
-      }
-    }
-    fetchTaggedPlayers();
+  // Players that have at least one tagged photo (for the search filter candidates)
+  const { data: taggedPlayerIds } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase.from('media_player_tags').select('player_id');
+    if (error) throw new Error(error.message);
+    return new Set(data.map((r: { player_id: number }) => r.player_id));
   }, []);
 
   const taggedPlayers = useMemo(
-    () => players
-      .filter((p) => taggedPlayerIds.has(p.id))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [players, taggedPlayerIds],
+    () => allPlayers
+      .filter((p) => taggedPlayerIds?.has(p.id))
+      .sort(compareByName),
+    [allPlayers, taggedPlayerIds],
   );
 
   // Lightbox admin tagging: get candidates for the open item's event
@@ -199,18 +175,21 @@ export default function GalleryPage() {
   const handleDelete = useCallback(async () => {
     if (!openItem) return;
 
+    // Delete the DB row first: if it fails, nothing is lost. Deleting from R2
+    // first could destroy the storage and then leave the row pointing at
+    // nothing if the DB delete failed. An orphaned R2 object is harmless.
+    const { error } = await supabase.from('media').delete().eq('id', openItem.id);
+    if (error) return;
+
     const keys = [openItem.storage_path, openItem.thumbnail_path]
       .map(keyFromPublicUrl)
       .filter((k): k is string => k !== null);
     if (keys.length > 0) {
-      try { await deleteFromR2(keys); } catch { /* R2 delete is best-effort */ }
+      try { await deleteFromR2(keys); } catch { /* best-effort */ }
     }
 
-    const { error } = await supabase.from('media').delete().eq('id', openItem.id);
-    if (!error) {
-      closeLightbox();
-      refetch();
-    }
+    closeLightbox();
+    refetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openItem, refetch]);
 

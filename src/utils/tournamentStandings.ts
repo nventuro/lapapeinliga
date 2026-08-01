@@ -64,6 +64,11 @@ export function computeStandings(
   }
 
   const standings = Array.from(standingMap.values());
-  standings.sort((a, b) => b.points - a.points || b.goalsFor - a.goalsFor);
+  // Standard football ordering: points, then goal difference, then goals scored.
+  standings.sort((a, b) =>
+    b.points - a.points
+    || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst)
+    || b.goalsFor - a.goalsFor,
+  );
   return standings;
 }

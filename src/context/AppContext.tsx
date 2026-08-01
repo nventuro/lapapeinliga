@@ -36,9 +36,13 @@ export function AppProvider({
     localStorage.setItem(SHOW_COSTS_KEY, JSON.stringify(show));
   }, []);
 
-  const fetchData = useCallback(async (admin: boolean) => {
+  // `signal.cancelled` guards every setState: without it, a fetch issued for a
+  // previous session (e.g. an admin's, still in flight at sign-out) could
+  // resolve late and clobber state with data the new session must not hold.
+  const fetchData = useCallback(async (admin: boolean, signal?: { cancelled: boolean }) => {
     const table = admin ? 'players' : 'players_public';
     const playersResult = await supabase.from(table).select('*').order('name');
+    if (signal?.cancelled) return;
 
     if (playersResult.error) {
       setError(playersResult.error.message);
@@ -46,9 +50,12 @@ export function AppProvider({
     }
 
     setPlayers(playersResult.data as Player[]);
+    // Admin-only data must not survive into a non-admin session.
+    if (!admin) setPreferences([]);
 
     // Team names are public — fetch unconditionally
     const teamNamesResult = await supabase.from('team_names').select('name').order('name');
+    if (signal?.cancelled) return;
     if (!teamNamesResult.error) {
       setTeamNames(teamNamesResult.data.map((r) => r.name));
     }
@@ -56,6 +63,7 @@ export function AppProvider({
     // Preferences are admin-only (RLS restricted)
     if (admin) {
       const prefsResult = await supabase.from('player_preferences').select('*');
+      if (signal?.cancelled) return;
       if (!prefsResult.error) {
         setPreferences(prefsResult.data as PlayerPreference[]);
       }
@@ -79,6 +87,8 @@ export function AppProvider({
 
   // Initial data load + role check
   useEffect(() => {
+    const signal = { cancelled: false };
+
     async function init() {
       setLoading(true);
 
@@ -88,6 +98,16 @@ export function AppProvider({
           supabase.rpc('current_user_role'),
           supabase.rpc('get_my_player_id'),
         ]);
+        if (signal.cancelled) return;
+
+        // A failed role check must surface, not silently demote an admin to a
+        // basic session that then behaves confusingly.
+        if (roleRes.error) {
+          setError(roleRes.error.message);
+          setLoading(false);
+          return;
+        }
+
         resolvedRole = (roleRes.data as UserRole | null) ?? 'basic';
         setRole(resolvedRole);
         setCurrentPlayerId((myPlayerRes.data as number | null) ?? null);
@@ -103,10 +123,12 @@ export function AppProvider({
         setCurrentPlayerId(null);
       }
 
-      await fetchData(resolvedRole === 'admin');
-      setLoading(false);
+      await fetchData(resolvedRole === 'admin', signal);
+      if (!signal.cancelled) setLoading(false);
     }
     init();
+
+    return () => { signal.cancelled = true; };
   }, [session, fetchData]);
 
   const refetchData = useCallback(async () => {

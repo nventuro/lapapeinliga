@@ -1,13 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import type { EventType, Player } from '../types';
-import { hasParticipantList } from '../types';
+import { compareByName, hasParticipantList } from '../types';
 import { useAppContext } from '../context/appContext';
 import { supabase } from '../lib/supabase';
-
-interface FetchedParticipants {
-  forEventId: number;
-  ids: Set<number>;
-}
+import { useSupabaseQuery } from './useSupabaseQuery';
 
 /**
  * Returns the list of players eligible for tagging on a given event.
@@ -18,48 +14,31 @@ interface FetchedParticipants {
  */
 export function useEventParticipants(eventId: number | null, eventType: EventType | null): { participants: Player[]; loading: boolean } {
   const { players } = useAppContext();
-  const [fetchedData, setFetchedData] = useState<FetchedParticipants | null>(null);
 
   // Null while the event imposes no attendance constraint, which also skips the fetch.
   const rosterEventId = eventId !== null && (eventType === null || hasParticipantList(eventType))
     ? eventId
     : null;
 
-  useEffect(() => {
-    if (rosterEventId === null) return;
+  const { data: participantIds, loading } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase
+      .from('event_participants')
+      .select('player_id')
+      .eq('event_id', rosterEventId!);
+    if (error) throw new Error(error.message);
+    return new Set(data.map((row: { player_id: number }) => row.player_id));
+  }, [rosterEventId], { enabled: rosterEventId !== null });
 
-    let cancelled = false;
-
-    async function fetchParticipants() {
-      const { data, error } = await supabase
-        .from('event_participants')
-        .select('player_id')
-        .eq('event_id', rosterEventId);
-
-      if (cancelled) return;
-
-      const ids = error || !data
-        ? new Set<number>()
-        : new Set(data.map((row: { player_id: number }) => row.player_id));
-
-      setFetchedData({ forEventId: rosterEventId!, ids });
-    }
-
-    fetchParticipants();
-    return () => { cancelled = true; };
-  }, [rosterEventId]);
-
-  // Derive loading from whether fetched data matches current eventId
-  const loading = rosterEventId !== null && fetchedData?.forEventId !== rosterEventId;
-
-  const participants = rosterEventId === null
-    ? players
-    : (!loading && fetchedData ? players.filter((p) => fetchedData.ids.has(p.id)) : []);
-
-  return {
-    // Copy before sorting: in the unconstrained case `participants` IS the
+  const participants = useMemo(() => {
+    // Copy before sorting: in the unconstrained case the base IS the shared
     // context players array, and sorting it in place would mutate shared state.
-    participants: [...participants].sort((a, b) => a.name.localeCompare(b.name)),
-    loading,
-  };
+    const base = rosterEventId === null
+      ? players
+      : participantIds
+        ? players.filter((p) => participantIds.has(p.id))
+        : [];
+    return [...base].sort(compareByName);
+  }, [rosterEventId, players, participantIds]);
+
+  return { participants, loading };
 }

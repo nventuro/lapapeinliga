@@ -1,7 +1,7 @@
-import type { MatchWithDetails, TrainingWithDetails, TournamentWithDetails, ExternalMatchWithDetails, EventType, EventWithDetails, SocialWithDetails } from '../types';
-import { allParticipants, EVENT_TYPE_LABELS, OUR_TEAM_NAME, externalMatchResult } from '../types';
+import type { MatchWithDetails, TrainingWithDetails, TournamentWithDetails, ExternalMatchWithDetails, EventType, EventWithDetails, Player, SocialWithDetails } from '../types';
+import { allParticipants, compareByName, comparePlayersByGenderThenName, EVENT_TYPE_LABELS, EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, externalMatchResult } from '../types';
 import { formatDateForShare, formatTime } from './dateUtils';
-import { perPlayerCost } from './costUtils';
+import { formatPesos, perPlayerCost } from './costUtils';
 
 const TYPE_EMOJI: Record<EventType, string> = {
   match: '⚽',
@@ -17,7 +17,8 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   lines.push('');
 
   const namePart = event.name ? ` · ${event.name}` : '';
-  lines.push(`Fecha ${eventNumber}${namePart} · ${TYPE_EMOJI[event.type]} ${EVENT_TYPE_LABELS[event.type]}`);
+  // "Fecha #N" matches the detail page header — keep them in sync.
+  lines.push(`Fecha #${eventNumber}${namePart} · ${TYPE_EMOJI[event.type]} ${EVENT_TYPE_LABELS[event.type]}`);
   lines.push(`📅 ${formatDateForShare(event.played_at)}`);
 
   lines.push(`🕐 ${formatTime(event.played_at_time)}`);
@@ -30,19 +31,32 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
 
 function buildCostFooter(event: EventWithDetails): string[] {
   const lines: string[] = [];
-  if (event.cost != null) {
-    const playerCount = allParticipants(event).length;
-    if (playerCount > 0) {
-      const cost = perPlayerCost(event.cost, playerCount);
+  const cost = event.finances?.cost;
+  if (cost != null) {
+    const perPlayer = perPlayerCost(cost, allParticipants(event).length);
+    if (perPlayer != null) {
       lines.push('');
-      lines.push(`*💰 $${cost} por persona*`);
-      lines.push(`Enviar a ${event.payee_alias_cbu!}`);
+      lines.push(`*💰 ${formatPesos(perPlayer)} por persona*`);
+      // A cost can be recorded without a payee; never print "Enviar a null".
+      if (event.finances?.payee_alias_cbu) {
+        lines.push(`Enviar a ${event.finances.payee_alias_cbu}`);
+      }
     }
   }
 
   lines.push('');
   lines.push(event.type === 'social' ? '¡Nos vemos! ✨🩵' : '¡Nos vemos en la cancha! ✨🩵');
   return lines;
+}
+
+/** One "- Name" line per player, ordered like the on-screen team cards. */
+function teamPlayerLines(players: Player[]): string[] {
+  return [...players].sort(comparePlayersByGenderThenName).map((p) => `- ${p.name}`);
+}
+
+/** One "- Name" line per player, ordered like the on-screen flat lists. */
+function playerLines(players: Player[]): string[] {
+  return [...players].sort(compareByName).map((p) => `- ${p.name}`);
 }
 
 function buildMatchShareMessage(event: MatchWithDetails, eventNumber: string): string {
@@ -52,19 +66,13 @@ function buildMatchShareMessage(event: MatchWithDetails, eventNumber: string): s
     const shirtLabel = team.shirt_color === 'dark' ? 'Oscuros ⚫' : 'Claros ⚪';
     lines.push('');
     lines.push(`${team.name} (${shirtLabel})`);
-    const sorted = [...team.players].sort((a, b) => a.name.localeCompare(b.name));
-    for (const player of sorted) {
-      lines.push(`- ${player.name}`);
-    }
+    lines.push(...teamPlayerLines(team.players));
   }
 
   if (event.reserves.length > 0) {
     lines.push('');
     lines.push('🔄 Suplentes');
-    const sorted = [...event.reserves].sort((a, b) => a.name.localeCompare(b.name));
-    for (const player of sorted) {
-      lines.push(`- ${player.name}`);
-    }
+    lines.push(...playerLines(event.reserves));
   }
 
   lines.push(...buildCostFooter(event));
@@ -76,17 +84,11 @@ function buildTrainingShareMessage(event: TrainingWithDetails, eventNumber: stri
 
   lines.push('');
   lines.push('Jugadores');
-  const sortedAttendees = [...event.attendees].sort((a, b) => a.name.localeCompare(b.name));
-  for (const player of sortedAttendees) {
-    lines.push(`- ${player.name}`);
-  }
+  lines.push(...playerLines(event.attendees));
 
   lines.push('');
   lines.push('Entrenadores');
-  const sortedCoaches = [...event.coaches].sort((a, b) => a.name.localeCompare(b.name));
-  for (const coach of sortedCoaches) {
-    lines.push(`- ${coach.name}`);
-  }
+  lines.push(...playerLines(event.coaches));
 
   lines.push(...buildCostFooter(event));
   return lines.join('\n');
@@ -98,53 +100,44 @@ function buildTournamentShareMessage(event: TournamentWithDetails, eventNumber: 
   for (const team of event.teams) {
     lines.push('');
     lines.push(team.name);
-    const sorted = [...team.players].sort((a, b) => a.name.localeCompare(b.name));
-    for (const player of sorted) {
-      lines.push(`- ${player.name}`);
-    }
+    lines.push(...teamPlayerLines(team.players));
   }
 
   if (event.reserves.length > 0) {
     lines.push('');
     lines.push('🔄 Suplentes');
-    const sorted = [...event.reserves].sort((a, b) => a.name.localeCompare(b.name));
-    for (const player of sorted) {
-      lines.push(`- ${player.name}`);
-    }
+    lines.push(...playerLines(event.reserves));
   }
 
   lines.push(...buildCostFooter(event));
   return lines.join('\n');
 }
 
-const RESULT_LABELS = { win: 'Ganamos', loss: 'Perdimos', draw: 'Empate' } as const;
-
 function buildExternalMatchShareMessage(event: ExternalMatchWithDetails, eventNumber: string): string {
   const lines = buildHeader(event, eventNumber);
 
   lines.push('');
   lines.push(`⚔️ ${OUR_TEAM_NAME} vs ${event.opponent.name}`);
-  const result = externalMatchResult(event.externalMatch);
+  const { our_score, their_score } = event.externalMatch;
+  const result = externalMatchResult(our_score, their_score);
   if (result) {
-    lines.push(`Resultado: ${event.externalMatch.our_score} - ${event.externalMatch.their_score} (${RESULT_LABELS[result]})`);
+    lines.push(`Resultado: ${our_score} - ${their_score} (${EXTERNAL_RESULT_LABELS[result]})`);
   }
+
+  // Ordered like the on-screen roster (gender, then name).
+  const rosterLines = (entries: ExternalMatchWithDetails['roster']) =>
+    [...entries]
+      .sort((a, b) => comparePlayersByGenderThenName(a.player, b.player))
+      .map(({ player, goals }) => `- ${player.name}${goals > 0 ? ` ${'⚽'.repeat(goals)}` : ''}`);
 
   lines.push('');
   lines.push('Titulares');
-  const sortedRoster = [...event.roster].sort((a, b) => a.player.name.localeCompare(b.player.name));
-  for (const { player, goals } of sortedRoster) {
-    const goalSuffix = goals > 0 ? ` ${'⚽'.repeat(goals)}` : '';
-    lines.push(`- ${player.name}${goalSuffix}`);
-  }
+  lines.push(...rosterLines(event.roster));
 
   if (event.reserves.length > 0) {
     lines.push('');
     lines.push('🔄 Suplentes');
-    const sortedReserves = [...event.reserves].sort((a, b) => a.player.name.localeCompare(b.player.name));
-    for (const { player, goals } of sortedReserves) {
-      const goalSuffix = goals > 0 ? ` ${'⚽'.repeat(goals)}` : '';
-      lines.push(`- ${player.name}${goalSuffix}`);
-    }
+    lines.push(...rosterLines(event.reserves));
   }
 
   lines.push(...buildCostFooter(event));

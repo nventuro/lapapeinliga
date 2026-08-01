@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import type { EventType } from '../types';
-import { COST_MARKUP_MULTIPLIER, EVENT_TYPE_LABELS, OUR_TEAM_NAME, externalMatchResult, unhandledEventType } from '../types';
+import type { EventFinances, EventType } from '../types';
+import { EVENT_TYPE_LABELS, EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, externalMatchResult, unhandledEventType } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
-import { formatPesos, perPlayerCost } from '../utils/costUtils';
+import CostSummary from './CostSummary';
 import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import Tooltip from './Tooltip';
 
@@ -45,8 +45,7 @@ interface EventRow {
   type: EventType;
   played_at: string;
   played_at_time: string;
-  cost: number | null;
-  payee_alias_cbu: string | null;
+  finances: EventFinances | null;
   location: { name: string } | null;
   matches: MatchSubRow | null;
   trainings: TrainingSubRow | null;
@@ -54,10 +53,10 @@ interface EventRow {
   external_matches: ExternalMatchSubRow | null;
 }
 
-// cost/payee live in the mod/admin-only event_finances table; PostgREST embeds
-// it (null for non-mods via RLS) and we flatten it back onto the row.
-type RawEventRow = Omit<EventRow, 'cost' | 'payee_alias_cbu'> & {
-  event_finances: { cost: number | null; payee_alias_cbu: string | null } | null;
+// Finances live in the mod/admin-only event_finances table; PostgREST embeds
+// it (null for non-mods via RLS).
+type RawEventRow = Omit<EventRow, 'finances'> & {
+  event_finances: EventFinances | null;
 };
 
 function totalParticipants(event: EventRow): number {
@@ -113,11 +112,7 @@ export default function EventListPage() {
         setError(error.message);
       } else if (data) {
         const rows: EventRow[] = (data as RawEventRow[]).map(
-          ({ event_finances, ...rest }) => ({
-            ...rest,
-            cost: event_finances?.cost ?? null,
-            payee_alias_cbu: event_finances?.payee_alias_cbu ?? null,
-          }),
+          ({ event_finances, ...rest }) => ({ ...rest, finances: event_finances }),
         );
         setEvents(rows);
         setLabels(buildEventLabels([...rows].reverse()));
@@ -152,17 +147,12 @@ export default function EventListPage() {
       <div className="space-y-3">
         {events.map((event) => {
           const eventLabel = labels.get(event.id) ?? '?';
+          const participantCount = totalParticipants(event);
           const match = event.type === 'match' ? event.matches : null;
           const tournament = event.type === 'tournament' ? event.tournaments : null;
           const externalMatch = event.type === 'external_match' ? event.external_matches : null;
           const externalResult = externalMatch
-            ? externalMatchResult({
-                id: externalMatch.id,
-                event_id: event.id,
-                external_team_id: 0,
-                our_score: externalMatch.our_score,
-                their_score: externalMatch.their_score,
-              })
+            ? externalMatchResult(externalMatch.our_score, externalMatch.their_score)
             : null;
           const winnerTeam = match?.winning_team_id
             ? match.match_teams.find((t) => t.id === match.winning_team_id)
@@ -213,7 +203,7 @@ export default function EventListPage() {
                 )}
                 {event.type === 'training' && (
                   <p className="text-xs text-muted mt-1.5">
-                    {totalParticipants(event)} participantes
+                    {participantCount} participantes
                   </p>
                 )}
                 {(winnerTeam || tournamentWinner) && (
@@ -222,24 +212,13 @@ export default function EventListPage() {
                   </p>
                 )}
                 {externalMatch && externalResult && (
-                  <p className={`text-sm font-medium mt-1 ${externalResult === 'win' ? 'text-primary' : externalResult === 'loss' ? 'text-error' : 'text-muted'}`}>
-                    {externalResult === 'win' ? 'Ganamos' : externalResult === 'loss' ? 'Perdimos' : 'Empate'} {externalMatch.our_score} - {externalMatch.their_score}
+                  <p className={`text-sm font-medium mt-1 ${externalResult === 'win' ? 'text-success' : externalResult === 'loss' ? 'text-error' : 'text-info'}`}>
+                    {EXTERNAL_RESULT_LABELS[externalResult]} {externalMatch.our_score} - {externalMatch.their_score}
                   </p>
                 )}
-              {isAdmin && showCosts && event.cost != null && (() => {
-                const inflated = event.cost * COST_MARKUP_MULTIPLIER;
-                const participants = totalParticipants(event);
-                return (
-                  <p className="text-xs text-muted mt-1.5 flex flex-wrap gap-x-3">
-                    <span>Total: {formatPesos(event.cost)}</span>
-                    <span>Inflado: {formatPesos(inflated)}</span>
-                    {participants > 0 && (
-                      <span>Por jugador: {formatPesos(perPlayerCost(event.cost, participants))}</span>
-                    )}
-                    {event.payee_alias_cbu && <span>Pagó: {event.payee_alias_cbu}</span>}
-                  </p>
-                );
-              })()}
+              {isAdmin && showCosts && (
+                <CostSummary finances={event.finances} participantCount={participantCount} className="text-xs mt-1.5" />
+              )}
               </div>
             </Link>
           );

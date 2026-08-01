@@ -43,6 +43,18 @@ export function formatDateTime(iso: string): string {
   return `${weekday} ${day} de ${monthName} a las ${time}hs`;
 }
 
+/**
+ * Serializes a Date as yyyy-mm-dd using its LOCAL calendar fields. Never use
+ * `toISOString().slice(0, 10)` for this: it converts to UTC first, so in
+ * Argentina (UTC-3) any time from 21:00 onward yields tomorrow's date.
+ */
+export function toLocalISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** Returns true if the string is empty (optional) or a valid HH:MM time (00:00–23:59). */

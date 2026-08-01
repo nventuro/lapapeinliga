@@ -9,10 +9,10 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => setSession(session))
+      // On failure, render signed-out instead of spinning forever.
+      .finally(() => setAuthLoading(false));
 
     const {
       data: { subscription },
@@ -21,7 +21,14 @@ function App() {
       // Supabase auto-refreshes tokens on tab visibility change, which would
       // otherwise trigger a full data reload via the session dependency in AppContext.
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        setSession(session);
+        setSession((prev) => {
+          // SIGNED_IN can be re-emitted with a fresh session object for the
+          // same user (session recovery, tab focus); keeping the previous
+          // reference stops AppContext's [session] effect from re-running a
+          // full app reload behind the loading screen.
+          if (prev && session && prev.user.id === session.user.id) return prev;
+          return session;
+        });
       }
     });
 

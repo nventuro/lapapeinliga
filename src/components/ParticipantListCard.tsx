@@ -1,40 +1,52 @@
 import type { Player } from '../types';
+import { compareByName } from '../types';
 import ParticipantRow, { type MoveDestination } from './ParticipantRow';
 import AddParticipantControl from './AddParticipantControl';
 
-interface ReservesListProps {
-  reserves: Player[];
+interface ParticipantListCardProps {
+  title: string;
+  players: Player[];
   canEdit?: boolean;
   saving?: boolean;
   availablePlayers?: Player[];
   moveDestinationsFor?: (player: Player) => MoveDestination[];
   onAddPlayer?: (playerId: number) => void;
   onRemovePlayer?: (playerId: number) => void;
+  /** Hide the whole card when empty and not editable (e.g. reserves). */
+  hideWhenEmpty?: boolean;
+  className?: string;
 }
 
-export default function ReservesList({
-  reserves,
+/**
+ * A flat, name-sorted participant list card (reserves, training attendees,
+ * coaches). One rendering source of truth for every roster list without team
+ * structure.
+ */
+export default function ParticipantListCard({
+  title,
+  players,
   canEdit = false,
   saving = false,
   availablePlayers = [],
   moveDestinationsFor,
   onAddPlayer,
   onRemovePlayer,
-}: ReservesListProps) {
-  // Hide the whole card when there are no reserves and editing is disabled
-  if (reserves.length === 0 && !canEdit) return null;
+  hideWhenEmpty = false,
+  className = '',
+}: ParticipantListCardProps) {
+  if (hideWhenEmpty && players.length === 0 && !canEdit) return null;
 
   return (
-    <div className="border border-border rounded-lg p-4 mt-4">
+    <div className={`border border-border rounded-lg p-4 ${className}`}>
       <h3 className="font-bold text-lg mb-3">
-        Suplentes
+        {title}
         <span className="font-normal text-sm text-muted ml-2">
-          ({reserves.length})
+          ({players.length})
         </span>
       </h3>
-      {reserves.length > 0 && (
+      {players.length > 0 && (
         <ul className="space-y-1">
-          {[...reserves].sort((a, b) => a.name.localeCompare(b.name)).map((player) => (
+          {[...players].sort(compareByName).map((player) => (
             <ParticipantRow
               key={player.id}
               player={player}

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useEffect, useCallback, useState } from 'react';
+import { useModalDialog } from '../hooks/useModalDialog';
 import type { MediaItemWithTags, Player, TaggedPlayer } from '../types';
 import { formatDateShort } from '../utils/dateUtils';
+import { mediaUrl } from '../utils/mediaUpload';
 import { ShareIcon, UserGroupIcon } from './icons';
 import Tooltip from './Tooltip';
 import PlayerTagInput from './PlayerTagInput';
@@ -29,30 +30,19 @@ export default function Lightbox({
   item, onClose, onPrev, onNext, onDelete, eventLabel, onEventClick,
   onPlayerClick, canEditTags, tagCandidates, allPlayers, tagCandidatesLoading, onTogglePlayerTag,
 }: LightboxProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  useBodyScrollLock();
+  // Full-screen dialog: no backdrop area, so backdropClick is unused.
+  const { dialogRef } = useModalDialog(onClose);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [showTagEditor, setShowTagEditor] = useState(false);
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) {
-      dialog.showModal();
-    }
-
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      onClose();
-    };
-    dialog?.addEventListener('cancel', handleCancel);
-
-    return () => {
-      dialog?.removeEventListener('cancel', handleCancel);
-    };
-  }, [onClose]);
-
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Don't hijack arrow keys while the user is typing (e.g. in the player-tag
+    // search input): navigating would remount the lightbox and eat their text.
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return;
+    }
     if (e.key === 'ArrowLeft' && onPrev) onPrev();
     if (e.key === 'ArrowRight' && onNext) onNext();
   }, [onPrev, onNext]);
@@ -79,7 +69,7 @@ export default function Lightbox({
     if (navigator.share) {
       try {
         // Try sharing the actual file
-        const response = await fetch(item.storage_path);
+        const response = await fetch(mediaUrl(item.storage_path));
         const blob = await response.blob();
         const ext = item.media_type === 'video' ? 'webm' : 'jpg';
         const file = new File([blob], `foto.${ext}`, { type: blob.type });
@@ -87,13 +77,13 @@ export default function Lightbox({
         if (navigator.canShare?.({ files: [file] })) {
           await navigator.share({ files: [file] });
         } else {
-          await navigator.share({ url: item.storage_path });
+          await navigator.share({ url: mediaUrl(item.storage_path) });
         }
       } catch {
         // User cancelled or share failed — ignore
       }
     } else {
-      await navigator.clipboard.writeText(item.storage_path);
+      await navigator.clipboard.writeText(mediaUrl(item.storage_path));
     }
   }
 
@@ -191,7 +181,7 @@ export default function Lightbox({
             {item.media_type === 'video' ? (
               <video
                 key={item.id}
-                src={item.storage_path}
+                src={mediaUrl(item.storage_path)}
                 autoPlay
                 loop
                 muted
@@ -201,7 +191,7 @@ export default function Lightbox({
             ) : (
               <img
                 key={item.id}
-                src={item.storage_path}
+                src={mediaUrl(item.storage_path)}
                 alt={item.caption ?? ''}
                 className="max-w-full max-h-[70vh] rounded-lg object-contain"
               />

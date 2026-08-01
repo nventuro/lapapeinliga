@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { MAX_PLAYER_NAME_LENGTH } from '../types';
 import { supabase } from '../lib/supabase';
 import { capitalizeName } from '../utils/nameUtils';
 import { useAppContext } from '../context/appContext';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useModalDialog } from '../hooks/useModalDialog';
 
 interface EditNameDialogProps {
   currentName: string;
@@ -11,25 +12,11 @@ interface EditNameDialogProps {
 
 export default function EditNameDialog({ currentName, onClose }: EditNameDialogProps) {
   const { refetchData } = useAppContext();
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  useBodyScrollLock();
+  const { dialogRef, backdropClick } = useModalDialog(onClose);
 
   const [name, setName] = useState(currentName);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) {
-      dialog.showModal();
-    }
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      onClose();
-    };
-    dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
-  }, [onClose]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -59,10 +46,8 @@ export default function EditNameDialog({ currentName, onClose }: EditNameDialogP
   return (
     <dialog
       ref={dialogRef}
-      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-xs backdrop:bg-black/50"
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
+      className="fixed m-auto bg-surface text-on-surface rounded-xl shadow-xl p-0 w-full max-w-xs backdrop:bg-on-surface/50"
+      onClick={backdropClick}
     >
       <form onSubmit={handleSave}>
         <div className="p-6 space-y-4" tabIndex={-1}>
@@ -74,7 +59,7 @@ export default function EditNameDialog({ currentName, onClose }: EditNameDialogP
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             autoFocus
-            maxLength={60}
+            maxLength={MAX_PLAYER_NAME_LENGTH}
           />
 
           {error && <p className="text-xs text-error">{error}</p>}
