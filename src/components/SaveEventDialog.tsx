@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useNavigate } from 'react-router-dom';
 import type { Team, Player, ShirtColor, Location, LocationSelection, ExternalTeam, ExternalTeamSelection } from '../types';
-import { isNewLocationComplete, isExternalTeamSelectionComplete } from '../types';
+import { EVENT_TYPE_LABELS, hasFinances, isNewLocationComplete, isExternalTeamSelectionComplete, unhandledEventType } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDateShort, isValidTime } from '../utils/dateUtils';
@@ -29,6 +29,7 @@ type SaveEventDialogProps = {
   | { type: 'tournament'; teams: Team[]; reserves: Player[] }
   | { type: 'training'; attendees: Player[]; coaches: Player[] }
   | { type: 'external_match'; roster: Player[]; reserves: Player[] }
+  | { type: 'social' }
 );
 
 function initialTeamNames(count: number, suggestedNames: string[]): string[] {
@@ -234,6 +235,8 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Social events have nobody to split a cost among, so they skip the money fields.
+  const showFinances = hasFinances(props.type);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -370,8 +373,8 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     }
 
     // Financial details live in the mod/admin-only event_finances table.
-    const costValue = cost.trim() ? parseInt(cost.trim(), 10) : null;
-    const payeeValue = payee.trim() || null;
+    const costValue = showFinances && cost.trim() ? parseInt(cost.trim(), 10) : null;
+    const payeeValue = (showFinances && payee.trim()) || null;
     if (costValue != null || payeeValue != null) {
       const { error: financesError } = await supabase
         .from('event_finances')
@@ -389,7 +392,9 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
       props.type === 'match' ? await insertMatchChildren(event.id, props.teams, props.reserves, teamNames, shirtColors)
       : props.type === 'tournament' ? await insertTournamentChildren(event.id, props.teams, props.reserves, teamNames)
       : props.type === 'external_match' ? await insertExternalMatchChildren(event.id, externalTeamId!, props.roster, props.reserves)
-      : await insertTrainingChildren(event.id, props.attendees, props.coaches);
+      : props.type === 'training' ? await insertTrainingChildren(event.id, props.attendees, props.coaches)
+      : props.type === 'social' ? null // social events have no child record
+      : unhandledEventType(props, 'Tipo de evento desconocido.');
     if (childError) {
       await supabase.from('events').delete().eq('id', event.id);
       setError(childError);
@@ -410,10 +415,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     >
       <form onSubmit={handleSave} className="p-6">
         <h2 className="text-xl font-bold mb-4">
-          {props.type === 'match' ? 'Guardar partido'
-            : props.type === 'tournament' ? 'Guardar torneo'
-            : props.type === 'external_match' ? 'Guardar partido externo'
-            : 'Guardar entrenamiento'}
+          Guardar {EVENT_TYPE_LABELS[props.type].toLowerCase()}
         </h2>
 
         <div className="space-y-4">
@@ -421,7 +423,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
             <label className="block text-sm font-medium mb-1">Nombre (opcional)</label>
             <input
               type="text"
-              placeholder="Ej: Copa de Verano"
+              placeholder={props.type === 'social' ? 'Ej: Asado de fin de año' : 'Ej: Copa de Verano'}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
@@ -473,28 +475,32 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Costo</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Ej: 15000"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          {showFinances && (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">Costo</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ej: 15000"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
-            <input
-              type="text"
-              placeholder="Alias o CBU"
-              value={payee}
-              onChange={(e) => setPayee(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
+                <input
+                  type="text"
+                  placeholder="Alias o CBU"
+                  value={payee}
+                  onChange={(e) => setPayee(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </>
+          )}
 
           {hasTeams && teamNames.map((teamName, i) => (
             <div key={i} className="border border-border rounded-lg p-3">

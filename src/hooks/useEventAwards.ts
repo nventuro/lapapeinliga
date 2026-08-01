@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AwardResult, AwardResultState, AwardType, AwardVoteWindowState, EventAwardWindow, EventType } from '../types';
+import { hasAwards } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface UseEventAwardsResult {
@@ -29,7 +30,7 @@ export function useEventAwards(eventId: number | null, eventType: EventType | nu
     let cancelled = false;
 
     async function fetchAll() {
-      if (eventId == null || eventType == null || eventType === 'training' || eventType === 'external_match') {
+      if (eventId == null || eventType == null || !hasAwards(eventType)) {
         if (cancelled) return;
         setVoteWindow({ state: 'n/a', opens_at: null, closes_at: null, voter_count: 0 });
         setResults([]);

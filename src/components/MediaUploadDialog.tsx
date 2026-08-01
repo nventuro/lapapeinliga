@@ -52,7 +52,10 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
   const { players: allPlayers } = useAppContext();
   const eventId = selectedEventId ? Number(selectedEventId) : null;
-  const { participants, loading: participantsLoading } = useEventParticipants(eventId);
+  const { participants, loading: participantsLoading } = useEventParticipants(
+    eventId,
+    events.find((e) => e.id === eventId)?.type ?? null,
+  );
   const queue = useUploadQueue({ eventId, date, onItemUploaded });
 
   useEffect(() => {

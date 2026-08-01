@@ -1,17 +1,23 @@
-import type { MatchWithDetails, TrainingWithDetails, TournamentWithDetails, ExternalMatchWithDetails, EventWithDetails } from '../types';
-import { allParticipants, OUR_TEAM_NAME, externalMatchResult } from '../types';
+import type { MatchWithDetails, TrainingWithDetails, TournamentWithDetails, ExternalMatchWithDetails, EventType, EventWithDetails, SocialWithDetails } from '../types';
+import { allParticipants, EVENT_TYPE_LABELS, OUR_TEAM_NAME, externalMatchResult } from '../types';
 import { formatDateForShare, formatTime } from './dateUtils';
 import { perPlayerCost } from './costUtils';
+
+const TYPE_EMOJI: Record<EventType, string> = {
+  match: '⚽',
+  training: '🏋️',
+  tournament: '🏆',
+  external_match: '⚔️',
+  social: '🎉',
+};
 
 function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   const lines: string[] = [];
   lines.push('*🏆 La Papeinliga*');
   lines.push('');
 
-  const typeEmoji = event.type === 'match' ? '⚽' : event.type === 'tournament' ? '🏆' : event.type === 'external_match' ? '⚔️' : '🏋️';
-  const typeLabel = event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : event.type === 'external_match' ? 'Partido externo' : 'Entrenamiento';
   const namePart = event.name ? ` · ${event.name}` : '';
-  lines.push(`Fecha ${eventNumber}${namePart} · ${typeEmoji} ${typeLabel}`);
+  lines.push(`Fecha ${eventNumber}${namePart} · ${TYPE_EMOJI[event.type]} ${EVENT_TYPE_LABELS[event.type]}`);
   lines.push(`📅 ${formatDateForShare(event.played_at)}`);
 
   lines.push(`🕐 ${formatTime(event.played_at_time)}`);
@@ -35,7 +41,7 @@ function buildCostFooter(event: EventWithDetails): string[] {
   }
 
   lines.push('');
-  lines.push('¡Nos vemos en la cancha! ✨🩵');
+  lines.push(event.type === 'social' ? '¡Nos vemos! ✨🩵' : '¡Nos vemos en la cancha! ✨🩵');
   return lines;
 }
 
@@ -145,10 +151,16 @@ function buildExternalMatchShareMessage(event: ExternalMatchWithDetails, eventNu
   return lines.join('\n');
 }
 
+/** A social event has no roster and no cost split: the header says it all. */
+function buildSocialShareMessage(event: SocialWithDetails, eventNumber: string): string {
+  return [...buildHeader(event, eventNumber), ...buildCostFooter(event)].join('\n');
+}
+
 export function buildEventShareMessage(event: EventWithDetails, eventNumber: string): string {
   if (event.type === 'match') return buildMatchShareMessage(event, eventNumber);
   if (event.type === 'tournament') return buildTournamentShareMessage(event, eventNumber);
   if (event.type === 'external_match') return buildExternalMatchShareMessage(event, eventNumber);
+  if (event.type === 'social') return buildSocialShareMessage(event, eventNumber);
   return buildTrainingShareMessage(event, eventNumber);
 }
 

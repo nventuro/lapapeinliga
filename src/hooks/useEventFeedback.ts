@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AwardVoteWindowState, EventType } from '../types';
+import { hasAwards } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface UseEventFeedbackResult {
@@ -29,7 +30,7 @@ export function useEventFeedback(
     let cancelled = false;
 
     async function fetchAll() {
-      if (eventId == null || eventType == null || eventType === 'training' || windowState == null || windowState === 'n/a') {
+      if (eventId == null || eventType == null || !hasAwards(eventType) || windowState == null || windowState === 'n/a') {
         if (cancelled) return;
         setMyBody(null);
         setAdminBodies(null);

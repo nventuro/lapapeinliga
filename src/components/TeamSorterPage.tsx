@@ -9,8 +9,9 @@ import CoachAssignment from './CoachAssignment';
 import TeamBuildingDisplay from './TeamBuildingDisplay';
 import TrainingPreview from './TrainingPreview';
 import ExternalMatchPreview from './ExternalMatchPreview';
+import SaveEventDialog from './SaveEventDialog';
 import NoAccess from './NoAccess';
-import { GenderMaleIcon, GenderFemaleIcon } from './icons';
+import { ConfettiIcon, GenderMaleIcon, GenderFemaleIcon } from './icons';
 
 type Step = 'select' | 'configure' | 'assign-coaches' | 'results';
 
@@ -22,6 +23,7 @@ interface StateCache {
   lockedIds: Set<number>;
   eventType: EventType | null;
   coachIds: Set<number>;
+  listless: boolean;
 }
 
 // Preserve state across navigations so switching tabs doesn't lose progress
@@ -37,11 +39,15 @@ export default function TeamSorterPage() {
   const [lockedIds, setLockedIds] = useState<Set<number>>(() => stateCache?.lockedIds ?? new Set());
   const [eventType, setEventType] = useState<EventType | null>(() => stateCache?.eventType ?? null);
   const [coachIds, setCoachIds] = useState<Set<number>>(() => stateCache?.coachIds ?? new Set());
+  // Whether the configure step is offering the event types that have no
+  // participant list, reached by skipping player selection altogether.
+  const [listless, setListless] = useState(() => stateCache?.listless ?? false);
+  const [showSocialDialog, setShowSocialDialog] = useState(false);
 
   // Sync state to module-level cache so it's preserved across navigations
   useEffect(() => {
-    stateCache = { selectedIds, result, lastTeamCount, step, lockedIds, eventType, coachIds };
-  }, [selectedIds, result, lastTeamCount, step, lockedIds, eventType, coachIds]);
+    stateCache = { selectedIds, result, lastTeamCount, step, lockedIds, eventType, coachIds, listless };
+  }, [selectedIds, result, lastTeamCount, step, lockedIds, eventType, coachIds, listless]);
 
   const handleToggle = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -116,6 +122,11 @@ export default function TeamSorterPage() {
     setStep('results');
   }, []);
 
+  const handleListlessEvent = useCallback(() => {
+    setListless(true);
+    setStep('configure');
+  }, []);
+
   const handleCoachConfirm = useCallback(() => {
     setStep('results');
   }, []);
@@ -162,6 +173,7 @@ export default function TeamSorterPage() {
     setLockedIds(new Set());
     setEventType(null);
     setCoachIds(new Set());
+    setListless(false);
     setStep('select');
     stateCache = null;
   }, []);
@@ -177,6 +189,16 @@ export default function TeamSorterPage() {
     <>
       {step === 'select' && (
         <>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h2 className="text-xl font-bold">¿Quiénes juegan?</h2>
+            <button
+              onClick={handleListlessEvent}
+              className="shrink-0 flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-neutral hover:bg-neutral-hover text-muted-strong transition-colors"
+            >
+              <ConfettiIcon className="w-4 h-4" />
+              Evento sin lista
+            </button>
+          </div>
           <PlayerSelector
             players={players}
             selectedIds={selectedIds}
@@ -196,7 +218,7 @@ export default function TeamSorterPage() {
               </span>
             </div>
             <button
-              onClick={() => setStep('configure')}
+              onClick={() => { setListless(false); setStep('configure'); }}
               disabled={selectedIds.size < MIN_TRAINING_PLAYERS}
               className="w-full py-3 rounded-lg font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
             >
@@ -214,11 +236,13 @@ export default function TeamSorterPage() {
       {step === 'configure' && (
         <>
           <EventConfigurator
+            mode={listless ? 'listless' : 'roster'}
             selectedCount={selectedIds.size}
             onGenerate={generateTeams}
             onTournament={generateTournament}
             onTraining={handleTraining}
             onExternalMatch={handleExternalMatch}
+            onSocial={() => setShowSocialDialog(true)}
           />
           <button
             onClick={() => setStep('select')}
@@ -226,6 +250,11 @@ export default function TeamSorterPage() {
           >
             ← Volver a selección
           </button>
+          {/* A social event has nothing to preview, so its option opens the
+              save dialog straight from the configurator. */}
+          {showSocialDialog && (
+            <SaveEventDialog type="social" onClose={() => setShowSocialDialog(false)} />
+          )}
         </>
       )}
 

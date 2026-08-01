@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { EventType } from '../types';
-import { COST_MARKUP_MULTIPLIER, OUR_TEAM_NAME, externalMatchResult } from '../types';
+import { COST_MARKUP_MULTIPLIER, EVENT_TYPE_LABELS, OUR_TEAM_NAME, externalMatchResult, unhandledEventType } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { SoccerBallIcon, BarbellIcon, TrophyIcon, SwordsIcon } from './icons';
+import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import Tooltip from './Tooltip';
 
 interface MatchSubRow {
@@ -79,8 +79,12 @@ function totalParticipants(event: EventRow): number {
     const reserves = event.external_matches.external_match_reserves[0]?.count ?? 0;
     return roster + reserves;
   }
-  if (!event.trainings) return 0;
-  return (event.trainings.training_attendees[0]?.count ?? 0) + (event.trainings.training_coaches[0]?.count ?? 0);
+  if (event.type === 'training') {
+    if (!event.trainings) return 0;
+    return (event.trainings.training_attendees[0]?.count ?? 0) + (event.trainings.training_coaches[0]?.count ?? 0);
+  }
+  if (event.type === 'social') return 0; // no participant list
+  return unhandledEventType(event.type, 0);
 }
 
 export default function EventListPage() {
@@ -166,6 +170,7 @@ export default function EventListPage() {
           const tournamentWinner = tournament?.winning_team_id
             ? tournament.tournament_teams.find((t) => t.id === tournament.winning_team_id)
             : null;
+          const TypeIcon = EVENT_TYPE_ICONS[event.type];
 
           return (
             <Link
@@ -173,18 +178,10 @@ export default function EventListPage() {
               to={`/fechas/${event.short_id}`}
               className="flex border border-border rounded-xl hover:border-neutral-hover transition-colors"
             >
-              <Tooltip label={event.type === 'match' ? 'Partido' : event.type === 'tournament' ? 'Torneo' : event.type === 'external_match' ? 'Partido externo' : 'Entrenamiento'}>
+              <Tooltip label={EVENT_TYPE_LABELS[event.type]}>
                 <div className="flex flex-col items-center justify-center gap-1 px-3 border-r border-border text-muted min-w-14">
                   <span className="text-xs font-semibold">#{eventLabel}</span>
-                  {event.type === 'match' ? (
-                    <SoccerBallIcon className="w-5 h-5" />
-                  ) : event.type === 'tournament' ? (
-                    <TrophyIcon className="w-5 h-5" />
-                  ) : event.type === 'external_match' ? (
-                    <SwordsIcon className="w-5 h-5" />
-                  ) : (
-                    <BarbellIcon className="w-5 h-5" />
-                  )}
+                  <TypeIcon className="w-5 h-5" />
                 </div>
               </Tooltip>
               <div className="flex-1 p-4">

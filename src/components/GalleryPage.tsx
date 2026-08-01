@@ -92,6 +92,7 @@ export default function GalleryPage() {
     : null;
   const { participants: tagCandidates, loading: tagCandidatesLoading } = useEventParticipants(
     isModOrAdmin ? lightboxEventId : null,
+    events.find((e) => e.id === lightboxEventId)?.type ?? null,
   );
 
   const openItem = openMediaId ? items.find((i) => i.id === openMediaId) ?? null : null;

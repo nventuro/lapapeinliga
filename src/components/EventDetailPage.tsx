@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
-import type { EventWithDetails, MatchWithDetails, TournamentWithDetails, ExternalMatchWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, ExternalMatch, ExternalTeam, ExternalMatchPlayer, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
-import { allParticipants, COST_MARKUP_MULTIPLIER, isNewLocationComplete, OUR_TEAM_NAME } from '../types';
+import type { Event, EventWithDetails, MatchWithDetails, TournamentWithDetails, ExternalMatchWithDetails, Match, Training, Tournament, TournamentTeam, TournamentMatch, ExternalMatch, ExternalTeam, ExternalMatchPlayer, Player, AwardType, Location, LocationSelection, MatchTeam } from '../types';
+import { allParticipants, COST_MARKUP_MULTIPLIER, EVENT_TYPE_LABELS, hasFinances, isNewLocationComplete, OUR_TEAM_NAME, unhandledEventType } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
-import { TrophyIcon, EditIcon, WhatsAppIcon, SoccerBallIcon, BarbellIcon, SwordsIcon } from './icons';
+import { EditIcon, WhatsAppIcon } from './icons';
+import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
 import TimeInput from './TimeInput';
 import Tooltip from './Tooltip';
@@ -50,7 +51,7 @@ async function fetchEventData(
   // cost/payee live in the mod/admin-only event_finances table (null for
   // non-mods via RLS); flatten the embedded row so downstream reads event.cost.
   const { event_finances, ...eventBase } = eventRow;
-  const eventData = {
+  const eventData: Event = {
     ...eventBase,
     cost: event_finances?.cost ?? null,
     payee_alias_cbu: event_finances?.payee_alias_cbu ?? null,
@@ -236,8 +237,13 @@ async function fetchEventData(
       } as ExternalMatchWithDetails,
       eventNumber,
     };
-  } else {
-    // Training
+  } else if (eventData.type === 'social') {
+    // Social event: no child record, no participants — just the event and its photos.
+    return {
+      event: { ...eventData, type: 'social' as const, location },
+      eventNumber,
+    };
+  } else if (eventData.type === 'training') {
     const { data: trainingData } = await supabase
       .from('trainings')
       .select('*')
@@ -271,6 +277,9 @@ async function fetchEventData(
       event: { ...eventData, type: 'training' as const, training, attendees, coaches, location },
       eventNumber,
     };
+  } else {
+    // A type this build doesn't know: render as "not found" instead of crashing.
+    return unhandledEventType(eventData.type, null);
   }
 }
 
@@ -451,8 +460,10 @@ export default function EventDetailPage() {
     }
 
     const nameValue = editName.trim() || null;
-    const costValue = editCost.trim() ? parseInt(editCost.trim(), 10) : null;
-    const payeeValue = editPayee.trim() || null;
+    // Social events never carry a cost: the editor hides both fields.
+    const editsFinances = hasFinances(event.type);
+    const costValue = editsFinances && editCost.trim() ? parseInt(editCost.trim(), 10) : null;
+    const payeeValue = (editsFinances && editPayee.trim()) || null;
 
     const { error } = await supabase
       .from('events')
@@ -461,7 +472,7 @@ export default function EventDetailPage() {
 
     // Financial fields live in the mod/admin-only event_finances table.
     let ok = !error;
-    if (!error) {
+    if (!error && editsFinances) {
       const { error: financesError } = await supabase
         .from('event_finances')
         .upsert(
@@ -655,14 +666,11 @@ export default function EventDetailPage() {
     }
   }
 
-  const TypeIcon = event.type === 'match' ? SoccerBallIcon
-    : event.type === 'tournament' ? TrophyIcon
-    : event.type === 'external_match' ? SwordsIcon
-    : BarbellIcon;
-  const typeLabel = event.type === 'match' ? 'Partido'
-    : event.type === 'tournament' ? 'Torneo'
-    : event.type === 'external_match' ? 'Partido externo'
-    : 'Entrenamiento';
+  const TypeIcon = EVENT_TYPE_ICONS[event.type];
+  const typeLabel = EVENT_TYPE_LABELS[event.type];
+  // Social events have no cost split, so their editor and share message drop
+  // the financial fields entirely.
+  const showFinances = hasFinances(event.type);
 
   return (
     <div>
@@ -704,29 +712,33 @@ export default function EventDetailPage() {
               locations={allLocations}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Costo</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Ej: 15000"
-              value={editCost}
-              onChange={(e) => setEditCost(e.target.value)}
-              disabled={saving}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
-            <input
-              type="text"
-              placeholder="Alias o CBU"
-              value={editPayee}
-              onChange={(e) => setEditPayee(e.target.value)}
-              disabled={saving}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          {showFinances && (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">Costo</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ej: 15000"
+                  value={editCost}
+                  onChange={(e) => setEditCost(e.target.value)}
+                  disabled={saving}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Alias/CBU de quien pagó</label>
+                <input
+                  type="text"
+                  placeholder="Alias o CBU"
+                  value={editPayee}
+                  onChange={(e) => setEditPayee(e.target.value)}
+                  disabled={saving}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </>
+          )}
           <div className="flex gap-2">
             <button
               type="button"
@@ -747,7 +759,9 @@ export default function EventDetailPage() {
         </div>
       ) : (() => {
         const hasCost = isAdmin && showCosts && event.cost != null;
-        const canShare = event.payee_alias_cbu != null;
+        // The share message embeds who to pay, so it needs an alias/CBU — except
+        // for social events, whose message is just the date, time and place.
+        const canShare = event.payee_alias_cbu != null || !showFinances;
         return (
           <div className="border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
             <div className="flex items-center justify-between">
@@ -1146,7 +1160,7 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {event.type === 'training' && <EventMediaStrip eventId={event.id} />}
+      {(event.type === 'training' || event.type === 'social') && <EventMediaStrip eventId={event.id} />}
 
       {isAdmin && (
         <ConfirmAction

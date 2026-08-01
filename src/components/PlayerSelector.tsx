@@ -62,10 +62,6 @@ export default function PlayerSelector({
 
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-xl font-bold">¿Quiénes juegan?</h2>
-      </div>
-
       {tierGroups.map(({ tier, players: tierPlayers }, index) =>
         tierPlayers.length > 0 && (
           <div key={tier}>

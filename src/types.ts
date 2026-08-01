@@ -163,7 +163,54 @@ export const COST_ROUNDING_NEAREST = 100;
 export const TOURNAMENT_WIN_POINTS = 3;
 export const TOURNAMENT_DRAW_POINTS = 1;
 
-export type EventType = 'match' | 'training' | 'tournament' | 'external_match';
+export type EventType = 'match' | 'training' | 'tournament' | 'external_match' | 'social';
+
+export const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  match: 'Partido',
+  training: 'Entrenamiento',
+  tournament: 'Torneo',
+  external_match: 'Partido externo',
+  social: 'Evento',
+};
+
+/**
+ * Compile-time exhaustiveness guard for per-EventType dispatch: the call only
+ * typechecks in a branch where every variant has been handled, so adding a new
+ * EventType turns every dispatch that needs a branch into a compile error
+ * instead of a silent fallthrough. If it's ever reached at runtime (a client
+ * build older than the database), it returns the fallback so the UI degrades
+ * instead of crashing.
+ */
+export function unhandledEventType<T>(type: never, fallback: T): T {
+  console.warn(`Unhandled event type: ${String(type)}`);
+  return fallback;
+}
+
+/**
+ * Whether the type keeps a list of participants. Social events don't: they are
+ * just the date/time/place plus photos, so photo tagging falls back to the
+ * whole roster.
+ */
+export function hasParticipantList(type: EventType): boolean {
+  return type !== 'social';
+}
+
+/**
+ * Whether the event's cost and payee are tracked. Today this matches
+ * hasParticipantList — a cost exists to be split among participants — but they
+ * are distinct capabilities, so money UI must gate on this one.
+ */
+export function hasFinances(type: EventType): boolean {
+  return hasParticipantList(type);
+}
+
+/**
+ * Whether the type runs award voting (and, gated on it, event feedback).
+ * Mirrors the allowlist enforced by the vote/feedback RPCs.
+ */
+export function hasAwards(type: EventType): boolean {
+  return type === 'match' || type === 'tournament';
+}
 
 /** Display name for the papeinliga side in an external match. */
 export const OUR_TEAM_NAME = 'La Papeinliga';
@@ -287,13 +334,23 @@ export type ExternalMatchWithDetails = Event & {
   location: Location | null;
 };
 
+/** A social event has no child record: the event row plus its venue is all there is. */
+export type SocialWithDetails = Event & {
+  type: 'social';
+  location: Location | null;
+};
+
 export type EventWithDetails =
   | MatchWithDetails
   | TrainingWithDetails
   | TournamentWithDetails
-  | ExternalMatchWithDetails;
+  | ExternalMatchWithDetails
+  | SocialWithDetails;
 
 export function allParticipants(event: EventWithDetails): Player[] {
+  if (event.type === 'social') {
+    return [];
+  }
   if (event.type === 'match') {
     return [...event.teams.flatMap((t) => t.players), ...event.reserves];
   }
