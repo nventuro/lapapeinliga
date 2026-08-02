@@ -94,17 +94,25 @@
   --color-info: #27718f;
 
   /* Lime: the crest's star color, marking winners, awards and the active tab.
-     Same split as primary/accent -- the bright value is for fills and for the
-     navy band (8.99:1 there), but at 1.45:1 on `canvas` it cannot carry a mark
-     on a light ground. Icons and borders on light use `lime-strong`. */
+     Same split as primary/accent -- the bright value is for fills, borders and
+     the navy band (8.99:1 there), but at 1.45:1 on `canvas` it cannot carry a
+     small mark on a light ground, so icons there use `lime-strong`.
+     `lime-strong` is the most chromatic lime that still clears 3:1 (3.17). It
+     cannot get closer to the crest than this: at hue 62 the green channel
+     carries most of the luminance, so any value bright enough to read as the
+     crest's lime is too bright to see as a stroke on a near-white page. Prefer
+     the true lime on a fill wherever a mark is big enough not to need it. */
   --color-lime: #d1d82a;
-  --color-lime-strong: #7c8115;
+  --color-lime-strong: #899212;
   --color-lime-subtle: #f6f8d2;
   --color-on-lime: #1a2c4c;
 
-  /* Gender icon colors, pulled into the crest's celeste/rose register */
-  --color-gender-male: #4a8cb5;
-  --color-gender-female: #c26794;
+  /* Gender icon colors, in the crest's celeste/rose register. Saturation is
+     pushed as far as 3:1 allows -- an earlier, greyer pair cleared contrast
+     comfortably but read as washed out, which is the wrong trade for a mark
+     whose whole job is to be told apart at a glance. */
+  --color-gender-male: #4295c9;
+  --color-gender-female: #e05098;
 
   /* Shirt colors -- literal jersey shades (claros vs oscuros), deliberately
      outside the brand palette so they never read as a team's identity */

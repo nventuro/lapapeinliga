@@ -45,14 +45,17 @@ export default function MainLayout() {
   return (
     <div className="min-h-dvh bg-canvas text-on-surface flex flex-col">
       <header className="bg-primary pinstripes text-on-primary">
-        <div className="max-w-2xl mx-auto px-4 pt-5">
+        {/* The band grows about a third from `sm` up, where there is room for the
+            crest to be legible. Mobile keeps its sizes: the nav clears its track
+            by only a few pixels at 390px wide. */}
+        <div className="max-w-2xl mx-auto px-4 pt-5 sm:pt-7">
           <div className="flex items-center justify-between gap-3">
-            <Link to="/fechas" className="flex items-center gap-2.5 min-w-0 hover:opacity-90 transition-opacity">
+            <Link to="/fechas" className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 hover:opacity-90 transition-opacity">
               {/* The crest's own outlines are this same navy, so the asset carries
                   a white keyline -- without it the ball and ribbon dissolve into
                   the band. */}
-              <img src={crest} alt="" className="w-11 h-11 shrink-0" />
-              <span className="font-display text-xl sm:text-2xl uppercase tracking-wide truncate">
+              <img src={crest} alt="" className="w-11 h-11 sm:w-14 sm:h-14 shrink-0" />
+              <span className="font-display text-xl sm:text-3xl uppercase tracking-wide truncate">
                 La Papeinliga
               </span>
             </Link>
@@ -147,12 +150,12 @@ export default function MainLayout() {
               </button>
             )}
           </div>
-          <nav className="flex gap-4 mt-4 overflow-x-auto scrollbar-hide">
+          <nav className="flex gap-4 sm:gap-6 mt-4 sm:mt-5 overflow-x-auto scrollbar-hide">
             {NAV_ITEMS.map(({ to, label, Icon, isActive }) => (
               <Link
                 key={to}
                 to={to}
-                className={`text-sm font-semibold whitespace-nowrap flex items-center gap-1.5 pb-2.5 border-b-[3px] transition-colors ${
+                className={`text-sm sm:text-base font-semibold whitespace-nowrap flex items-center gap-1.5 pb-2.5 sm:pb-3 border-b-[3px] transition-colors ${
                   isActive(location.pathname)
                     ? 'border-lime text-on-primary'
                     : 'border-transparent text-on-primary/60 hover:text-on-primary'
