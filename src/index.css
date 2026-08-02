@@ -45,8 +45,11 @@
   --color-celeste: #62afd5;
 
   /* Accent: the crest celeste, darkened to carry text. Links, highlighted
-     values, active states outside the navy band. */
-  --color-accent: #27718f;
+     values, active states outside the navy band. Dark enough to stay readable
+     as small text on `accent-subtle` (5.95:1), which is where it sits in a
+     badge -- its old value cleared the 4.5 minimum by so little that badges
+     read as faint. */
+  --color-accent: #1f6382;
   --color-accent-hover: #1c5670;
   --color-accent-subtle: #eaf4fa;
   --color-accent-border: #bcdcee;
@@ -58,8 +61,11 @@
   --color-surface: #ffffff;
   --color-on-surface: #16233c;
 
-  /* Muted/secondary text -- grey biased toward the navy rather than neutral */
-  --color-muted: #5a6b84;
+  /* Muted/secondary text -- grey biased toward the navy rather than neutral.
+     Carries most of the small text in the app, so it targets the 7:1 enhanced
+     bar (6.94:1) rather than the 4.5 minimum: at 4.5 it was legible by the
+     letter of the rule and still hard to read at 11px. */
+  --color-muted: #47566e;
   --color-muted-strong: #2c3d57;
 
   /* Borders & subtle backgrounds. Decorative boundaries, so the 3:1 UI-component
@@ -74,6 +80,9 @@
 
   /* Error */
   --color-error: #cc2a1e;
+  /* Tinted ground for a badge carrying `error` text (5.40:1) -- a solid red
+     fill would shout, and a loss is worth stating, not alarming about. */
+  --color-error-subtle: #f6eae9;
 
   /* Warning -- amber has to go this dark to stay legible as body text */
   --color-warning: #a85f04;
