@@ -81,10 +81,11 @@ export default function PlantelPage() {
         </div>
       )}
 
+      {/* Every other page puts its content on a surface; the roster was the one
+          list left sitting bare on the page ground. */}
       {groupPlayersForRoster(players, isAdmin).map(({ key, label, players: tierPlayers }, index) => {
         return (
-          <div key={key}>
-            {index > 0 && <div className="my-4 border-t border-border-subtle" />}
+          <div key={key} className={`bg-surface border border-border rounded-lg p-4 ${index > 0 ? 'mt-3' : ''}`}>
             {label && <h3 className="text-sm font-semibold text-muted mb-2">{label}</h3>}
             <ul className="space-y-1">
               {tierPlayers.map((player) => (
@@ -171,7 +172,7 @@ export default function PlantelPage() {
       })}
 
       {players.length === 0 && (
-        <p className="text-center text-muted py-8">
+        <p className="bg-surface border border-border rounded-lg px-4 py-8 text-center text-muted">
           No hay jugadores cargados.{isAdmin && ' Agregá el primero.'}
         </p>
       )}
