@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import TeamSorterPage from './components/TeamSorterPage.tsx'
 import PlantelPage from './components/PlantelPage.tsx'
+import PlayerPage from './components/PlayerPage.tsx'
 import EventListPage from './components/EventListPage.tsx'
 import EventDetailPage from './components/EventDetailPage.tsx'
 import StatsPage from './components/StatsPage.tsx'
@@ -22,6 +23,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="estadisticas" element={<StatsPage />} />
           <Route path="armado" element={<TeamSorterPage />} />
           <Route path="plantel" element={<PlantelPage />} />
+          <Route path="plantel/:id" element={<PlayerPage />} />
           <Route path="galeria" element={<GalleryPage />} />
           <Route path="vincular" element={<ClaimPage />} />
         </Route>

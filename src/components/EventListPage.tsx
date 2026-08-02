@@ -15,6 +15,8 @@ import {
 import CostSummary from './CostSummary';
 import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import Tooltip from './Tooltip';
+import Chip, { ChipRow } from './Chip';
+import SectionLabel from './SectionLabel';
 
 interface EventRow {
   id: number;
@@ -82,29 +84,6 @@ function fallbackTitle(event: EventRow): string {
   return event.location?.name ?? EVENT_TYPE_LABELS[event.type];
 }
 
-function SectionLabel({ children, dim = false }: { children: React.ReactNode; dim?: boolean }) {
-  return (
-    <h2 className={`font-display text-xs tracking-widest mb-2 flex items-center gap-1.5 ${dim ? 'text-muted' : 'text-on-surface'}`}>
-      {children}
-    </h2>
-  );
-}
-
-const CHIP_TONES = {
-  info: 'bg-accent-subtle text-accent',
-  win: 'bg-lime text-on-lime',
-  loss: 'bg-error-subtle text-error',
-  neutral: 'bg-border-subtle text-muted',
-} as const;
-
-function Chip({ tone, children }: { tone: keyof typeof CHIP_TONES; children: React.ReactNode }) {
-  return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CHIP_TONES[tone]}`}>
-      {children}
-    </span>
-  );
-}
-
 /**
  * Before kickoff the roster count answers "are we enough yet?"; afterwards the
  * outcome is the story and the count moves to the detail page. A training is the
@@ -144,10 +123,6 @@ function EventChips({ event }: { event: EventRow }) {
   }
 
   return null;
-}
-
-function ChipRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-1.5 mt-2">{children}</div>;
 }
 
 /** Title, date, place and lineup -- identical wording wherever an event is shown. */

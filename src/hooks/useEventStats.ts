@@ -11,6 +11,10 @@ export interface EventStats {
   trainingsCoached: Map<number, number>;
   externalMatchesPlayed: Map<number, number>;
   eventParticipants: number[][];
+  /** Every event each player took part in, any type. Keyed by player id. */
+  eventIdsByPlayer: Map<number, Set<number>>;
+  /** The subset of those a player was on the winning side of. */
+  wonEventIdsByPlayer: Map<number, Set<number>>;
   loading: boolean;
   error: string | null;
 }
@@ -18,6 +22,13 @@ export interface EventStats {
 const EMPTY_COUNTS: Map<number, number> = new Map();
 const EMPTY_AWARDS: Map<AwardType, Map<number, number>> = new Map();
 const EMPTY_EVENTS: number[][] = [];
+const EMPTY_EVENT_IDS: Map<number, Set<number>> = new Map();
+
+const remember = (map: Map<number, Set<number>>, playerId: number, eventId: number) => {
+  const seen = map.get(playerId);
+  if (seen) seen.add(eventId);
+  else map.set(playerId, new Set([eventId]));
+};
 
 type EventRow = { id: number; type: EventType; winning_team_id: number | null };
 type ParticipantRow = { event_id: number; player_id: number; kind: ParticipantKind; team_id: number | null };
@@ -55,14 +66,20 @@ export function useEventStats(): EventStats {
     const attended = new Map<number, number>();
     const coached = new Map<number, number>();
     const externalPlayed = new Map<number, number>();
+    // The same pass that tallies the counters records which events produced
+    // them, so a player's own history needs no second trip to the server.
+    const eventIdsByPlayer = new Map<number, Set<number>>();
+    const wonEventIdsByPlayer = new Map<number, Set<number>>();
 
     for (const p of participants) {
       const event = eventById.get(p.event_id);
       if (!event) continue;
+      remember(eventIdsByPlayer, p.player_id, p.event_id);
       if (event.type === 'match' || event.type === 'tournament') {
         increment(played, p.player_id);
         if (event.winning_team_id != null && p.team_id === event.winning_team_id) {
           increment(won, p.player_id);
+          remember(wonEventIdsByPlayer, p.player_id, p.event_id);
         }
       } else if (event.type === 'external_match') {
         increment(externalPlayed, p.player_id);
@@ -105,6 +122,8 @@ export function useEventStats(): EventStats {
       trainingsCoached: coached,
       externalMatchesPlayed: externalPlayed,
       eventParticipants: participantsByEvent,
+      eventIdsByPlayer,
+      wonEventIdsByPlayer,
     };
   }, []);
 
@@ -116,6 +135,8 @@ export function useEventStats(): EventStats {
     trainingsCoached: data?.trainingsCoached ?? EMPTY_COUNTS,
     externalMatchesPlayed: data?.externalMatchesPlayed ?? EMPTY_COUNTS,
     eventParticipants: data?.eventParticipants ?? EMPTY_EVENTS,
+    eventIdsByPlayer: data?.eventIdsByPlayer ?? EMPTY_EVENT_IDS,
+    wonEventIdsByPlayer: data?.wonEventIdsByPlayer ?? EMPTY_EVENT_IDS,
     loading,
     error,
   };

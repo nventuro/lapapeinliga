@@ -12,7 +12,7 @@ import crest from '../assets/crest-on-dark.png';
 const NAV_ITEMS = [
   { to: '/fechas', label: 'Fechas', Icon: CalendarIcon, isActive: (p: string) => p.startsWith('/fechas') },
   { to: '/estadisticas', label: 'Estadísticas', Icon: ChartBarIcon, isActive: (p: string) => p === '/estadisticas' },
-  { to: '/plantel', label: 'Plantel', Icon: UserGroupIcon, isActive: (p: string) => p === '/plantel' || p === '/armado' },
+  { to: '/plantel', label: 'Plantel', Icon: UserGroupIcon, isActive: (p: string) => p.startsWith('/plantel') || p === '/armado' },
   { to: '/galeria', label: 'Galería', Icon: PhotosIcon, isActive: (p: string) => p.startsWith('/galeria') },
 ];
 

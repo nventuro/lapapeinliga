@@ -449,6 +449,10 @@ export const VIDEO_PROCESSING_FPS = 15;
 
 export const EVENT_MEDIA_PREVIEW_COUNT = 3;
 
+/** How much of a player's history their profile previews before "ver todas". */
+export const PLAYER_MEDIA_PREVIEW_COUNT = 6;
+export const PLAYER_EVENT_PREVIEW_COUNT = 5;
+
 export type MediaType = 'image' | 'video';
 
 export type MediaItem = {
