@@ -15,6 +15,21 @@ export const DEFAULT_UNRATED_RATING = 4;
 
 export const LEADERBOARD_MIN_DISPLAY = 10;
 
+/** How many ranks a leaderboard shows before it has to be expanded. A tie is
+ *  never split, so a rank is taken whole or not at all. */
+export const LEADERBOARD_PODIUM_RANKS = 3;
+
+/** Row ceiling for that collapsed view. Low-range stats tie heavily -- five
+ *  players share first place at "partidos vs externos" -- and without a ceiling
+ *  the three ranks can be most of the list, leaving nothing to expand. A single
+ *  rank wider than this still shows whole, since the alternative is cutting
+ *  players with an equal claim to the place. */
+export const LEADERBOARD_PODIUM_MAX_ROWS = 5;
+
+/** Games a player needs before they place in the effectiveness ranking. Without
+ *  a floor, one game won reads as a perfect record and tops the table. */
+export const EFFECTIVENESS_MIN_GAMES = 8;
+
 /** Max length for player names; the database enforces the same cap. */
 export const MAX_PLAYER_NAME_LENGTH = 80;
 

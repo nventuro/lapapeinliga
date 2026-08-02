@@ -8,7 +8,7 @@ import {
   PLAYER_EVENT_PREVIEW_COUNT,
 } from '../types';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
-import { useEventStats } from '../hooks/useEventStats';
+import { useEventStats, winPercentage } from '../hooks/useEventStats';
 import { useEventsIndex } from '../hooks/useEventsIndex';
 import { usePlayerMedia } from '../hooks/usePlayerMedia';
 import { formatDayMonthShort } from '../utils/dateUtils';
@@ -18,18 +18,8 @@ import Chip, { ChipRow } from './Chip';
 import GenderIcon from './GenderIcon';
 import MediaThumbnail from './MediaThumbnail';
 import SectionLabel from './SectionLabel';
+import StatTile from './StatTile';
 import Tooltip from './Tooltip';
-
-function StatTile({ value, label, accent = false }: { value: string; label: string; accent?: boolean }) {
-  return (
-    <div className="bg-surface border border-border rounded-lg py-3 px-2 text-center">
-      <p className={`font-display text-xl leading-none ${accent ? 'text-accent' : 'text-on-surface'}`}>
-        {value}
-      </p>
-      <p className="text-xs text-muted mt-1.5">{label}</p>
-    </div>
-  );
-}
 
 function PlayedEventRow({ event, label, won }: { event: EventIndexRow; label: string; won: boolean }) {
   const TypeIcon = EVENT_TYPE_ICONS[event.type];
@@ -83,6 +73,7 @@ export default function PlayerPage() {
   const trained = trainingsAttended.get(playerId) ?? 0;
   const coached = trainingsCoached.get(playerId) ?? 0;
   const external = externalMatchesPlayed.get(playerId) ?? 0;
+  const effectiveness = winPercentage(played, won);
   const isMe = currentPlayer?.id === playerId;
 
   const awards = AWARD_TYPES
@@ -112,7 +103,7 @@ export default function PlayerPage() {
         <StatTile value={String(played)} label="partidos" />
         <StatTile value={String(won)} label="ganados" />
         <StatTile
-          value={played > 0 ? `${Math.round((won / played) * 100)}%` : '—'}
+          value={effectiveness != null ? `${effectiveness}%` : '—'}
           label="efectividad"
           accent
         />

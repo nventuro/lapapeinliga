@@ -15,6 +15,8 @@ export interface EventStats {
   eventIdsByPlayer: Map<number, Set<number>>;
   /** The subset of those a player was on the winning side of. */
   wonEventIdsByPlayer: Map<number, Set<number>>;
+  /** Every event on record, of any type -- the league's own total. */
+  totalEvents: number;
   loading: boolean;
   error: string | null;
 }
@@ -124,6 +126,7 @@ export function useEventStats(): EventStats {
       eventParticipants: participantsByEvent,
       eventIdsByPlayer,
       wonEventIdsByPlayer,
+      totalEvents: events.length,
     };
   }, []);
 
@@ -137,9 +140,17 @@ export function useEventStats(): EventStats {
     eventParticipants: data?.eventParticipants ?? EMPTY_EVENTS,
     eventIdsByPlayer: data?.eventIdsByPlayer ?? EMPTY_EVENT_IDS,
     wonEventIdsByPlayer: data?.wonEventIdsByPlayer ?? EMPTY_EVENT_IDS,
+    totalEvents: data?.totalEvents ?? 0,
     loading,
     error,
   };
+}
+
+/** Win rate as a whole percentage, or null for a player who has not played. The
+ *  leaderboard ranks on this rounded value so two rows reading "55%" tie rather
+ *  than splitting on a difference the page never shows. */
+export function winPercentage(played: number, won: number): number | null {
+  return played > 0 ? Math.round((won / played) * 100) : null;
 }
 
 /** Returns the set of player IDs sharing the highest count in the given map. */
