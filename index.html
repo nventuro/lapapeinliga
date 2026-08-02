@@ -8,10 +8,13 @@
     <meta name="description" content="Fechas, equipos, estadísticas y fotos de La Papeinliga." />
     <meta name="theme-color" content="#1a2c4c" />
 
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- ?v= busts the browser icon cache, which reloads do not clear: Firefox keeps
+         favicons in places.sqlite for weeks and only refetches when the URL changes.
+         Bump it whenever the icon files change, or returning visitors keep the old one. -->
+    <link rel="icon" href="/favicon.ico?v=2" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=2" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
     <meta property="og:type" content="website" />
