@@ -41,7 +41,7 @@ function initialTeamNames(count: number, suggestedNames: string[]): string[] {
 
 function RosterPreview({ title, players }: { title: string; players: Player[] }) {
   return (
-    <div className="border border-border rounded-lg p-3">
+    <div className="bg-surface border border-border rounded-lg p-3">
       <h3 className="text-sm font-medium mb-2">{title} ({players.length})</h3>
       <ul className="text-sm text-muted space-y-0.5">
         {[...players].sort(compareByName).map((p) => (
@@ -341,7 +341,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
 
 
           {hasTeams && teamNames.map((teamName, i) => (
-            <div key={i} className="border border-border rounded-lg p-3">
+            <div key={i} className="bg-surface border border-border rounded-lg p-3">
               <TeamNameColorControls
                 name={teamName}
                 onNameChange={(value) => handleTeamNameChange(i, value)}

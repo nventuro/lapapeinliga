@@ -10,7 +10,7 @@ export default function StandingsTable({ teams, matches }: StandingsTableProps) 
   const standings = computeStandings(teams, matches);
 
   return (
-    <div className="border border-border rounded-lg p-4 mt-4">
+    <div className="bg-surface border border-border rounded-lg p-4 mt-4">
       <h3 className="font-bold text-lg mb-3">Posiciones</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

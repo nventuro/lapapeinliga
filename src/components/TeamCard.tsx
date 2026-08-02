@@ -48,7 +48,7 @@ export default function TeamCard({
   return (
     <div
       className={`relative rounded-lg p-4 ${
-        isWinner ? 'border-2 border-gold bg-gold-subtle' : 'border border-border'
+        isWinner ? 'border-2 border-lime-strong bg-lime-subtle' : 'bg-surface border border-border'
       }`}
     >
       {isWinner && <Confetti />}

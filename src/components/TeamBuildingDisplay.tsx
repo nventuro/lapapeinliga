@@ -167,7 +167,7 @@ export default function TeamBuildingDisplay({
       </div>
 
       {/* Score breakdown */}
-      <div className="mb-4 border border-border rounded-lg p-4">
+      <div className="mb-4 bg-surface border border-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-sm">Puntaje del armado</h3>
           <span className="text-sm font-semibold text-muted-strong">
@@ -325,7 +325,7 @@ export default function TeamBuildingDisplay({
       </div>
 
       {/* Reserves section */}
-      <div className="border border-border rounded-lg p-4 mb-6">
+      <div className="bg-surface border border-border rounded-lg p-4 mb-6">
         <h3 className="font-bold text-lg mb-3">
           Suplentes
           <span className="font-normal text-sm text-muted ml-2">

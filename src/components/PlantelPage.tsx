@@ -105,7 +105,7 @@ export default function PlantelPage() {
                     <Tooltip label="Ver fotos">
                       <button
                         onClick={() => navigate(`/galeria?player=${player.id}`)}
-                        className="text-muted hover:text-primary transition-colors p-1"
+                        className="text-muted hover:text-accent transition-colors p-1"
                       >
                         <PhotosIcon className="w-4 h-4" />
                       </button>
@@ -113,22 +113,22 @@ export default function PlantelPage() {
                   )}
                   {mostWonIds.has(player.id) && (
                     <Tooltip label={`Más partidos ganados (${gamesWon.get(player.id)})`}>
-                      <TrophyIcon className="w-4 h-4 text-gold" />
+                      <TrophyIcon className="w-4 h-4 text-lime-strong" />
                     </Tooltip>
                   )}
                   {mostPlayedIds.has(player.id) && (
                     <Tooltip label={`Más partidos jugados (${gamesPlayed.get(player.id)})`}>
-                      <SneakerIcon className="w-4 h-4 text-gold" />
+                      <SneakerIcon className="w-4 h-4 text-lime-strong" />
                     </Tooltip>
                   )}
                   {mostTrainedIds.has(player.id) && (
                     <Tooltip label={`Más entrenamientos asistidos (${trainingsAttended.get(player.id)})`}>
-                      <BarbellIcon className="w-4 h-4 text-gold" />
+                      <BarbellIcon className="w-4 h-4 text-lime-strong" />
                     </Tooltip>
                   )}
                   {mostCoachedIds.has(player.id) && (
                     <Tooltip label={`Más entrenamientos dirigidos (${trainingsCoached.get(player.id)})`}>
-                      <SpeakerphoneIcon className="w-4 h-4 text-gold" />
+                      <SpeakerphoneIcon className="w-4 h-4 text-lime-strong" />
                     </Tooltip>
                   )}
                   {AWARD_TYPES.map((award) => {
@@ -138,7 +138,7 @@ export default function PlantelPage() {
                     const count = awardCounts.get(award)?.get(player.id);
                     return (
                       <Tooltip key={award} label={`Más veces ${AWARD_LABELS[award]} (${count})`}>
-                        <Icon className="w-4 h-4 text-gold" />
+                        <Icon className="w-4 h-4 text-lime-strong" />
                       </Tooltip>
                     );
                   })}
@@ -148,7 +148,7 @@ export default function PlantelPage() {
                       <Tooltip label="Editar jugador">
                         <button
                           onClick={() => setModalPlayer(player)}
-                          className="text-muted hover:text-primary transition-colors p-1"
+                          className="text-muted hover:text-accent transition-colors p-1"
                         >
                           <EditIcon />
                         </button>

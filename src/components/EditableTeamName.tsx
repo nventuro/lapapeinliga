@@ -84,7 +84,7 @@ export default function EditableTeamName({
       <div className="flex items-center gap-2 min-w-0">
         {isWinner && (
           <Tooltip label="Ganador">
-            <TrophyIcon className="w-5 h-5 text-gold shrink-0" />
+            <TrophyIcon className="w-5 h-5 text-lime-strong shrink-0" />
           </Tooltip>
         )}
         <h3 className="font-bold text-lg truncate">{name}</h3>

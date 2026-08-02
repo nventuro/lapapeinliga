@@ -134,7 +134,7 @@ export default function Lightbox({
                   onClick={() => setShowTagEditor((v) => !v)}
                   className={`p-1.5 transition-colors ${
                     showTagEditor
-                      ? 'text-primary'
+                      ? 'text-accent'
                       : 'text-on-primary/80 hover:text-on-primary'
                   }`}
                 >
@@ -219,7 +219,7 @@ export default function Lightbox({
             {eventLabel && onEventClick && (
               <button
                 onClick={onEventClick}
-                className="text-primary hover:text-primary-hover transition-colors"
+                className="text-accent hover:text-accent-hover transition-colors"
               >
                 {eventLabel}
               </button>

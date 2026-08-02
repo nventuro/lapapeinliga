@@ -243,7 +243,7 @@ export default function EventDetailPage() {
   const busy = saving || loading;
   const bannerError = mutationError ?? error;
 
-  // Build the "gold icon per player" map from the voting results. Only
+  // Build the "award icon per player" map from the voting results. Only
   // categories with a confirmed winner (either from votes or a resolution)
   // contribute — tied / pending / no_votes leave the player card clean.
   const playerAwards = new Map<number, AwardType[]>();
@@ -306,7 +306,7 @@ export default function EventDetailPage() {
       {/* Event details box (display or edit mode) */}
       {editingDetails ? (
         <div
-          className={`border border-border rounded-lg p-4 mt-3 space-y-3 ${closingDetails ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
+          className={`bg-surface border border-border rounded-lg p-4 mt-3 space-y-3 ${closingDetails ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
           onAnimationEnd={handleEditorAnimationEnd}
         >
           <EventFieldsForm
@@ -335,7 +335,7 @@ export default function EventDetailPage() {
           </div>
         </div>
       ) : (
-        <div className="border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
+        <div className="bg-surface border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p>
@@ -345,7 +345,7 @@ export default function EventDetailPage() {
                       href={event.location.maps_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:text-primary-hover underline underline-offset-2"
+                      className="text-accent hover:text-accent-hover underline underline-offset-2"
                     >
                       {event.location.name}
                     </a>

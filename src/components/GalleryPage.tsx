@@ -220,7 +220,7 @@ export default function GalleryPage() {
           <Tooltip label="Subir fotos">
             <button
               onClick={() => setShowUpload(true)}
-              className="p-2 text-muted hover:text-primary transition-colors"
+              className="p-2 text-muted hover:text-accent transition-colors"
             >
               <UploadIcon className="w-5 h-5" />
             </button>
@@ -274,7 +274,7 @@ export default function GalleryPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => navigate(`/fechas/${eventShortIds.get(eventId!) ?? eventId}`)}
-              className="text-sm text-primary hover:text-primary-hover transition-colors"
+              className="text-sm text-accent hover:text-accent-hover transition-colors"
             >
               ← Ir a Fecha {selectedEventLabel}
             </button>

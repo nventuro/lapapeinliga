@@ -68,7 +68,7 @@ export default function TournamentMatchList({
   })();
 
   return (
-    <div className="border border-border rounded-lg p-4 mt-4">
+    <div className="bg-surface border border-border rounded-lg p-4 mt-4">
       <h3 className="font-bold text-lg mb-3">Partidos</h3>
 
       {matches.length === 0 && (
@@ -171,7 +171,7 @@ export default function TournamentMatchList({
       {canEdit && (
         <>
           {addingMatch ? (
-            <div className="mt-3 border border-border rounded-lg p-3 space-y-3">
+            <div className="mt-3 bg-surface border border-border rounded-lg p-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-muted mb-1">Equipo A</label>

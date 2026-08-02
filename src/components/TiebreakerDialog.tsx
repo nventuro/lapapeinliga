@@ -39,7 +39,7 @@ export default function TiebreakerDialog({ award, tiedCandidates, onResolve, onC
     >
       <div className="p-6" tabIndex={-1}>
         <h2 className="flex items-center gap-2 text-xl font-bold mb-1">
-          <Icon className="w-5 h-5 text-gold" />
+          <Icon className="w-5 h-5 text-lime-strong" />
           Resolver empate
         </h2>
         <p className="text-sm text-muted mb-4">
@@ -53,7 +53,7 @@ export default function TiebreakerDialog({ award, tiedCandidates, onResolve, onC
               type="button"
               onClick={() => handlePick(player.id)}
               disabled={saving}
-              className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface hover:border-gold hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              className="w-full text-left px-4 py-3 rounded-lg border border-border bg-surface hover:border-lime-strong hover:bg-border-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
               {player.name}
             </button>

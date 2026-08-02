@@ -85,7 +85,7 @@ export default function ClaimPage() {
       <div className="max-w-sm mx-auto py-12">
         <div className="rounded-lg border border-primary bg-primary/10 p-4 text-center">
           <p className="text-on-surface font-medium mb-3">Tu cuenta ya está vinculada como <strong>{linkedPlayer.name}</strong>.</p>
-          <Link to="/fechas" className="text-primary hover:text-primary-hover underline text-sm">
+          <Link to="/fechas" className="text-accent hover:text-accent-hover underline text-sm">
             Ir al inicio
           </Link>
         </div>
@@ -99,7 +99,7 @@ export default function ClaimPage() {
       <div className="max-w-sm mx-auto py-12">
         <div className="rounded-lg border border-success bg-success/10 p-4 text-center">
           <p className="text-on-surface font-medium mb-3">¡Listo! Tu cuenta fue vinculada{targetPlayer ? <> como <strong>{targetPlayer.name}</strong></> : null}.</p>
-          <Link to="/fechas" className="text-primary hover:text-primary-hover underline text-sm">
+          <Link to="/fechas" className="text-accent hover:text-accent-hover underline text-sm">
             Ir al inicio
           </Link>
         </div>

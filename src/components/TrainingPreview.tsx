@@ -24,7 +24,7 @@ export default function TrainingPreview({ attendees, coaches, onReset }: Trainin
       <h2 className="text-xl font-bold mb-4">Entrenamiento armado</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="border border-border rounded-lg p-4">
+        <div className="bg-surface border border-border rounded-lg p-4">
           <h3 className="font-bold text-lg mb-3">
             Jugadores
             <span className="font-normal text-sm text-muted ml-2">
@@ -42,7 +42,7 @@ export default function TrainingPreview({ attendees, coaches, onReset }: Trainin
           </ul>
         </div>
 
-        <div className="border border-border rounded-lg p-4">
+        <div className="bg-surface border border-border rounded-lg p-4">
           <h3 className="font-bold text-lg mb-3">
             Entrenadores
             <span className="font-normal text-sm text-muted ml-2">

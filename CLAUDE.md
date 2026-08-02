@@ -15,6 +15,11 @@ Soccer group organizer -- matchday management, team sorting, stats, and media ga
 - **Code language**: all code, comments, variable names, types, and file names in English
 - **UI language**: all user-facing text in Argentinian Spanish (voseo, local expressions)
 - **Styling**: Tailwind utility classes exclusively -- no CSS modules or styled-components. Never use hardcoded Tailwind color scales (e.g. `red-400`, `amber-600`); always use the semantic theme tokens defined in `src/index.css` (`primary`, `error`, `warning`, `muted`, etc.). Add new tokens to the theme if needed.
+- **Palette (from the club crest)**: the two crest colors that cannot carry text on a light ground each have a darker sibling -- use the right one or it will be illegible.
+  - `primary` (navy) is for **fills**: the header band, buttons, focus rings. For highlight *text* and links use `accent`; navy text is only 1.27:1 against body copy, so it disappears into it.
+  - `lime` is the crest's star color and is for fills or for use **on the navy band** (the active tab underline). On a light ground it is 1.45:1, so icons and borders there use `lime-strong`.
+  - `canvas` is the page ground; `surface` is anything raised above it (cards, inputs, dropdowns, dialogs). A card with no `bg-surface` will read as washed out.
+  - When adding or retuning a token, check contrast against `canvas` (4.5:1 for text, 3:1 for meaningful icons and borders) -- several existing values are as dark as they are for exactly this reason.
 - **Mobile-first**: mobile is a primary usage device -- design mobile-first, ensure all layouts and interactions work well on small screens
 - **Components**: functional components with hooks, one component per file in `src/components/`
 - **Types**: shared types in `src/types.ts`

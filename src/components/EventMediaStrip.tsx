@@ -49,7 +49,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
       {items.length === 0 ? (
         <button
           onClick={() => setShowUpload(true)}
-          className="w-full py-3 border border-dashed border-border rounded-lg text-sm text-muted hover:text-primary hover:border-primary flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-3 border border-dashed border-border rounded-lg text-sm text-muted hover:text-accent hover:border-accent flex items-center justify-center gap-2 transition-colors"
         >
           <PhotosIcon className="w-4 h-4" />
           Subir fotos
@@ -63,7 +63,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
                 <Tooltip label="Subir fotos">
                   <button
                     onClick={() => setShowUpload(true)}
-                    className="text-muted hover:text-primary transition-colors"
+                    className="text-muted hover:text-accent transition-colors"
                   >
                     <UploadIcon className="w-4 h-4" />
                   </button>
@@ -71,7 +71,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
               )}
               <button
                 onClick={() => navigate(`/galeria?event=${eventId}`)}
-                className="text-xs text-primary hover:text-primary-hover transition-colors"
+                className="text-xs text-accent hover:text-accent-hover transition-colors"
               >
                 Ver todas ({items.length})
               </button>

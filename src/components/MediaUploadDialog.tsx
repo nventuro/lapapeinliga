@@ -394,7 +394,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
               />
             )}
             {currentFile.isVideo && currentFile.processedBlob && (
-              <p className="text-xs text-primary">Boomerang listo</p>
+              <p className="text-xs text-accent">Boomerang listo</p>
             )}
 
             {/* Caption */}
@@ -449,7 +449,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
           <div className="space-y-2 text-sm">
             {queue.doneCount > 0 && (
               <p className="text-on-surface">
-                <span className="text-primary">✓</span> {queue.doneCount} subida{queue.doneCount !== 1 ? 's' : ''}
+                <span className="text-accent">✓</span> {queue.doneCount} subida{queue.doneCount !== 1 ? 's' : ''}
               </p>
             )}
             {queue.activeCount > 0 && (

@@ -65,7 +65,7 @@ export default function ExternalMatchScoreCard({
   const won = result === 'win';
 
   return (
-    <div className={`relative overflow-hidden rounded-lg p-4 mt-4 ${won ? 'border-2 border-gold bg-gold-subtle' : 'border border-border'} ${glowing ? 'animate-gold-glow-pulse' : ''}`}>
+    <div className={`relative overflow-hidden rounded-lg p-4 mt-4 ${won ? 'border-2 border-lime-strong bg-lime-subtle' : 'bg-surface border border-border'} ${glowing ? 'animate-lime-glow-pulse' : ''}`}>
       {won && <Confetti />}
       <h3 className="font-bold text-lg mb-4">Resultado</h3>
 

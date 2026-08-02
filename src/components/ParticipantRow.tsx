@@ -81,7 +81,7 @@ export default function ParticipantRow({
       {awards?.map((award) => {
         const Icon = AWARD_ICONS[award];
         return (
-          <Tooltip key={award} label={AWARD_LABELS[award]} className="text-gold">
+          <Tooltip key={award} label={AWARD_LABELS[award]} className="text-lime-strong">
             <Icon className="w-4 h-4" />
           </Tooltip>
         );

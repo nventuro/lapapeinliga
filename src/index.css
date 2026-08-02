@@ -8,63 +8,107 @@
   }
 }
 
+/* Palette derived from the club crest (src/assets/crest.png): navy #1a2c4c,
+   celeste #62afd5, lime #d1d82a. The crest colors are used as-is for fills, but
+   celeste and lime are far too light to carry text (2.44:1 and 1.55:1 on white),
+   so text-bearing tokens use darkened variants. Every value below clears 4.5:1
+   against `canvas` unless noted. */
 @theme {
-  --font-display: 'Bungee', sans-serif;
+  --font-display: 'Graduate', 'Arial Black', sans-serif;
+  /* The emoji families are Tailwind's own defaults and must be carried over --
+     overriding --font-sans replaces that stack wholesale, and dropping them
+     renders every emoji in the app (event names, the footer) as tofu. */
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-  /* Primary action color (buttons, accents) */
-  --color-primary: #38bdf8;
-  --color-primary-hover: #0ea5e9;
+  /* Primary: the crest navy. Solid fills -- header band, buttons, focus rings.
+     Never use for highlight *text*: at 1.27:1 against `on-surface` it is
+     indistinguishable from body copy. Use `accent` for that. */
+  --color-primary: #1a2c4c;
+  --color-primary-hover: #24406b;
   --color-on-primary: #ffffff;
 
-  /* Page background & text */
-  --color-surface: #f9fafb;
-  --color-on-surface: #111827;
+  /* Accent: the crest celeste, darkened to carry text. Links, highlighted
+     values, active states outside the navy band. */
+  --color-accent: #27718f;
+  --color-accent-hover: #1c5670;
+  --color-accent-subtle: #eaf4fa;
+  --color-accent-border: #bcdcee;
 
-  /* Muted/secondary text */
-  --color-muted: #6b7280;
-  --color-muted-strong: #1f2937;
+  /* Canvas is the page ground; surface is anything raised above it (cards,
+     inputs, dropdowns, dialogs). Keeping them distinct is what lets raised
+     elements read as raised. */
+  --color-canvas: #f2f8fc;
+  --color-surface: #ffffff;
+  --color-on-surface: #16233c;
 
-  /* Borders & subtle backgrounds */
-  --color-border: #e5e7eb;
-  --color-border-subtle: #f3f4f6;
-  --color-neutral: #e5e7eb;
-  --color-neutral-hover: #d1d5db;
+  /* Muted/secondary text -- grey biased toward the navy rather than neutral */
+  --color-muted: #5a6b84;
+  --color-muted-strong: #2c3d57;
 
-  /* Disabled state */
-  --color-disabled: #d1d5db;
+  /* Borders & subtle backgrounds. Decorative boundaries, so the 3:1 UI-component
+     threshold does not apply -- these intentionally sit below it. */
+  --color-border: #d9e4ef;
+  --color-border-subtle: #eef4f9;
+  --color-neutral: #dce7f0;
+  --color-neutral-hover: #b9cddf;
+
+  /* Disabled state (exempt from contrast minimums by design) */
+  --color-disabled: #c3d2e0;
 
   /* Error */
-  --color-error: #ef4444;
+  --color-error: #cc2a1e;
 
-  /* Warning */
-  --color-warning: #f59e0b;
+  /* Warning -- amber has to go this dark to stay legible as body text */
+  --color-warning: #a85f04;
 
   /* Success (green for positive indicators) */
-  --color-success: #22c55e;
+  --color-success: #0e7c52;
 
-  /* Info (light blue badges/labels) */
-  --color-info: #38bdf8;
+  /* Info (shares the accent hue so badges stay in family) */
+  --color-info: #27718f;
 
-  /* Gold (winner/awards) */
-  --color-gold: #d4a017;
-  --color-gold-subtle: #fef3c7;
+  /* Lime: the crest's star color, marking winners, awards and the active tab.
+     Same split as primary/accent -- the bright value is for fills and for the
+     navy band (8.99:1 there), but at 1.45:1 on `canvas` it cannot carry a mark
+     on a light ground. Icons and borders on light use `lime-strong`. */
+  --color-lime: #d1d82a;
+  --color-lime-strong: #7c8115;
+  --color-lime-subtle: #f6f8d2;
+  --color-on-lime: #1a2c4c;
 
-  /* Gender icon colors */
-  --color-gender-male: #93c5fd;
-  --color-gender-female: #f9a8d4;
+  /* Gender icon colors, pulled into the crest's celeste/rose register */
+  --color-gender-male: #4a8cb5;
+  --color-gender-female: #c26794;
 
-  /* Shirt colors */
+  /* Shirt colors -- literal jersey shades (claros vs oscuros), deliberately
+     outside the brand palette so they never read as a team's identity */
   --color-shirt-light: #e2e5e9;
   --color-shirt-dark: #374151;
 
-  /* Confetti accent colors */
+  /* Confetti accents. Brand-led, and all light enough to stay visible against
+     `canvas` -- a navy piece would read as a speck of dirt, not celebration. */
+  --color-confetti-celeste: #62afd5;
   --color-confetti-pink: #ec4899;
-  --color-confetti-green: #22c55e;
+  --color-confetti-amber: #f59e0b;
 
   /* Animations */
-  --animate-gold-glow-pulse: gold-glow-pulse 4s ease-out;
+  --animate-tooltip-in: tooltip-in 120ms ease-out;
+  --animate-lime-glow-pulse: lime-glow-pulse 4s ease-out;
   --animate-slide-down-in: slide-down-in 0.8s ease-out;
   --animate-slide-up-out: slide-up-out 0.4s ease-in forwards;
+}
+
+/* The bubble is mounted on hover rather than faded from opacity-0, so this runs
+   on insert -- a transition would not, since there is no previous style to
+   animate from. */
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-down-in {
@@ -89,12 +133,12 @@
   }
 }
 
-@keyframes gold-glow-pulse {
+@keyframes lime-glow-pulse {
   0% {
     box-shadow: 0 0 0 0 transparent;
   }
   25% {
-    box-shadow: 0 0 16px 6px color-mix(in srgb, var(--color-gold) 60%, transparent);
+    box-shadow: 0 0 16px 6px color-mix(in srgb, var(--color-lime) 60%, transparent);
   }
   100% {
     box-shadow: 0 0 0 0 transparent;

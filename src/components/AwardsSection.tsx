@@ -101,7 +101,7 @@ export default function AwardsSection({
   // ─── PENDING: window hasn't opened yet ─────────────────────────────────
   if (voteWindow.state === 'pending') {
     return (
-      <div className="border border-border rounded-lg p-4 mt-4">
+      <div className="bg-surface border border-border rounded-lg p-4 mt-4">
         <h3 className="font-bold text-lg mb-2">Premios</h3>
         <p className="text-sm text-muted">
           La votación abre {voteWindow.opens_at ? `el ${formatDateTime(voteWindow.opens_at)}` : 'próximamente'}.
@@ -115,7 +115,7 @@ export default function AwardsSection({
     const timeLeft = voteWindow.closes_at ? formatTimeRemaining(voteWindow.closes_at, now) : '';
 
     return (
-      <div className="border border-border rounded-lg p-4 mt-4">
+      <div className="bg-surface border border-border rounded-lg p-4 mt-4">
         <div className="flex items-baseline justify-between mb-1">
           <h3 className="font-bold text-lg">Votación de Premios</h3>
           <span className="text-xs text-muted">Cierra en {timeLeft}</span>
@@ -143,14 +143,14 @@ export default function AwardsSection({
                 <div key={award}>
                   <label className="flex items-center gap-1.5 text-sm font-medium">
                     {AWARD_LABELS[award]}
-                    <Icon className={`w-4 h-4 ${currentVote != null ? 'text-gold' : 'text-muted'}`} />
+                    <Icon className={`w-4 h-4 ${currentVote != null ? 'text-lime-strong' : 'text-muted'}`} />
                   </label>
                   <p className="text-xs text-muted mb-1">{AWARD_DESCRIPTIONS[award]}</p>
                   <select
                     value={currentVote ?? ''}
                     onChange={(e) => handleVoteChange(award, e.target.value)}
                     disabled={isSaving}
-                    className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${currentVote != null ? 'border-gold' : 'border-border'}`}
+                    className={`w-full px-3 py-2 rounded-lg border bg-surface text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${currentVote != null ? 'border-lime-strong' : 'border-border'}`}
                   >
                     <option value="">Sin voto</option>
                     {sortedParticipants.map((p) => (
@@ -183,7 +183,7 @@ export default function AwardsSection({
   // ─── CLOSED: show results ──────────────────────────────────────────────
   return (
     <>
-      <div className="border border-border rounded-lg p-4 mt-4">
+      <div className="bg-surface border border-border rounded-lg p-4 mt-4">
         <div className="flex items-baseline justify-between mb-4">
           <h3 className="font-bold text-lg">Premios</h3>
           {voteWindow.voter_count > 0 && (
@@ -206,7 +206,7 @@ export default function AwardsSection({
                 <div key={award} className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-muted">
                     {AWARD_LABELS[award]}
-                    <Icon className={`w-4 h-4 ${hasWinner ? 'text-gold' : 'text-muted'}`} />
+                    <Icon className={`w-4 h-4 ${hasWinner ? 'text-lime-strong' : 'text-muted'}`} />
                   </span>
                   <span className="font-medium">
                     {state === 'winner' && result?.winner_id != null && getPlayerName(result.winner_id)}
@@ -214,7 +214,7 @@ export default function AwardsSection({
                       <button
                         type="button"
                         onClick={() => handleOpenTiebreaker(award)}
-                        className="text-primary hover:text-primary-hover underline underline-offset-2"
+                        className="text-accent hover:text-accent-hover underline underline-offset-2"
                       >
                         Resolver empate
                       </button>

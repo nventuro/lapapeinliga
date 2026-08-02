@@ -37,7 +37,7 @@ function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
+      <div className="min-h-dvh bg-canvas text-on-surface flex items-center justify-center">
         <p className="text-muted text-lg">Cargando...</p>
       </div>
     );

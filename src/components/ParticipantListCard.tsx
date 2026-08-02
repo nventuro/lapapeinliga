@@ -37,7 +37,7 @@ export default function ParticipantListCard({
   if (hideWhenEmpty && players.length === 0 && !canEdit) return null;
 
   return (
-    <div className={`border border-border rounded-lg p-4 ${className}`}>
+    <div className={`bg-surface border border-border rounded-lg p-4 ${className}`}>
       <h3 className="font-bold text-lg mb-3">
         {title}
         <span className="font-normal text-sm text-muted ml-2">

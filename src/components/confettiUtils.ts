@@ -1,9 +1,12 @@
+/* Lime is weighted double so the crest's own color leads the burst. Everything
+   here is light enough to read against `canvas` -- a navy piece would look like
+   a speck of dirt rather than celebration. */
 export const CONFETTI_COLORS = [
-  'var(--color-gold)',
-  'var(--color-gold)',
-  'var(--color-primary)',
+  'var(--color-lime)',
+  'var(--color-lime)',
+  'var(--color-confetti-celeste)',
   'var(--color-confetti-pink)',
-  'var(--color-confetti-green)',
+  'var(--color-confetti-amber)',
 ];
 
 /** Deterministic pseudo-random so confetti layout is stable across renders. */

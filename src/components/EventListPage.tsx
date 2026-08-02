@@ -110,7 +110,7 @@ export default function EventListPage() {
             <Link
               key={event.id}
               to={`/fechas/${event.short_id}`}
-              className="flex border border-border rounded-xl hover:border-neutral-hover transition-colors"
+              className="flex bg-surface border border-border rounded-xl hover:border-neutral-hover transition-colors"
             >
               <Tooltip label={EVENT_TYPE_LABELS[event.type]}>
                 <div className="flex flex-col items-center justify-center gap-1 px-3 border-r border-border text-muted min-w-14">
@@ -151,7 +151,7 @@ export default function EventListPage() {
                   </p>
                 )}
                 {winnerTeam && (
-                  <p className="text-sm font-medium text-primary mt-1">
+                  <p className="text-sm font-medium text-accent mt-1">
                     Ganador: {winnerTeam.name}
                   </p>
                 )}

@@ -67,7 +67,7 @@ export default function LocationPicker({ value, onChange, locations }: LocationP
                 href={value.mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary hover:text-primary-hover text-sm shrink-0"
+                className="text-accent hover:text-accent-hover text-sm shrink-0"
               >
                 Ver mapa
               </a>

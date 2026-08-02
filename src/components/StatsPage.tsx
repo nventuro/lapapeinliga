@@ -66,7 +66,7 @@ function LeaderboardSection({
   if (ranked.length === 0) return null;
 
   return (
-    <div className="border border-border rounded-lg p-4">
+    <div className="bg-surface border border-border rounded-lg p-4">
       <div className="mb-3">
         <h3 className="font-bold text-lg flex items-center gap-2">
           {icon}
@@ -88,9 +88,9 @@ function LeaderboardSection({
                     <Tooltip
                       key={award}
                       label={AWARD_LABELS[award]}
-                      className="gap-0.5 rounded-full bg-gold-subtle px-2 py-1 text-sm font-medium"
+                      className="gap-0.5 rounded-full bg-lime-subtle px-2 py-1 text-sm font-medium"
                     >
-                      <Icon className="w-3.5 h-3.5 text-gold" />
+                      <Icon className="w-3.5 h-3.5 text-lime-strong" />
                       {entry.awardBreakdown[award]}
                     </Tooltip>
                   );
@@ -186,7 +186,7 @@ export default function StatsPage() {
       <div className="space-y-4">
         {/* Gender ratio */}
         {genderRatio && (
-          <div className="border border-border rounded-lg p-4">
+          <div className="bg-surface border border-border rounded-lg p-4">
             <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
               <UserGroupIcon className="w-5 h-5 text-muted" />
               Cupo de género
@@ -221,14 +221,14 @@ export default function StatsPage() {
         {/* Games played */}
         <LeaderboardSection
           title="Partidos jugados"
-          icon={<SneakerIcon className="w-5 h-5 text-gold" />}
+          icon={<SneakerIcon className="w-5 h-5 text-lime-strong" />}
           entries={toEntries(gamesPlayed)}
         />
 
         {/* Games won */}
         <LeaderboardSection
           title="Partidos ganados"
-          icon={<TrophyIcon className="w-5 h-5 text-gold" />}
+          icon={<TrophyIcon className="w-5 h-5 text-lime-strong" />}
           entries={toEntries(gamesWon)}
         />
 
@@ -236,28 +236,28 @@ export default function StatsPage() {
         <LeaderboardSection
           title="Partidos vs externos"
           description="Partidos jugados contra equipos de afuera"
-          icon={<SwordsIcon className="w-5 h-5 text-gold" />}
+          icon={<SwordsIcon className="w-5 h-5 text-lime-strong" />}
           entries={toEntries(externalMatchesPlayed)}
         />
 
         {/* Total awards */}
         <LeaderboardSection
           title="Premios totales"
-          icon={<MedalIcon className="w-5 h-5 text-gold" />}
+          icon={<MedalIcon className="w-5 h-5 text-lime-strong" />}
           entries={toBreakdownEntries(awardCounts)}
         />
 
         {/* Trainings attended */}
         <LeaderboardSection
           title="Entrenamientos asistidos"
-          icon={<BarbellIcon className="w-5 h-5 text-gold" />}
+          icon={<BarbellIcon className="w-5 h-5 text-lime-strong" />}
           entries={toEntries(trainingsAttended)}
         />
 
         {/* Trainings coached */}
         <LeaderboardSection
           title="Entrenamientos dirigidos"
-          icon={<SpeakerphoneIcon className="w-5 h-5 text-gold" />}
+          icon={<SpeakerphoneIcon className="w-5 h-5 text-lime-strong" />}
           entries={toEntries(trainingsCoached)}
         />
 
@@ -271,7 +271,7 @@ export default function StatsPage() {
               key={award}
               title={AWARD_LABELS[award]}
               description={AWARD_DESCRIPTIONS[award]}
-              icon={<Icon className="w-5 h-5 text-gold" />}
+              icon={<Icon className="w-5 h-5 text-lime-strong" />}
               entries={toEntries(counts)}
             />
           );

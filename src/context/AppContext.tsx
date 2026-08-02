@@ -151,7 +151,7 @@ export function AppProvider({
 
   if (loading) {
     return (
-      <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
+      <div className="min-h-dvh bg-canvas text-on-surface flex items-center justify-center">
         <p className="text-muted text-lg">Cargando...</p>
       </div>
     );
@@ -159,7 +159,7 @@ export function AppProvider({
 
   if (error) {
     return (
-      <div className="min-h-dvh bg-surface text-on-surface flex items-center justify-center">
+      <div className="min-h-dvh bg-canvas text-on-surface flex items-center justify-center">
         <div className="text-center px-4">
           <p className="text-error mb-4">Error: {error}</p>
           {session && (
