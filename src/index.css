@@ -8,6 +8,18 @@
   }
 }
 
+/* The club kit's pinstripes, at the 1-in-9 ratio measured off both jerseys and
+   the crest artwork. FOR NAVY SURFACES ONLY -- celeste is 1.45:1 against
+   `canvas`, so on a light ground the stripes are either invisible or, turned up
+   far enough to see, loud enough to make text vibrate. */
+@utility pinstripes {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 22px,
+    color-mix(in srgb, var(--color-celeste) 14%, transparent) 22px 24px
+  );
+}
+
 /* Palette derived from the club crest (src/assets/crest.png): navy #1a2c4c,
    celeste #62afd5, lime #d1d82a. The crest colors are used as-is for fills, but
    celeste and lime are far too light to carry text (2.44:1 and 1.55:1 on white),
@@ -27,6 +39,10 @@
   --color-primary: #1a2c4c;
   --color-primary-hover: #24406b;
   --color-on-primary: #ffffff;
+
+  /* The crest celeste at full strength. Fills and decoration only -- same rule
+     as `lime`. For text and links use `accent`, which is this hue darkened. */
+  --color-celeste: #62afd5;
 
   /* Accent: the crest celeste, darkened to carry text. Links, highlighted
      values, active states outside the navy band. */
@@ -87,8 +103,8 @@
   --color-shirt-dark: #374151;
 
   /* Confetti accents. Brand-led, and all light enough to stay visible against
-     `canvas` -- a navy piece would read as a speck of dirt, not celebration. */
-  --color-confetti-celeste: #62afd5;
+     `canvas` -- a navy piece would read as a speck of dirt, not celebration.
+     The celeste piece uses the shared `celeste` token above. */
   --color-confetti-pink: #ec4899;
   --color-confetti-amber: #f59e0b;
 

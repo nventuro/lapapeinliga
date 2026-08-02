@@ -4,7 +4,7 @@
 export const CONFETTI_COLORS = [
   'var(--color-lime)',
   'var(--color-lime)',
-  'var(--color-confetti-celeste)',
+  'var(--color-celeste)',
   'var(--color-confetti-pink)',
   'var(--color-confetti-amber)',
 ];

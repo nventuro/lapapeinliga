@@ -18,6 +18,8 @@ Soccer group organizer -- matchday management, team sorting, stats, and media ga
 - **Palette (from the club crest)**: the two crest colors that cannot carry text on a light ground each have a darker sibling -- use the right one or it will be illegible.
   - `primary` (navy) is for **fills**: the header band, buttons, focus rings. For highlight *text* and links use `accent`; navy text is only 1.27:1 against body copy, so it disappears into it.
   - `lime` is the crest's star color and is for fills or for use **on the navy band** (the active tab underline). On a light ground it is 1.45:1, so icons and borders there use `lime-strong`.
+  - `celeste` is the crest celeste at full strength and follows the same rule as `lime`: fills and decoration only, never text. `accent` is that same hue darkened until it can carry text.
+  - The `pinstripes` utility (the club kit's stripes, 1 part stripe to 9 of field) is **for navy surfaces only** -- the header and footer. On `canvas` the celeste is invisible until turned up far enough to make text vibrate, which is why the page ground is deliberately left plain.
   - `canvas` is the page ground; `surface` is anything raised above it (cards, inputs, dropdowns, dialogs). A card with no `bg-surface` will read as washed out.
   - When adding or retuning a token, check contrast against `canvas` (4.5:1 for text, 3:1 for meaningful icons and borders) -- several existing values are as dark as they are for exactly this reason.
 - **Mobile-first**: mobile is a primary usage device -- design mobile-first, ensure all layouts and interactions work well on small screens

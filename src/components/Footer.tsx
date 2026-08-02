@@ -2,7 +2,7 @@ import { InstagramIcon } from './icons';
 
 export default function Footer() {
   return (
-    <footer className="bg-primary text-on-primary/75 mt-12">
+    <footer className="bg-primary pinstripes text-on-primary/75 mt-12">
       <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col items-center gap-3">
         <a
           href="https://www.instagram.com/lapapeinliga"

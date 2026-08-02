@@ -44,7 +44,7 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-dvh bg-canvas text-on-surface flex flex-col">
-      <header className="bg-primary text-on-primary">
+      <header className="bg-primary pinstripes text-on-primary">
         <div className="max-w-2xl mx-auto px-4 pt-5">
           <div className="flex items-center justify-between gap-3">
             <Link to="/fechas" className="flex items-center gap-2.5 min-w-0 hover:opacity-90 transition-opacity">
