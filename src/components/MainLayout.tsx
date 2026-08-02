@@ -2,24 +2,30 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppContext, useCurrentPlayer } from '../context/appContext';
-import { CalendarIcon, ChartBarIcon, CogIcon, EditIcon, GoogleIcon, PhotosIcon, UserGroupIcon } from './icons';
+import { CalendarIcon, ChartBarIcon, CogIcon, EditIcon, GoogleIcon, PhotosIcon, TrophyIcon, UserGroupIcon } from './icons';
 import ToggleSwitch from './ToggleSwitch';
 import Tooltip from './Tooltip';
 import EditNameDialog from './EditNameDialog';
 import Footer from './Footer';
+import { useTabStripScroll } from '../hooks/useTabStripScroll';
 import crest from '../assets/crest-on-dark.png';
 
 const NAV_ITEMS = [
   { to: '/fechas', label: 'Fechas', Icon: CalendarIcon, isActive: (p: string) => p.startsWith('/fechas') },
   { to: '/estadisticas', label: 'Estadísticas', Icon: ChartBarIcon, isActive: (p: string) => p === '/estadisticas' },
   { to: '/plantel', label: 'Plantel', Icon: UserGroupIcon, isActive: (p: string) => p.startsWith('/plantel') || p === '/armado' },
+  { to: '/trofeos', label: 'Trofeos', Icon: TrophyIcon, isActive: (p: string) => p.startsWith('/trofeos') },
   { to: '/galeria', label: 'Galería', Icon: PhotosIcon, isActive: (p: string) => p.startsWith('/galeria') },
 ];
+
+/** How wide each faded edge of the tab strip is. */
+const NAV_FADE_PX = 28;
 
 export default function MainLayout() {
   const { session, isActualAdmin, adminMode, setAdminMode, showRatings, setShowRatings, showCosts, setShowCosts, signIn } = useAppContext();
   const currentPlayer = useCurrentPlayer();
   const location = useLocation();
+  const { ref: navRef, fadeStart, fadeEnd } = useTabStripScroll(location.pathname);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editNameOpen, setEditNameOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -150,21 +156,36 @@ export default function MainLayout() {
               </button>
             )}
           </div>
-          <nav className="flex gap-4 sm:gap-6 mt-4 sm:mt-5 overflow-x-auto scrollbar-hide">
-            {NAV_ITEMS.map(({ to, label, Icon, isActive }) => (
-              <Link
-                key={to}
-                to={to}
-                className={`text-sm sm:text-base font-semibold whitespace-nowrap flex items-center gap-1.5 pb-2.5 sm:pb-3 border-b-[3px] transition-colors ${
-                  isActive(location.pathname)
-                    ? 'border-lime text-on-primary'
-                    : 'border-transparent text-on-primary/60 hover:text-on-primary'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </Link>
-            ))}
+          {/* Five tabs are wider than a phone, so the strip scrolls. Two things
+              keep that legible: the tighter mobile gap leaves part of the next
+              tab visible past the edge (a clipped item is the cue; a strip that
+              ends cleanly in a gap reads as complete), and the faded edge marks
+              which side has more. `scrollbar-hide` means neither is optional. */}
+          <nav
+            ref={navRef as React.RefObject<HTMLElement>}
+            className="flex gap-2.5 sm:gap-6 mt-4 sm:mt-5 overflow-x-auto scrollbar-hide"
+            style={{
+              maskImage: `linear-gradient(to right, ${fadeStart ? 'transparent' : '#000'} 0, #000 ${NAV_FADE_PX}px, #000 calc(100% - ${NAV_FADE_PX}px), ${fadeEnd ? 'transparent' : '#000'} 100%)`,
+            }}
+          >
+            {NAV_ITEMS.map(({ to, label, Icon, isActive }) => {
+              const active = isActive(location.pathname);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  data-active={active}
+                  className={`text-sm sm:text-base font-semibold whitespace-nowrap flex items-center gap-1.5 shrink-0 pb-2.5 sm:pb-3 border-b-[3px] transition-colors ${
+                    active
+                      ? 'border-lime text-on-primary'
+                      : 'border-transparent text-on-primary/60 hover:text-on-primary'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
       </header>

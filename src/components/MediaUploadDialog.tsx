@@ -21,13 +21,15 @@ interface MediaUploadDialogProps {
   onClose: () => void;
   onItemUploaded: () => void;
   prefilledEventId?: number | null;
+  /** Files uploaded from a trophy's page belong to it as well as to any fecha. */
+  trophyId?: number | null;
 }
 
 function todayISO(): string {
   return toLocalISODate(new Date());
 }
 
-export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEventId }: MediaUploadDialogProps) {
+export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEventId, trophyId = null }: MediaUploadDialogProps) {
   // Step 1: batch metadata
   const [date, setDate] = useState(todayISO);
   const [selectedEventId, setSelectedEventId] = useState<string>(
@@ -59,7 +61,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     eventId,
     events.find((e) => e.id === eventId)?.type ?? null,
   );
-  const queue = useUploadQueue({ eventId, date, onItemUploaded });
+  const queue = useUploadQueue({ eventId, trophyId, date, onItemUploaded });
 
   function handleClose() {
     if (!queue.isIdle) {
@@ -307,6 +309,9 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
             )}
           </div>
 
+          {/* Uploading from a trophy: the photos belong to it, not to a fecha,
+              so there is nothing to pick. */}
+          {trophyId === null && (
           <div>
             <label className="block text-sm font-medium mb-1">Evento</label>
             <EventSelect
@@ -323,6 +328,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
               emptyLabel="Sin evento asociado"
             />
           </div>
+          )}
 
           {!selectedEventId && (
             <div>

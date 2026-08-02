@@ -39,6 +39,9 @@ export function usePlayerMedia(playerId: number | null): UsePlayerMediaResult {
         .select('*')
         .in('id', mediaIds)
         .eq('media_type', 'image')
+        // Trophy photos are not gallery photos, and "ver todas" lands on the
+        // gallery -- counting them here would promise more than that page shows.
+        .is('trophy_id', null)
         .order('taken_at', { ascending: false })
         .order('id', { ascending: false }),
       // Every tag on those photos, to know how many people are in each.

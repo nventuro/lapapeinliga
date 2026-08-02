@@ -117,6 +117,7 @@ export async function uploadSingleFile(
   eventId: number | null,
   date: string,
   signal?: AbortSignal,
+  trophyId: number | null = null,
 ): Promise<void> {
   const id = entry.id;
   let fullBlob: Blob;
@@ -183,6 +184,7 @@ export async function uploadSingleFile(
       .from('media')
       .insert({
         event_id: eventId,
+        trophy_id: trophyId,
         storage_path: fullKey,
         thumbnail_path: thumbKey,
         caption: entry.caption || null,

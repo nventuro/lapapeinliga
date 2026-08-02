@@ -11,8 +11,10 @@ import { useAppContext, useCurrentPlayer } from '../context/appContext';
 import { useEventStats, winPercentage } from '../hooks/useEventStats';
 import { useEventsIndex } from '../hooks/useEventsIndex';
 import { usePlayerMedia } from '../hooks/usePlayerMedia';
-import { formatDayMonthShort } from '../utils/dateUtils';
+import { useTrophies } from '../hooks/useTrophies';
+import { formatDateShort, formatDayMonthShort } from '../utils/dateUtils';
 import { AWARD_ICONS } from './awardIcons';
+import { TrophyIcon } from './icons';
 import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import Chip, { ChipRow } from './Chip';
 import GenderIcon from './GenderIcon';
@@ -55,6 +57,7 @@ export default function PlayerPage() {
   } = useEventStats();
   const { events, labels } = useEventsIndex();
   const { photos, total: photoTotal } = usePlayerMedia(player ? playerId : null);
+  const { trophies } = useTrophies();
 
   // The roster is loaded before any page renders, so a miss here is a real miss.
   if (!player) {
@@ -75,6 +78,9 @@ export default function PlayerPage() {
   const external = externalMatchesPlayed.get(playerId) ?? 0;
   const effectiveness = winPercentage(played, won);
   const isMe = currentPlayer?.id === playerId;
+
+  // The trophy is as much theirs as the club's, so it shows on their page.
+  const playerTrophies = trophies.filter((t) => t.participants.some((p) => p.id === playerId));
 
   const awards = AWARD_TYPES
     .map((award) => ({ award, count: awardCounts.get(award)?.get(playerId) ?? 0 }))
@@ -127,6 +133,25 @@ export default function PlayerPage() {
                 );
               })}
             </ChipRow>
+          </div>
+        </section>
+      )}
+
+      {playerTrophies.length > 0 && (
+        <section>
+          <SectionLabel dim>TROFEOS — {playerTrophies.length}</SectionLabel>
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            {playerTrophies.map((trophy) => (
+              <Link
+                key={trophy.id}
+                to={`/trofeos/${trophy.id}`}
+                className="flex items-center gap-2 px-3 py-2.5 text-sm border-b border-border-subtle last:border-b-0 hover:bg-border-subtle transition-colors"
+              >
+                <TrophyIcon className="w-4 h-4 text-lime-strong shrink-0" />
+                <span className="flex-1 truncate">{trophy.title}</span>
+                <span className="text-xs text-muted shrink-0">{formatDateShort(trophy.won_at)}</span>
+              </Link>
+            ))}
           </div>
         </section>
       )}

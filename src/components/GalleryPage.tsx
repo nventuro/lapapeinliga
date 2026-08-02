@@ -15,7 +15,7 @@ import MediaUploadDialog from './MediaUploadDialog';
 import Tooltip from './Tooltip';
 import EventSelect from './EventSelect';
 import PlayerSearchFilter from './PlayerSearchFilter';
-import { deleteFromR2, keyFromPublicUrl } from '../utils/mediaUpload';
+import { useMediaActions } from '../hooks/useMediaActions';
 
 export default function GalleryPage() {
   const { isAdmin, isModOrAdmin, players: allPlayers } = useAppContext();
@@ -35,6 +35,7 @@ export default function GalleryPage() {
   const { items, loading, refetch } = useGalleryMedia({ eventId, tagNames, playerId, players: allPlayers });
 
   const [showUpload, setShowUpload] = useState(false);
+  const { deleteMedia, togglePlayerTag } = useMediaActions();
 
   // Events for the dropdown filter (shown newest-first)
   const { events: eventsAsc, labels: eventLabels } = useEventsIndex();
@@ -48,9 +49,14 @@ export default function GalleryPage() {
   }, []);
   const allTags = allTagsData ?? [];
 
-  // Players that have at least one tagged photo (for the search filter candidates)
+  // Players that have at least one tagged photo (for the search filter
+  // candidates). Tags on trophy photos don't count: those photos never appear
+  // here, so offering the player would filter down to nothing.
   const { data: taggedPlayerIds } = useSupabaseQuery(async () => {
-    const { data, error } = await supabase.from('media_player_tags').select('player_id');
+    const { data, error } = await supabase
+      .from('media_player_tags')
+      .select('player_id, media!inner(trophy_id)')
+      .is('media.trophy_id', null);
     if (error) throw new Error(error.message);
     return new Set(data.map((r: { player_id: number }) => r.player_id));
   }, []);
@@ -150,21 +156,9 @@ export default function GalleryPage() {
 
   const handleTogglePlayerTag = useCallback(async (player: TaggedPlayer, tagged: boolean) => {
     if (!openItem) return;
-
-    if (tagged) {
-      await supabase
-        .from('media_player_tags')
-        .insert({ media_id: openItem.id, player_id: player.id });
-    } else {
-      await supabase
-        .from('media_player_tags')
-        .delete()
-        .eq('media_id', openItem.id)
-        .eq('player_id', player.id);
-    }
-
+    await togglePlayerTag(openItem.id, player, tagged);
     refetchRef.current();
-  }, [openItem]);
+  }, [openItem, togglePlayerTag]);
 
   // Lightbox: navigate to player's filtered gallery on chip tap
   function handlePlayerClick(clickedPlayerId: number) {
@@ -174,24 +168,11 @@ export default function GalleryPage() {
 
   const handleDelete = useCallback(async () => {
     if (!openItem) return;
-
-    // Delete the DB row first: if it fails, nothing is lost. Deleting from R2
-    // first could destroy the storage and then leave the row pointing at
-    // nothing if the DB delete failed. An orphaned R2 object is harmless.
-    const { error } = await supabase.from('media').delete().eq('id', openItem.id);
-    if (error) return;
-
-    const keys = [openItem.storage_path, openItem.thumbnail_path]
-      .map(keyFromPublicUrl)
-      .filter((k): k is string => k !== null);
-    if (keys.length > 0) {
-      try { await deleteFromR2(keys); } catch { /* best-effort */ }
-    }
-
+    if (!await deleteMedia(openItem)) return;
     closeLightbox();
     refetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openItem, refetch]);
+  }, [openItem, refetch, deleteMedia]);
 
   const selectedEventLabel = eventId ? eventLabels.get(eventId) : null;
   const eventShortIds = useMemo(() => {

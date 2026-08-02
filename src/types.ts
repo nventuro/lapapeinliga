@@ -473,6 +473,8 @@ export type MediaType = 'image' | 'video';
 export type MediaItem = {
   id: number;
   event_id: number | null;
+  /** Set when the photo belongs to a trophy; independent of `event_id`. */
+  trophy_id: number | null;
   storage_path: string;
   thumbnail_path: string;
   caption: string | null;
@@ -491,6 +493,30 @@ export type TaggedPlayer = Pick<Player, 'id' | 'name'>;
 export type MediaItemWithTags = MediaItem & {
   tags: MediaTag[];
   taggedPlayers: TaggedPlayer[];
+};
+
+// Trophies -- the matches and tournaments worth remembering.
+
+/** Max length for a trophy title; the database enforces the same cap. */
+export const MAX_TROPHY_TITLE_LENGTH = 120;
+
+/** How many people the cover card names before the rest collapse into a count. */
+export const TROPHY_COVER_FACE_COUNT = 5;
+
+export type Trophy = {
+  id: number;
+  title: string;
+  won_at: string;
+  /** The fecha it was won at, when there is one. Context only -- it never
+   *  dictates the participant list (a final is rarely played by everyone). */
+  event_id: number | null;
+  cover_media_id: number | null;
+};
+
+/** A trophy with everything both the list and the detail page render. */
+export type TrophyWithDetails = Trophy & {
+  participants: Player[];
+  cover: MediaItem | null;
 };
 
 export interface ScoreBreakdown {

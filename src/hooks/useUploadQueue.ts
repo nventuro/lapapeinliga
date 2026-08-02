@@ -13,11 +13,14 @@ interface StatusEntry {
 interface QueueItem {
   entry: UploadFileEntry;
   eventId: number | null;
+  trophyId: number | null;
   date: string;
 }
 
 interface UseUploadQueueOptions {
   eventId: number | null;
+  /** Set when the batch is being uploaded from a trophy's page. */
+  trophyId?: number | null;
   date: string;
   onItemUploaded: () => void;
 }
@@ -35,6 +38,7 @@ interface UseUploadQueueReturn {
 
 export function useUploadQueue({
   eventId,
+  trophyId = null,
   date,
   onItemUploaded,
 }: UseUploadQueueOptions): UseUploadQueueReturn {
@@ -81,7 +85,7 @@ export function useUploadQueue({
         updateStatus(item.entry.id, 'uploading');
 
         try {
-          await uploadSingleFile(item.entry, item.eventId, item.date, signal);
+          await uploadSingleFile(item.entry, item.eventId, item.date, signal, item.trophyId);
           updateStatus(item.entry.id, 'done');
           failedItemsRef.current.delete(item.entry.id);
           onItemUploadedRef.current();
@@ -106,13 +110,14 @@ export function useUploadQueue({
     const item: QueueItem = {
       entry: { ...entry },
       eventId,
+      trophyId,
       date,
     };
     queueRef.current.push(item);
     allItemsRef.current.set(entry.id, item);
     updateStatus(entry.id, 'queued');
     processQueue();
-  }, [eventId, date, updateStatus, processQueue]);
+  }, [eventId, trophyId, date, updateStatus, processQueue]);
 
   const retryFailed = useCallback(() => {
     // Reset abort controller if it was aborted

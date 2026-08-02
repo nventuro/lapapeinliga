@@ -114,7 +114,14 @@ try {
   }
   if (seeded !== 3) fail(`only ${seeded}/3 seed points reached — check migration ordering`);
 
-  await assertions(db);
+  // A crash inside assertions() must count as a failure. Without this the
+  // finally block below reports success on `failures === 0` and only then does
+  // node surface the uncaught error — a green summary over a broken run.
+  try {
+    await assertions(db);
+  } catch (e) {
+    fail(`assertions crashed: ${e.message}`);
+  }
 } finally {
   await db.end();
   await pg.stop();
@@ -489,12 +496,124 @@ async function assertions(db) {
   const audited = await all(`
     SELECT table_name FROM information_schema.columns
     WHERE table_schema='public' AND column_name='created_at' ORDER BY table_name`);
-  check('created_at added broadly', audited.length === 10, `${audited.length} tables`);
+  // 10 from the 20260802110002 audit, plus trophies (20260802120000).
+  check('created_at added broadly', audited.length === 11, `${audited.length} tables`);
 
   const short = await one(`
     INSERT INTO events (name,type,played_at,played_at_time) VALUES ('X','social','2026-03-01','20:00')
     RETURNING short_id`);
   check('short_id default still generates', /^[0-9a-f]{7}$/.test(short.short_id), short.short_id);
+
+  console.log('\nTrofeos:');
+  // A win with no fecha behind it (from before the app existed) must be
+  // recordable, and so must one linked to an event.
+  const standalone = await one(`
+    INSERT INTO trophies (title, won_at) VALUES ('Mundialito viejo','2024-11-02') RETURNING id`);
+  const linkedEvent = await one(`
+    INSERT INTO events (name,type,played_at,played_at_time)
+    VALUES ('Copa de prueba','tournament','2026-05-01','20:00') RETURNING id`);
+  const linked = await one(`
+    INSERT INTO trophies (title, won_at, event_id) VALUES ('Copa de prueba','2026-05-01',$1)
+    RETURNING id`, [linkedEvent.id]);
+  check('a trophy needs neither an event nor a cover', standalone.id > 0);
+
+  check('empty title rejected',
+    await rejects(db, `INSERT INTO trophies (title, won_at) VALUES ('   ','2026-01-01')`));
+  check('over-long title rejected',
+    await rejects(db,
+      `INSERT INTO trophies (title, won_at) VALUES (repeat('x',121),'2026-01-01')`));
+
+  // The whole point of a separate participant list: player 6 is on no event
+  // roster at all, and must still be recordable as part of the win.
+  check('participants are independent of the linked event roster',
+    await succeeds(db,
+      `INSERT INTO trophy_participants (trophy_id, player_id) VALUES ($1,6)`, [linked.id]));
+
+  const shot = await one(`
+    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, media_type, aspect_ratio)
+    VALUES (NULL,$1,'full/11111111-1111-4111-8111-111111111111.jpg',
+                    'thumb/11111111-1111-4111-8111-111111111111.jpg','2026-05-01','image',1.5) RETURNING id`,
+    [linked.id]);
+  const strayShot = await one(`
+    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, media_type, aspect_ratio)
+    VALUES (NULL,$1,'full/22222222-2222-4222-8222-222222222222.jpg',
+                    'thumb/22222222-2222-4222-8222-222222222222.jpg','2024-11-02','image',1.5) RETURNING id`,
+    [standalone.id]);
+
+  // "Has photos but shows the placeholder" must be unreachable: the first
+  // photo becomes the cover on its own.
+  const autoCover = await one(`SELECT cover_media_id FROM trophies WHERE id=$1`, [linked.id]);
+  check('the first photo becomes the cover by itself',
+    autoCover.cover_media_id === shot.id, `got ${autoCover.cover_media_id}`);
+
+  const secondShot = await one(`
+    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, media_type, aspect_ratio)
+    VALUES (NULL,$1,'full/33333333-3333-4333-8333-333333333333.jpg',
+                    'thumb/33333333-3333-4333-8333-333333333333.jpg','2026-05-01','image',1.5) RETURNING id`,
+    [linked.id]);
+  const afterSecond = await one(`SELECT cover_media_id FROM trophies WHERE id=$1`, [linked.id]);
+  check('a later photo does not steal the cover',
+    afterSecond.cover_media_id === shot.id, `got ${afterSecond.cover_media_id}`);
+
+  check('a photo of this trophy can be its cover',
+    await succeeds(db, `UPDATE trophies SET cover_media_id=$1 WHERE id=$2`, [shot.id, linked.id]));
+  check("another trophy's photo cannot be the cover",
+    await rejects(db, `UPDATE trophies SET cover_media_id=$1 WHERE id=$2`, [strayShot.id, linked.id]));
+  check('an untethered photo cannot be the cover',
+    await rejects(db, `UPDATE trophies SET cover_media_id=1 WHERE id=$1`, [linked.id]));
+
+  // Deleting the cover photo must never block the delete; while other photos
+  // remain, one of them is promoted rather than falling back to the placeholder.
+  await db.query(`DELETE FROM media WHERE id=$1`, [shot.id]);
+  const promoted = await one(`SELECT cover_media_id FROM trophies WHERE id=$1`, [linked.id]);
+  check('deleting the cover promotes another photo',
+    promoted.cover_media_id === secondShot.id, `got ${promoted.cover_media_id}`);
+
+  await db.query(`DELETE FROM media WHERE id=$1`, [secondShot.id]);
+  const afterCoverGone = await one(`SELECT cover_media_id FROM trophies WHERE id=$1`, [linked.id]);
+  check('deleting the last photo clears the pointer',
+    afterCoverGone.cover_media_id === null, `got ${afterCoverGone.cover_media_id}`);
+
+  // Losing the fecha must not lose the trophy.
+  await db.query(`DELETE FROM events WHERE id=$1`, [linkedEvent.id]);
+  const orphaned = await one(`SELECT event_id FROM trophies WHERE id=$1`, [linked.id]);
+  check('deleting the linked event keeps the trophy',
+    orphaned !== undefined && orphaned.event_id === null, JSON.stringify(orphaned));
+
+  // …and losing the trophy must not lose the photos.
+  await db.query(`DELETE FROM trophies WHERE id=$1`, [standalone.id]);
+  const survivor = await one(`SELECT trophy_id FROM media WHERE id=$1`, [strayShot.id]);
+  check('deleting a trophy keeps its photos, untethered',
+    survivor !== undefined && survivor.trophy_id === null, JSON.stringify(survivor));
+
+  // Being on a trophy is history: the player delete guard must say so, and
+  // must say only that when nothing else blocks.
+  await db.query(
+    `INSERT INTO players (name, gender, tier) VALUES ('Campeon Unico','male','guest')`);
+  const champ = await one(`SELECT id FROM players WHERE name='Campeon Unico'`);
+  await db.query(`INSERT INTO trophy_participants (trophy_id, player_id) VALUES ($1,$2)`,
+    [linked.id, champ.id]);
+  const trophyBlocked = await rejectsWith(db, `DELETE FROM players WHERE id=$1`, [champ.id]);
+  check('deleting a player on a trophy is refused', trophyBlocked.rejected);
+  check('refusal cites the trophy, in Spanish, ungendered',
+    /está en 1 trofeo/.test(trophyBlocked.message)
+    && !/fecha|foto|premio/.test(trophyBlocked.message), trophyBlocked.message);
+
+  await db.query(`SET ROLE anon`);
+  const anonTrophies = await all(`SELECT count(*)::int AS n FROM trophies`);
+  const anonWrite = await rejectsOrNoop(db,
+    `INSERT INTO trophies (title, won_at) VALUES ('Robado','2026-01-01')`);
+  await db.query(`RESET ROLE`);
+  check('anon can read trophies', anonTrophies[0].n > 0);
+  check('anon cannot write trophies', anonWrite);
+
+  await db.query(`SET test.jwt = '{"email":"beto@x.com"}'`);
+  await db.query(`SET ROLE authenticated`);
+  const modWrite = await rejectsOrNoop(db,
+    `INSERT INTO trophies (title, won_at) VALUES ('Robado','2026-01-01')`);
+  await db.query(`RESET ROLE`);
+  await db.query(`SET test.jwt = ''`);
+  check('a mod cannot write trophies (admin-only by design)', modWrite);
 
   console.log('\nRLS / exposure:');
   const rlsOff = await all(`

@@ -5,6 +5,8 @@ import { useSupabaseQuery } from './useSupabaseQuery';
 
 interface UseGalleryMediaParams {
   eventId: number | null;
+  /** Narrows the gallery to one trophy's photos. Applied server-side, like eventId. */
+  trophyId?: number | null;
   tagNames: string[];
   playerId: number | null;
   // Public roster (players_public) used to resolve tagged-player names. The
@@ -25,9 +27,9 @@ interface FetchedMedia {
   playerIdsByMediaId: Map<number, number[]>;
 }
 
-export function useGalleryMedia({ eventId, tagNames, playerId, players }: UseGalleryMediaParams): UseGalleryMediaResult {
-  // Only eventId affects what the server is asked for. Tag and player filters
-  // are applied client-side below, so toggling a filter chip must not
+export function useGalleryMedia({ eventId, trophyId = null, tagNames, playerId, players }: UseGalleryMediaParams): UseGalleryMediaResult {
+  // Only eventId/trophyId affect what the server is asked for. Tag and player
+  // filters are applied client-side below, so toggling a filter chip must not
   // re-download the whole gallery.
   const { data, loading, error, refetch } = useSupabaseQuery<FetchedMedia>(async () => {
     let mediaQuery = supabase
@@ -38,6 +40,14 @@ export function useGalleryMedia({ eventId, tagNames, playerId, players }: UseGal
 
     if (eventId !== null) {
       mediaQuery = mediaQuery.eq('event_id', eventId);
+    }
+    if (trophyId !== null) {
+      mediaQuery = mediaQuery.eq('trophy_id', trophyId);
+    } else {
+      // A photo belongs to a trophy or to the gallery, never to both: the
+      // trophy page is where its photos live, and listing them here too would
+      // just be the same set twice.
+      mediaQuery = mediaQuery.is('trophy_id', null);
     }
 
     const { data: mediaRows, error: mediaError } = await mediaQuery;
@@ -77,7 +87,7 @@ export function useGalleryMedia({ eventId, tagNames, playerId, players }: UseGal
     }
 
     return { media, tagsByMediaId, playerIdsByMediaId };
-  }, [eventId]);
+  }, [eventId, trophyId]);
 
   const items = useMemo(() => {
     if (!data) return [];
