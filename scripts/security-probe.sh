@@ -89,6 +89,7 @@ assert_protected "event_award_votes"       "event_award_votes?select=*&limit=1"
 assert_protected "event_award_resolutions" "event_award_resolutions?select=*&limit=1"
 assert_protected "event_feedback"          "event_feedback?select=*&limit=1"
 assert_protected "award_types"             "award_types?select=*&limit=1"
+assert_protected "event_types"             "event_types?select=*&limit=1"
 
 echo "Event financial data must NOT be readable (moved off public events):"
 assert_protected "event_finances"          "event_finances?select=*&limit=1"

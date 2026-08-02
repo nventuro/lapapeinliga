@@ -1,19 +1,16 @@
 import type { ReactNode } from 'react';
-import type { AwardType, Player, ShirtColor } from '../types';
+import type { AwardType, EventTeam, Player } from '../types';
 import { supabase } from '../lib/supabase';
 import TeamCard from './TeamCard';
 import ParticipantListCard from './ParticipantListCard';
 import ResultsSection from './ResultsSection';
 import type { MoveDestination } from './ParticipantRow';
-import type { TeamRosterConfig } from './teamRosterConfig';
 
 type MutationOp = () => PromiseLike<{ error: { message: string } | null }>;
 
 interface TeamEventSectionProps {
-  config: TeamRosterConfig;
-  /** The child row id (matches.id / tournaments.id) reserves hang off. */
-  parentId: number;
-  teams: { id: number; name: string; shirt_color?: ShirtColor; players: Player[] }[];
+  eventId: number;
+  teams: EventTeam[];
   reserves: Player[];
   winningTeamId: number | null;
   playerAwards: Map<number, AwardType[]>;
@@ -25,20 +22,20 @@ interface TeamEventSectionProps {
   showAverageRating?: boolean;
   gridClassName: string;
   mutate: (op: MutationOp) => Promise<void>;
-  mutateMove: (insertOp: MutationOp, deleteOp: MutationOp) => Promise<void>;
   onWinnerChange: (teamId: number | null) => void;
   /** Rendered between the reserves and the results (fixtures, standings). */
   children?: ReactNode;
 }
 
 /**
- * Teams grid + reserves + winner picker for a team-structured event. All the
- * add/remove/move plumbing derives from the TeamRosterConfig, so match and
- * tournament pages can never drift apart again.
+ * Teams grid + reserves + winner picker for a team-structured event. Matches
+ * and tournaments share the unified event_teams / event_participants tables,
+ * so all the add/remove/move plumbing is identical for both. A move is a
+ * single UPDATE of the participant's kind/team, which keeps the player a
+ * participant throughout — the award-integrity trigger only guards removals.
  */
 export default function TeamEventSection({
-  config,
-  parentId,
+  eventId,
   teams,
   reserves,
   winningTeamId,
@@ -51,18 +48,24 @@ export default function TeamEventSection({
   showAverageRating = false,
   gridClassName,
   mutate,
-  mutateMove,
   onWinnerChange,
   children,
 }: TeamEventSectionProps) {
   const addToTeam = (teamId: number, playerId: number): MutationOp =>
-    () => supabase.from(config.teamPlayersTable).insert({ [config.teamFkColumn]: teamId, player_id: playerId });
-  const removeFromTeam = (teamId: number, playerId: number): MutationOp =>
-    () => supabase.from(config.teamPlayersTable).delete().eq(config.teamFkColumn, teamId).eq('player_id', playerId);
+    () => supabase.from('event_participants')
+      .insert({ event_id: eventId, player_id: playerId, kind: 'team_member', team_id: teamId });
   const addReserve = (playerId: number): MutationOp =>
-    () => supabase.from(config.reservesTable).insert({ [config.parentFkColumn]: parentId, player_id: playerId });
-  const removeReserve = (playerId: number): MutationOp =>
-    () => supabase.from(config.reservesTable).delete().eq(config.parentFkColumn, parentId).eq('player_id', playerId);
+    () => supabase.from('event_participants')
+      .insert({ event_id: eventId, player_id: playerId, kind: 'reserve' });
+  const remove = (playerId: number): MutationOp =>
+    () => supabase.from('event_participants')
+      .delete().eq('event_id', eventId).eq('player_id', playerId);
+  const moveToTeam = (teamId: number, playerId: number): MutationOp =>
+    () => supabase.from('event_participants')
+      .update({ kind: 'team_member', team_id: teamId }).eq('event_id', eventId).eq('player_id', playerId);
+  const moveToReserves = (playerId: number): MutationOp =>
+    () => supabase.from('event_participants')
+      .update({ kind: 'reserve', team_id: null }).eq('event_id', eventId).eq('player_id', playerId);
 
   const winnerTeam = winningTeamId != null ? teams.find((t) => t.id === winningTeamId) : null;
 
@@ -81,18 +84,18 @@ export default function TeamEventSection({
             canEditTeam={canEditTeam}
             showAverageRating={showAverageRating}
             onSaveTeam={(name, shirtColor) => mutate(() =>
-              supabase.from(config.teamsTable).update({ name, ...(shirtColor ? { shirt_color: shirtColor } : {}) }).eq('id', team.id),
+              supabase.from('event_teams').update({ name, ...(shirtColor ? { shirt_color: shirtColor } : {}) }).eq('id', team.id),
             )}
             onAddPlayer={(playerId) => mutate(addToTeam(team.id, playerId))}
-            onRemovePlayer={(playerId) => mutate(removeFromTeam(team.id, playerId))}
+            onRemovePlayer={(playerId) => mutate(remove(playerId))}
             moveDestinationsFor={(player): MoveDestination[] => [
               ...teams.filter((t) => t.id !== team.id).map((otherTeam) => ({
                 label: `Mover a ${otherTeam.name}`,
-                onSelect: () => mutateMove(addToTeam(otherTeam.id, player.id), removeFromTeam(team.id, player.id)),
+                onSelect: () => mutate(moveToTeam(otherTeam.id, player.id)),
               })),
               {
                 label: 'Mover a suplentes',
-                onSelect: () => mutateMove(addReserve(player.id), removeFromTeam(team.id, player.id)),
+                onSelect: () => mutate(moveToReserves(player.id)),
               },
             ]}
           />
@@ -108,10 +111,10 @@ export default function TeamEventSection({
         hideWhenEmpty
         className="mt-4"
         onAddPlayer={(playerId) => mutate(addReserve(playerId))}
-        onRemovePlayer={(playerId) => mutate(removeReserve(playerId))}
+        onRemovePlayer={(playerId) => mutate(remove(playerId))}
         moveDestinationsFor={(player): MoveDestination[] => teams.map((team) => ({
           label: `Mover a ${team.name}`,
-          onSelect: () => mutateMove(addToTeam(team.id, player.id), removeReserve(player.id)),
+          onSelect: () => mutate(moveToTeam(team.id, player.id)),
         }))}
       />
 

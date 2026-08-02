@@ -1,4 +1,4 @@
-import type { AwardType } from '../types';
+import type { AwardType, EventType, ParticipantKind } from '../types';
 import { AWARD_TYPES } from '../types';
 import { supabase } from '../lib/supabase';
 import { useSupabaseQuery } from './useSupabaseQuery';
@@ -19,69 +19,55 @@ const EMPTY_COUNTS: Map<number, number> = new Map();
 const EMPTY_AWARDS: Map<AwardType, Map<number, number>> = new Map();
 const EMPTY_EVENTS: number[][] = [];
 
+type EventRow = { id: number; type: EventType; winning_team_id: number | null };
+type ParticipantRow = { event_id: number; player_id: number; kind: ParticipantKind; team_id: number | null };
+
+const increment = (map: Map<number, number>, playerId: number) =>
+  map.set(playerId, (map.get(playerId) ?? 0) + 1);
+
 export function useEventStats(): EventStats {
   const { data, loading, error } = useSupabaseQuery(async () => {
-    const [
-      matchesResult, teamsResult, teamPlayersResult, reservesResult,
-      trainingsResult, attendeesResult, coachesResult,
-      tournamentsResult, tournamentTeamsResult, tournamentTeamPlayersResult, tournamentReservesResult,
-      externalRosterResult, externalReservesResult,
-      resolvedAwardsResult,
-    ] = await Promise.all([
-      supabase.from('matches').select('*'),
-      supabase.from('match_teams').select('id, match_id'),
-      supabase.from('match_team_players').select('match_team_id, player_id'),
-      supabase.from('match_reserves').select('match_id, player_id'),
-      supabase.from('trainings').select('id'),
-      supabase.from('training_attendees').select('training_id, player_id'),
-      supabase.from('training_coaches').select('training_id, player_id'),
-      supabase.from('tournaments').select('*'),
-      supabase.from('tournament_teams').select('id, tournament_id'),
-      supabase.from('tournament_team_players').select('tournament_team_id, player_id'),
-      supabase.from('tournament_reserves').select('tournament_id, player_id'),
-      supabase.from('external_match_players').select('player_id'),
-      supabase.from('external_match_reserves').select('player_id'),
+    const [eventsResult, participantsResult, resolvedAwardsResult] = await Promise.all([
+      supabase.from('events').select('id, type, winning_team_id'),
+      supabase.from('event_participants').select('event_id, player_id, kind, team_id'),
       supabase.rpc('get_resolved_event_awards'),
     ]);
 
-    const queryError = matchesResult.error || teamsResult.error || teamPlayersResult.error
-      || reservesResult.error || trainingsResult.error || attendeesResult.error || coachesResult.error
-      || tournamentsResult.error || tournamentTeamsResult.error || tournamentTeamPlayersResult.error
-      || tournamentReservesResult.error || externalRosterResult.error || externalReservesResult.error
-      || resolvedAwardsResult.error;
+    const queryError = eventsResult.error || participantsResult.error || resolvedAwardsResult.error;
     if (queryError) throw new Error(queryError.message);
 
-    const matches = matchesResult.data!;
-    const teams = teamsResult.data!;
-    const teamPlayers = teamPlayersResult.data!;
-    const reserves = reservesResult.data!;
-    const trainings = trainingsResult.data!;
-    const attendees = attendeesResult.data!;
-    const coaches = coachesResult.data!;
-    const tournaments = tournamentsResult.data!;
-    const tournamentTeams = tournamentTeamsResult.data!;
-    const tournamentTeamPlayers = tournamentTeamPlayersResult.data!;
-    const tournamentReserves = tournamentReservesResult.data!;
-    const externalRoster = externalRosterResult.data!;
-    const externalReserves = externalReservesResult.data!;
+    const events = eventsResult.data as EventRow[];
+    const participants = participantsResult.data as ParticipantRow[];
     const resolvedAwards = (resolvedAwardsResult.data ?? []) as { event_id: number; award_type: AwardType; player_id: number }[];
 
-    // Games played: count from team players + reserves
-    const played = new Map<number, number>();
-    for (const tp of teamPlayers) {
-      played.set(tp.player_id, (played.get(tp.player_id) ?? 0) + 1);
-    }
-    for (const r of reserves) {
-      played.set(r.player_id, (played.get(r.player_id) ?? 0) + 1);
+    const eventById = new Map(events.map((e) => [e.id, e]));
+    const byEvent = new Map<number, ParticipantRow[]>();
+    for (const p of participants) {
+      const list = byEvent.get(p.event_id);
+      if (list) list.push(p);
+      else byEvent.set(p.event_id, [p]);
     }
 
-    // Games won: for each match with a winner, find players on winning team
+    // Games played/won count internal games (matches and whole tournaments);
+    // external matches and trainings are tallied separately.
+    const played = new Map<number, number>();
     const won = new Map<number, number>();
-    for (const match of matches) {
-      if (match.winning_team_id == null) continue;
-      const winningPlayers = teamPlayers.filter((tp) => tp.match_team_id === match.winning_team_id);
-      for (const wp of winningPlayers) {
-        won.set(wp.player_id, (won.get(wp.player_id) ?? 0) + 1);
+    const attended = new Map<number, number>();
+    const coached = new Map<number, number>();
+    const externalPlayed = new Map<number, number>();
+
+    for (const p of participants) {
+      const event = eventById.get(p.event_id);
+      if (!event) continue;
+      if (event.type === 'match' || event.type === 'tournament') {
+        increment(played, p.player_id);
+        if (event.winning_team_id != null && p.team_id === event.winning_team_id) {
+          increment(won, p.player_id);
+        }
+      } else if (event.type === 'external_match') {
+        increment(externalPlayed, p.player_id);
+      } else if (event.type === 'training') {
+        increment(p.kind === 'coach' ? coached : attended, p.player_id);
       }
     }
 
@@ -99,94 +85,13 @@ export function useEventStats(): EventStats {
       }
     }
 
-    // Tournaments: whole tournament = 1 game played per participant
-    for (const tournament of tournaments) {
-      const tournamentTeamIds = new Set(
-        tournamentTeams.filter((tt) => tt.tournament_id === tournament.id).map((tt) => tt.id),
-      );
-      // All team players in this tournament
-      const teamPlayerIds = tournamentTeamPlayers
-        .filter((ttp) => tournamentTeamIds.has(ttp.tournament_team_id))
-        .map((ttp) => ttp.player_id);
-      // All reserves in this tournament
-      const reservePlayerIds = tournamentReserves
-        .filter((tr) => tr.tournament_id === tournament.id)
-        .map((tr) => tr.player_id);
-
-      const allPlayerIds = [...teamPlayerIds, ...reservePlayerIds];
-      for (const pid of allPlayerIds) {
-        played.set(pid, (played.get(pid) ?? 0) + 1);
-      }
-
-      // Games won: players on the winning team
-      if (tournament.winning_team_id != null) {
-        const winningPlayers = tournamentTeamPlayers
-          .filter((ttp) => ttp.tournament_team_id === tournament.winning_team_id);
-        for (const wp of winningPlayers) {
-          won.set(wp.player_id, (won.get(wp.player_id) ?? 0) + 1);
-        }
-      }
-    }
-
-    // Trainings attended
-    const attended = new Map<number, number>();
-    for (const a of attendees) {
-      attended.set(a.player_id, (attended.get(a.player_id) ?? 0) + 1);
-    }
-
-    // Trainings coached
-    const coached = new Map<number, number>();
-    for (const c of coaches) {
-      coached.set(c.player_id, (coached.get(c.player_id) ?? 0) + 1);
-    }
-
-    // External matches played: counted separately from internal games.
-    // Both the roster and the reserves count as an appearance.
-    const externalPlayed = new Map<number, number>();
-    for (const r of externalRoster) {
-      externalPlayed.set(r.player_id, (externalPlayed.get(r.player_id) ?? 0) + 1);
-    }
-    for (const r of externalReserves) {
-      externalPlayed.set(r.player_id, (externalPlayed.get(r.player_id) ?? 0) + 1);
-    }
-
-    // Build per-event participant lists for gender ratio
+    // Per-event participant lists for the gender ratio. External matches are
+    // excluded on purpose: their roster reflects the opponent matchup, not
+    // the group's own turnout.
     const participantsByEvent: number[][] = [];
-
-    // Match participants
-    for (const match of matches) {
-      const matchTeamIds = new Set(
-        teams.filter((t) => t.match_id === match.id).map((t) => t.id),
-      );
-      const playerIds = [
-        ...teamPlayers.filter((tp) => matchTeamIds.has(tp.match_team_id)).map((tp) => tp.player_id),
-        ...reserves.filter((r) => r.match_id === match.id).map((r) => r.player_id),
-      ];
-      if (playerIds.length > 0) {
-        participantsByEvent.push(playerIds);
-      }
-    }
-
-    // Training participants (attendees + coaches)
-    for (const training of trainings) {
-      const playerIds = [
-        ...attendees.filter((a) => a.training_id === training.id).map((a) => a.player_id),
-        ...coaches.filter((c) => c.training_id === training.id).map((c) => c.player_id),
-      ];
-      if (playerIds.length > 0) {
-        participantsByEvent.push(playerIds);
-      }
-    }
-
-    // Tournament participants
-    for (const tournament of tournaments) {
-      const tournamentTeamIds = new Set(
-        tournamentTeams.filter((tt) => tt.tournament_id === tournament.id).map((tt) => tt.id),
-      );
-      const playerIds = [
-        ...tournamentTeamPlayers.filter((ttp) => tournamentTeamIds.has(ttp.tournament_team_id)).map((ttp) => ttp.player_id),
-        ...tournamentReserves.filter((tr) => tr.tournament_id === tournament.id).map((tr) => tr.player_id),
-      ];
+    for (const event of events) {
+      if (event.type !== 'match' && event.type !== 'training' && event.type !== 'tournament') continue;
+      const playerIds = (byEvent.get(event.id) ?? []).map((p) => p.player_id);
       if (playerIds.length > 0) {
         participantsByEvent.push(playerIds);
       }

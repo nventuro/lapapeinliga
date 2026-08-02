@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
-import type { AwardType, Location } from '../types';
+import type { AwardType, Location, ParticipantKind } from '../types';
 import { allParticipants, EVENT_TYPE_LABELS, hasFinances, isNewLocationComplete, OUR_TEAM_NAME, WINNER_GLOW_MS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
@@ -16,7 +16,6 @@ import CostSummary from './CostSummary';
 import EventFieldsForm from './EventFieldsForm';
 import EventMediaStrip from './EventMediaStrip';
 import TeamEventSection from './TeamEventSection';
-import { MATCH_ROSTER_CONFIG, TOURNAMENT_ROSTER_CONFIG } from './teamRosterConfig';
 import { resolveLocationSelection, useEventFieldsState } from '../hooks/useEventFields';
 import TournamentMatchList from './TournamentMatchList';
 import StandingsTable from './StandingsTable';
@@ -32,12 +31,6 @@ import { useEventDetail } from '../hooks/useEventDetail';
 import { useEventFeedback } from '../hooks/useEventFeedback';
 import { useEventsIndex } from '../hooks/useEventsIndex';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
-import type { ExternalMatchPlayer } from '../types';
-
-/** Looks up a player's goals within an external-match roster/reserve list. */
-function goalsFor(list: ExternalMatchPlayer[], playerId: number): number {
-  return list.find((r) => r.player.id === playerId)?.goals ?? 0;
-}
 
 type MutationOp = () => PromiseLike<{ error: { message: string } | null }>;
 
@@ -101,26 +94,6 @@ export default function EventDetailPage() {
     } else {
       refetch();
       if (options.glow) triggerGlow();
-    }
-    setSaving(false);
-  }
-
-  // For moves: always insert-then-delete so the deferred integrity trigger
-  // sees the player still in event_participants at the DELETE's commit.
-  async function mutateMove(insertOp: MutationOp, deleteOp: MutationOp) {
-    setSaving(true);
-    setMutationError(null);
-    const ins = await insertOp();
-    if (ins.error) {
-      setMutationError(ins.error.message);
-      setSaving(false);
-      return;
-    }
-    const del = await deleteOp();
-    if (del.error) {
-      setMutationError(del.error.message);
-    } else {
-      refetch();
     }
     setSaving(false);
   }
@@ -208,21 +181,26 @@ export default function EventDetailPage() {
     setSaving(false);
   }
 
-  function handleSetWinner(table: 'matches' | 'tournaments', rowId: number, teamId: number | null) {
+  // Mods can set the winner but hold no direct UPDATE on events, so this goes
+  // through the RPC that owns that one column.
+  function handleSetWinner(eventId: number, teamId: number | null) {
     return mutate(
-      () => supabase.from(table).update({ winning_team_id: teamId }).eq('id', rowId),
+      () => supabase.rpc('set_event_winner', { p_event_id: eventId, p_team_id: teamId }),
       { glow: teamId !== null },
     );
   }
 
-  function handleSetGoals(
-    table: 'external_match_players' | 'external_match_reserves',
-    externalMatchId: number,
-    playerId: number,
-    goals: number,
-  ) {
+  function handleSetGoals(eventId: number, playerId: number, goals: number) {
     return mutate(() =>
-      supabase.from(table).update({ goals }).eq('external_match_id', externalMatchId).eq('player_id', playerId),
+      supabase.from('event_participants').update({ goals }).eq('event_id', eventId).eq('player_id', playerId),
+    );
+  }
+
+  // Moving is one UPDATE of the same row, so goals and any other per-player
+  // data ride along instead of having to be copied to a new row.
+  function moveParticipant(eventId: number, playerId: number, kind: ParticipantKind) {
+    return mutate(() =>
+      supabase.from('event_participants').update({ kind }).eq('event_id', eventId).eq('player_id', playerId),
     );
   }
 
@@ -415,11 +393,10 @@ export default function EventDetailPage() {
         <>
           {awardsAndMedia}
           <TeamEventSection
-            config={MATCH_ROSTER_CONFIG}
-            parentId={event.match.id}
+            eventId={event.id}
             teams={event.teams}
             reserves={event.reserves}
-            winningTeamId={event.match.winning_team_id}
+            winningTeamId={event.winning_team_id}
             playerAwards={playerAwards}
             availablePlayers={availablePlayers}
             saving={busy}
@@ -429,8 +406,7 @@ export default function EventDetailPage() {
             showAverageRating
             gridClassName="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6"
             mutate={mutate}
-            mutateMove={mutateMove}
-            onWinnerChange={(teamId) => handleSetWinner('matches', event.match.id, teamId)}
+            onWinnerChange={(teamId) => handleSetWinner(event.id, teamId)}
           />
         </>
       )}
@@ -440,11 +416,10 @@ export default function EventDetailPage() {
         <>
           {awardsAndMedia}
           <TeamEventSection
-            config={TOURNAMENT_ROSTER_CONFIG}
-            parentId={event.tournament.id}
+            eventId={event.id}
             teams={event.teams}
             reserves={event.reserves}
-            winningTeamId={event.tournament.winning_team_id}
+            winningTeamId={event.winning_team_id}
             playerAwards={playerAwards}
             availablePlayers={availablePlayers}
             saving={busy}
@@ -453,8 +428,7 @@ export default function EventDetailPage() {
             canEditTeam={isAdmin}
             gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"
             mutate={mutate}
-            mutateMove={mutateMove}
-            onWinnerChange={(teamId) => handleSetWinner('tournaments', event.tournament.id, teamId)}
+            onWinnerChange={(teamId) => handleSetWinner(event.id, teamId)}
           >
             <TournamentMatchList
               teams={event.teams}
@@ -462,7 +436,7 @@ export default function EventDetailPage() {
               canEdit={isModOrAdmin}
               saving={busy}
               onAddMatch={(teamAId, teamBId) => mutate(() =>
-                supabase.from('tournament_matches').insert({ tournament_id: event.tournament.id, team_a_id: teamAId, team_b_id: teamBId }),
+                supabase.from('tournament_matches').insert({ event_id: event.id, team_a_id: teamAId, team_b_id: teamBId }),
               )}
               onUpdateScore={(matchId, scoreA, scoreB) => mutate(() =>
                 supabase.from('tournament_matches').update({ score_a: scoreA, score_b: scoreB }).eq('id', matchId),
@@ -489,19 +463,16 @@ export default function EventDetailPage() {
             saving={busy}
             availablePlayers={availablePlayers}
             onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('external_match_players').insert({ external_match_id: event.externalMatch.id, player_id: playerId }),
+              supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'team_member' }),
             )}
             onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('external_match_players').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', playerId),
+              supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
             )}
-            onSetGoals={(playerId, goals) => handleSetGoals('external_match_players', event.externalMatch.id, playerId, goals)}
+            onSetGoals={(playerId, goals) => handleSetGoals(event.id, playerId, goals)}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Mover a suplentes',
-                onSelect: () => mutateMove(
-                  () => supabase.from('external_match_reserves').insert({ external_match_id: event.externalMatch.id, player_id: player.id, goals: goalsFor(event.roster, player.id) }),
-                  () => supabase.from('external_match_players').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', player.id),
-                ),
+                onSelect: () => moveParticipant(event.id, player.id, 'reserve'),
               },
             ]}
           />
@@ -515,19 +486,16 @@ export default function EventDetailPage() {
             availablePlayers={availablePlayers}
             hideWhenEmpty
             onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('external_match_reserves').insert({ external_match_id: event.externalMatch.id, player_id: playerId }),
+              supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'reserve' }),
             )}
             onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('external_match_reserves').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', playerId),
+              supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
             )}
-            onSetGoals={(playerId, goals) => handleSetGoals('external_match_reserves', event.externalMatch.id, playerId, goals)}
+            onSetGoals={(playerId, goals) => handleSetGoals(event.id, playerId, goals)}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Mover a titulares',
-                onSelect: () => mutateMove(
-                  () => supabase.from('external_match_players').insert({ external_match_id: event.externalMatch.id, player_id: player.id, goals: goalsFor(event.reserves, player.id) }),
-                  () => supabase.from('external_match_reserves').delete().eq('external_match_id', event.externalMatch.id).eq('player_id', player.id),
-                ),
+                onSelect: () => moveParticipant(event.id, player.id, 'team_member'),
               },
             ]}
           />
@@ -563,18 +531,15 @@ export default function EventDetailPage() {
             saving={busy}
             availablePlayers={availablePlayers}
             onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('training_attendees').insert({ training_id: event.training.id, player_id: playerId }),
+              supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'attendee' }),
             )}
             onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('training_attendees').delete().eq('training_id', event.training.id).eq('player_id', playerId),
+              supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
             )}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Pasar a entrenadores',
-                onSelect: () => mutateMove(
-                  () => supabase.from('training_coaches').insert({ training_id: event.training.id, player_id: player.id }),
-                  () => supabase.from('training_attendees').delete().eq('training_id', event.training.id).eq('player_id', player.id),
-                ),
+                onSelect: () => moveParticipant(event.id, player.id, 'coach'),
               },
             ]}
           />
@@ -586,18 +551,15 @@ export default function EventDetailPage() {
             saving={busy}
             availablePlayers={availablePlayers}
             onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('training_coaches').insert({ training_id: event.training.id, player_id: playerId }),
+              supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'coach' }),
             )}
             onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('training_coaches').delete().eq('training_id', event.training.id).eq('player_id', playerId),
+              supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
             )}
             moveDestinationsFor={(player): MoveDestination[] => [
               {
                 label: 'Pasar a jugadores',
-                onSelect: () => mutateMove(
-                  () => supabase.from('training_attendees').insert({ training_id: event.training.id, player_id: player.id }),
-                  () => supabase.from('training_coaches').delete().eq('training_id', event.training.id).eq('player_id', player.id),
-                ),
+                onSelect: () => moveParticipant(event.id, player.id, 'attendee'),
               },
             ]}
           />

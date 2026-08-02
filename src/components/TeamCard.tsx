@@ -9,7 +9,7 @@ import ParticipantRow, { type MoveDestination } from './ParticipantRow';
 import AddParticipantControl from './AddParticipantControl';
 
 interface TeamCardProps {
-  team: { id: number; name: string; shirt_color?: ShirtColor; players: Player[] };
+  team: { id: number; name: string; shirt_color?: ShirtColor | null; players: Player[] };
   isWinner: boolean;
   playerAwards: Map<number, AwardType[]>;
   canEdit?: boolean;
@@ -54,7 +54,7 @@ export default function TeamCard({
       {isWinner && <Confetti />}
       <EditableTeamName
         name={team.name}
-        shirtColor={team.shirt_color}
+        shirtColor={team.shirt_color ?? undefined}
         isWinner={isWinner}
         trailing={showAverageRating && isAdmin && showRatings ? (
           <span className="text-sm text-muted shrink-0">

@@ -1,0 +1,34 @@
+name: Migration replay
+
+# Migrations are the riskiest thing in this repo: they move production data and
+# drop tables, and `tsc`/eslint/the Supabase linter cannot see a single one of
+# their failure modes. This replays the whole history against a throwaway
+# Postgres and asserts the result, so a bad migration fails here rather than
+# halfway through `npm run db:push`.
+on:
+  push:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/migration-replay.mjs'
+      - '.github/workflows/db-migrations.yml'
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/migration-replay.mjs'
+  workflow_dispatch:
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Needs no Docker and no Supabase project: embedded-postgres ships the
+      # server binary in its npm tarball, so the npm cache covers it.
+      - run: npm ci
+      - run: npm run db:test

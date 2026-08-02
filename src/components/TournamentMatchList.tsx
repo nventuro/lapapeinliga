@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { TournamentTeam, TournamentMatch } from '../types';
+import type { EventTeam, TournamentMatch } from '../types';
 import { TrashIcon } from './icons';
 import Tooltip from './Tooltip';
 
 interface TournamentMatchListProps {
-  teams: TournamentTeam[];
+  teams: EventTeam[];
   matches: TournamentMatch[];
   canEdit: boolean;
   saving: boolean;
@@ -13,7 +13,7 @@ interface TournamentMatchListProps {
   onDeleteMatch: (matchId: number) => void;
 }
 
-function teamName(teams: TournamentTeam[], teamId: number): string {
+function teamName(teams: EventTeam[], teamId: number): string {
   return teams.find((t) => t.id === teamId)?.name ?? '?';
 }
 

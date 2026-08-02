@@ -209,6 +209,9 @@ export function unhandledEventType<T>(type: never, fallback: T): T {
  * Whether the type keeps a list of participants. Social events don't: they are
  * just the date/time/place plus photos, so photo tagging falls back to the
  * whole roster.
+ *
+ * Compile-time mirror of event_types.has_participants (same pattern as
+ * AwardType vs the award_types table).
  */
 export function hasParticipantList(type: EventType): boolean {
   return type !== 'social';
@@ -218,6 +221,8 @@ export function hasParticipantList(type: EventType): boolean {
  * Whether the event's cost and payee are tracked. Today this matches
  * hasParticipantList — a cost exists to be split among participants — but they
  * are distinct capabilities, so money UI must gate on this one.
+ *
+ * Compile-time mirror of event_types.has_finances.
  */
 export function hasFinances(type: EventType): boolean {
   return hasParticipantList(type);
@@ -225,7 +230,9 @@ export function hasFinances(type: EventType): boolean {
 
 /**
  * Whether the type runs award voting (and, gated on it, event feedback).
- * Mirrors the allowlist enforced by the vote/feedback RPCs.
+ *
+ * Compile-time mirror of event_types.votable, which the vote/feedback RPCs
+ * enforce (via the _event_vote_window state).
  */
 export function hasAwards(type: EventType): boolean {
   return type === 'match' || type === 'tournament';
@@ -253,48 +260,34 @@ export type Event = {
   played_at: string;
   played_at_time: string;
   location_id: number | null;
+  /** The winning event_teams row, for team-structured types; null otherwise. */
+  winning_team_id: number | null;
   finances: EventFinances | null;
 };
 
-export type Match = {
+/**
+ * A participant's role on an event, mirroring event_participants.kind.
+ * team_member is a rostered player (with a team for matches/tournaments,
+ * without one for external matches); the rest are self-explanatory.
+ */
+export type ParticipantKind = 'team_member' | 'reserve' | 'attendee' | 'coach';
+
+/** A team within an event. shirt_color is null for types that don't track one. */
+export type EventTeam = {
   id: number;
   event_id: number;
-  winning_team_id: number | null;
-};
-
-export type Training = {
-  id: number;
-  event_id: number;
-};
-
-export type Tournament = {
-  id: number;
-  event_id: number;
-  winning_team_id: number | null;
-};
-
-export type TournamentTeam = {
-  id: number;
-  tournament_id: number;
   name: string;
+  shirt_color: ShirtColor | null;
   players: Player[];
 };
 
 export type TournamentMatch = {
   id: number;
-  tournament_id: number;
+  event_id: number;
   team_a_id: number;
   team_b_id: number;
   score_a: number | null;
   score_b: number | null;
-};
-
-export type MatchTeam = {
-  id: number;
-  match_id: number;
-  name: string;
-  shirt_color: ShirtColor;
-  players: Player[];
 };
 
 export type ExternalTeam = {
@@ -338,15 +331,13 @@ export function externalMatchResult(ourScore: number | null, theirScore: number 
 
 export type MatchWithDetails = Event & {
   type: 'match';
-  match: Match;
-  teams: MatchTeam[];
+  teams: EventTeam[];
   reserves: Player[];
   location: Location | null;
 };
 
 export type TrainingWithDetails = Event & {
   type: 'training';
-  training: Training;
   attendees: Player[];
   coaches: Player[];
   location: Location | null;
@@ -354,8 +345,7 @@ export type TrainingWithDetails = Event & {
 
 export type TournamentWithDetails = Event & {
   type: 'tournament';
-  tournament: Tournament;
-  teams: TournamentTeam[];
+  teams: EventTeam[];
   reserves: Player[];
   tournamentMatches: TournamentMatch[];
   location: Location | null;

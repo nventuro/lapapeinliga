@@ -39,6 +39,13 @@ Requires `.env` with `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD`.
 - `npm run db:link` -- link local project to remote Supabase (run once)
 - `npm run db:push` -- push pending migrations to remote database
 - `npm run db:migration:new <name>` -- create a new migration file
+- `npm run db:test` -- replay the whole migration history against a throwaway
+  Postgres and assert the result. **Run this before every `db:push`.** It needs
+  no Docker and no Supabase project, and CI runs it on any change under
+  `supabase/migrations/`. Migrations are the only part of this repo that moves
+  production data and drops tables, and neither `tsc`, eslint nor the Supabase
+  linter can see any of their failure modes -- this is the only check that can.
+- `npm run db:security-check` -- probe the LIVE api as `anon` (run after a push)
 
 ### Supabase security patterns
 

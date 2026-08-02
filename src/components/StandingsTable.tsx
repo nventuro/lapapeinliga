@@ -1,8 +1,8 @@
-import type { TournamentTeam, TournamentMatch } from '../types';
+import type { EventTeam, TournamentMatch } from '../types';
 import { computeStandings } from '../utils/tournamentStandings';
 
 interface StandingsTableProps {
-  teams: TournamentTeam[];
+  teams: EventTeam[];
   matches: TournamentMatch[];
 }
 

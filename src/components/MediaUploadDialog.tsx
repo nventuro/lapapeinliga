@@ -157,6 +157,15 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   }
 
   async function handleCreateTag(name: string): Promise<MediaTag | null> {
+    // Reuse an existing tag with the same name (case-insensitive) so 'Asado'
+    // and 'asado' can't fork; the DB has a matching unique index.
+    const { data: existing } = await supabase
+      .from('media_tags')
+      .select('id, name')
+      .ilike('name', name)
+      .maybeSingle();
+    if (existing) return existing as MediaTag;
+
     const { data, error } = await supabase
       .from('media_tags')
       .insert({ name })

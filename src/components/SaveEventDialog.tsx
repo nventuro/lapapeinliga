@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useModalDialog } from '../hooks/useModalDialog';
 import { useNavigate } from 'react-router-dom';
-import type { Team, Player, ShirtColor, Location, ExternalTeam, ExternalTeamSelection } from '../types';
+import type { Team, ParticipantKind, Player, ShirtColor, Location, ExternalTeam, ExternalTeamSelection } from '../types';
 import { EVENT_TYPE_LABELS, compareByName, hasFinances, isNewLocationComplete, isExternalTeamSelectionComplete, unhandledEventType } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
@@ -52,115 +52,44 @@ function RosterPreview({ title, players }: { title: string; players: Player[] })
   );
 }
 
-async function insertMatchChildren(
+type ParticipantInsert = { event_id: number; player_id: number; kind: ParticipantKind; team_id?: number };
+
+const participantRows = (eventId: number, players: Player[], kind: ParticipantKind): ParticipantInsert[] =>
+  players.map((p) => ({ event_id: eventId, player_id: p.id, kind }));
+
+async function insertParticipants(rows: ParticipantInsert[]): Promise<string | null> {
+  if (rows.length === 0) return null;
+  const { error } = await supabase.from('event_participants').insert(rows);
+  return error?.message ?? null;
+}
+
+/** Creates the event's teams (shirt colors for matches only) and its full roster. */
+async function insertTeamsAndRoster(
   eventId: number,
   teams: Team[],
   reserves: Player[],
   teamNames: string[],
-  shirtColors: ShirtColor[],
+  shirtColors: ShirtColor[] | null,
 ): Promise<string | null> {
-  const { data: match, error: matchError } = await supabase
-    .from('matches')
-    .insert({ event_id: eventId })
-    .select('id')
-    .single();
-
-  if (matchError || !match) return matchError?.message ?? 'Error al crear el partido.';
-
-  const trimmedNames = teamNames.map((n) => n.trim());
   const { data: insertedTeams, error: teamsError } = await supabase
-    .from('match_teams')
-    .insert(trimmedNames.map((name, i) => ({ match_id: match.id, name, shirt_color: shirtColors[i] })))
+    .from('event_teams')
+    .insert(teamNames.map((name, i) => ({
+      event_id: eventId,
+      name: name.trim(),
+      ...(shirtColors ? { shirt_color: shirtColors[i] } : {}),
+    })))
     .select('id');
 
   if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
 
-  const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
-    teams[i].players.map((p) => ({ match_team_id: dbTeam.id, player_id: p.id })),
-  );
-  if (playerInserts.length > 0) {
-    const { error } = await supabase.from('match_team_players').insert(playerInserts);
-    if (error) return error.message;
-  }
-
-  if (reserves.length > 0) {
-    const { error } = await supabase
-      .from('match_reserves')
-      .insert(reserves.map((p) => ({ match_id: match.id, player_id: p.id })));
-    if (error) return error.message;
-  }
-
-  return null;
-}
-
-async function insertTournamentChildren(
-  eventId: number,
-  teams: Team[],
-  reserves: Player[],
-  teamNames: string[],
-): Promise<string | null> {
-  const { data: tournament, error: tournamentError } = await supabase
-    .from('tournaments')
-    .insert({ event_id: eventId })
-    .select('id')
-    .single();
-
-  if (tournamentError || !tournament) return tournamentError?.message ?? 'Error al crear el torneo.';
-
-  const trimmedNames = teamNames.map((n) => n.trim());
-  const { data: insertedTeams, error: teamsError } = await supabase
-    .from('tournament_teams')
-    .insert(trimmedNames.map((name) => ({ tournament_id: tournament.id, name })))
-    .select('id');
-
-  if (teamsError || !insertedTeams) return teamsError?.message ?? 'Error al crear los equipos.';
-
-  const playerInserts = insertedTeams.flatMap((dbTeam, i) =>
-    teams[i].players.map((p) => ({ tournament_team_id: dbTeam.id, player_id: p.id })),
-  );
-  if (playerInserts.length > 0) {
-    const { error } = await supabase.from('tournament_team_players').insert(playerInserts);
-    if (error) return error.message;
-  }
-
-  if (reserves.length > 0) {
-    const { error } = await supabase
-      .from('tournament_reserves')
-      .insert(reserves.map((p) => ({ tournament_id: tournament.id, player_id: p.id })));
-    if (error) return error.message;
-  }
-
-  return null;
-}
-
-async function insertTrainingChildren(
-  eventId: number,
-  attendees: Player[],
-  coaches: Player[],
-): Promise<string | null> {
-  const { data: training, error: trainingError } = await supabase
-    .from('trainings')
-    .insert({ event_id: eventId })
-    .select('id')
-    .single();
-
-  if (trainingError || !training) return trainingError?.message ?? 'Error al crear el entrenamiento.';
-
-  if (attendees.length > 0) {
-    const { error } = await supabase
-      .from('training_attendees')
-      .insert(attendees.map((p) => ({ training_id: training.id, player_id: p.id })));
-    if (error) return error.message;
-  }
-
-  if (coaches.length > 0) {
-    const { error } = await supabase
-      .from('training_coaches')
-      .insert(coaches.map((p) => ({ training_id: training.id, player_id: p.id })));
-    if (error) return error.message;
-  }
-
-  return null;
+  return insertParticipants([
+    ...insertedTeams.flatMap((dbTeam, i) =>
+      teams[i].players.map((p) => ({
+        event_id: eventId, player_id: p.id, kind: 'team_member' as const, team_id: dbTeam.id,
+      })),
+    ),
+    ...participantRows(eventId, reserves, 'reserve'),
+  ]);
 }
 
 async function insertExternalMatchChildren(
@@ -169,29 +98,16 @@ async function insertExternalMatchChildren(
   roster: Player[],
   reserves: Player[],
 ): Promise<string | null> {
-  const { data: externalMatch, error: matchError } = await supabase
+  const { error: matchError } = await supabase
     .from('external_matches')
-    .insert({ event_id: eventId, external_team_id: externalTeamId })
-    .select('id')
-    .single();
+    .insert({ event_id: eventId, external_team_id: externalTeamId });
 
-  if (matchError || !externalMatch) return matchError?.message ?? 'Error al crear el partido.';
+  if (matchError) return matchError.message;
 
-  if (roster.length > 0) {
-    const { error } = await supabase
-      .from('external_match_players')
-      .insert(roster.map((p) => ({ external_match_id: externalMatch.id, player_id: p.id })));
-    if (error) return error.message;
-  }
-
-  if (reserves.length > 0) {
-    const { error } = await supabase
-      .from('external_match_reserves')
-      .insert(reserves.map((p) => ({ external_match_id: externalMatch.id, player_id: p.id })));
-    if (error) return error.message;
-  }
-
-  return null;
+  return insertParticipants([
+    ...participantRows(eventId, roster, 'team_member'),
+    ...participantRows(eventId, reserves, 'reserve'),
+  ]);
 }
 
 /** Resolves an opponent selection to an external_team id, creating it if new. */
@@ -373,11 +289,14 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
 
     // Insert child records. If any step fails, delete the event (cascades to all children).
     const childError =
-      props.type === 'match' ? await insertMatchChildren(event.id, props.teams, props.reserves, teamNames, shirtColors)
-      : props.type === 'tournament' ? await insertTournamentChildren(event.id, props.teams, props.reserves, teamNames)
+      props.type === 'match' ? await insertTeamsAndRoster(event.id, props.teams, props.reserves, teamNames, shirtColors)
+      : props.type === 'tournament' ? await insertTeamsAndRoster(event.id, props.teams, props.reserves, teamNames, null)
       : props.type === 'external_match' ? await insertExternalMatchChildren(event.id, externalTeamId!, props.roster, props.reserves)
-      : props.type === 'training' ? await insertTrainingChildren(event.id, props.attendees, props.coaches)
-      : props.type === 'social' ? null // social events have no child record
+      : props.type === 'training' ? await insertParticipants([
+          ...participantRows(event.id, props.attendees, 'attendee'),
+          ...participantRows(event.id, props.coaches, 'coach'),
+        ])
+      : props.type === 'social' ? null // social events have no child records
       : unhandledEventType(props, 'Tipo de evento desconocido.');
     if (childError) {
       await supabase.from('events').delete().eq('id', event.id);

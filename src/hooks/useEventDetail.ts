@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type {
-  EventFinances, EventType, EventWithDetails, ExternalMatch, ExternalMatchPlayer, ExternalTeam,
-  Location, Match, MatchTeam, Player, ShirtColor, Tournament, TournamentMatch, TournamentTeam, Training,
+  EventFinances, EventTeam, EventType, EventWithDetails, ExternalMatch, ExternalMatchPlayer,
+  ExternalTeam, Location, ParticipantKind, Player, ShirtColor, TournamentMatch,
 } from '../types';
 import { unhandledEventType } from '../types';
 import { supabase } from '../lib/supabase';
@@ -9,20 +9,23 @@ import { useAppContext } from '../context/appContext';
 import { useSupabaseQuery } from './useSupabaseQuery';
 
 // One embedded select fetches the event and every child it can have; RLS
-// nulls out event_finances for non-mods. This replaces a 6-9 round-trip
-// waterfall that discarded every error along the way.
+// nulls out event_finances for non-mods. Teams and participants are unified
+// tables shared by every event type, so there is no per-type plumbing here —
+// only external_matches remains as type-specific data (opponent + scores).
+// The events→event_teams embed needs the FK hint because the winner FK on
+// events creates a second relationship between the two tables.
 const EVENT_DETAIL_SELECT = `
   *,
   event_finances(cost, payee_alias_cbu),
   location:locations(*),
-  matches(*, match_teams!match_teams_match_id_fkey(id, match_id, name, shirt_color, match_team_players(player_id)), match_reserves(player_id)),
-  trainings(*, training_attendees(player_id), training_coaches(player_id)),
-  tournaments(*, tournament_teams!tournament_teams_tournament_id_fkey(id, tournament_id, name, tournament_team_players(player_id)), tournament_reserves(player_id), tournament_matches(*)),
-  external_matches(*, external_team:external_teams(id, name), external_match_players(player_id, goals), external_match_reserves(player_id, goals))
+  event_teams!event_teams_event_id_fkey(id, event_id, name, shirt_color),
+  event_participants(player_id, kind, team_id, goals),
+  tournament_matches(id, event_id, team_a_id, team_b_id, score_a, score_b),
+  external_matches(*, external_team:external_teams(id, name))
 `;
 
-type PlayerRef = { player_id: number };
-type RosterRef = { player_id: number; goals: number };
+type ParticipantRow = { player_id: number; kind: ParticipantKind; team_id: number | null; goals: number };
+type TeamRow = { id: number; event_id: number; name: string; shirt_color: ShirtColor | null };
 
 type DetailRow = {
   id: number;
@@ -32,35 +35,31 @@ type DetailRow = {
   played_at: string;
   played_at_time: string;
   location_id: number | null;
+  winning_team_id: number | null;
   event_finances: EventFinances | null;
   location: Location | null;
-  matches: (Match & {
-    match_teams: { id: number; match_id: number; name: string; shirt_color: ShirtColor; match_team_players: PlayerRef[] }[];
-    match_reserves: PlayerRef[];
-  }) | null;
-  trainings: (Training & { training_attendees: PlayerRef[]; training_coaches: PlayerRef[] }) | null;
-  tournaments: (Tournament & {
-    tournament_teams: { id: number; tournament_id: number; name: string; tournament_team_players: PlayerRef[] }[];
-    tournament_reserves: PlayerRef[];
-    tournament_matches: TournamentMatch[];
-  }) | null;
-  external_matches: (ExternalMatch & {
-    external_team: ExternalTeam | null;
-    external_match_players: RosterRef[];
-    external_match_reserves: RosterRef[];
-  }) | null;
+  event_teams: TeamRow[];
+  event_participants: ParticipantRow[];
+  tournament_matches: TournamentMatch[];
+  external_matches: (ExternalMatch & { external_team: ExternalTeam | null }) | null;
 };
 
 function mapRow(row: DetailRow, players: Player[]): EventWithDetails | null {
   const playerMap = new Map(players.map((p) => [p.id, p]));
-  const resolve = (refs: PlayerRef[]): Player[] =>
+  const resolve = (refs: ParticipantRow[]): Player[] =>
     refs.map((r) => playerMap.get(r.player_id)).filter((p): p is Player => p !== undefined);
-  const resolveRoster = (refs: RosterRef[]): ExternalMatchPlayer[] =>
+  const resolveRoster = (refs: ParticipantRow[]): ExternalMatchPlayer[] =>
     refs.flatMap((r) => {
       const player = playerMap.get(r.player_id);
       return player ? [{ player, goals: r.goals }] : [];
     });
   const byId = (a: { id: number }, b: { id: number }) => a.id - b.id;
+
+  const ofKind = (kind: ParticipantKind) => row.event_participants.filter((p) => p.kind === kind);
+  const teams: EventTeam[] = [...row.event_teams].sort(byId).map((team) => ({
+    ...team,
+    players: resolve(row.event_participants.filter((p) => p.kind === 'team_member' && p.team_id === team.id)),
+  }));
 
   const base = {
     id: row.id,
@@ -70,66 +69,44 @@ function mapRow(row: DetailRow, players: Player[]): EventWithDetails | null {
     played_at: row.played_at,
     played_at_time: row.played_at_time,
     location_id: row.location_id,
+    winning_team_id: row.winning_team_id,
     finances: row.event_finances,
+    location: row.location,
   };
 
   if (row.type === 'match') {
-    if (!row.matches) return null;
-    const { match_teams, match_reserves, ...match } = row.matches;
-    const teams: MatchTeam[] = [...match_teams].sort(byId).map(({ match_team_players, ...team }) => ({
-      ...team,
-      players: resolve(match_team_players),
-    }));
-    return { ...base, type: 'match', match, teams, reserves: resolve(match_reserves), location: row.location };
+    return { ...base, type: 'match', teams, reserves: resolve(ofKind('reserve')) };
   }
 
   if (row.type === 'tournament') {
-    if (!row.tournaments) return null;
-    const { tournament_teams, tournament_reserves, tournament_matches, ...tournament } = row.tournaments;
-    const teams: TournamentTeam[] = [...tournament_teams].sort(byId).map(({ tournament_team_players, ...team }) => ({
-      ...team,
-      players: resolve(tournament_team_players),
-    }));
     return {
       ...base,
       type: 'tournament',
-      tournament,
       teams,
-      reserves: resolve(tournament_reserves),
-      tournamentMatches: [...tournament_matches].sort(byId),
-      location: row.location,
+      reserves: resolve(ofKind('reserve')),
+      tournamentMatches: [...row.tournament_matches].sort(byId),
     };
   }
 
   if (row.type === 'external_match') {
     if (!row.external_matches || !row.external_matches.external_team) return null;
-    const { external_team, external_match_players, external_match_reserves, ...externalMatch } = row.external_matches;
+    const { external_team, ...externalMatch } = row.external_matches;
     return {
       ...base,
       type: 'external_match',
       externalMatch,
       opponent: external_team,
-      roster: resolveRoster(external_match_players),
-      reserves: resolveRoster(external_match_reserves),
-      location: row.location,
+      roster: resolveRoster(ofKind('team_member')),
+      reserves: resolveRoster(ofKind('reserve')),
     };
   }
 
   if (row.type === 'training') {
-    if (!row.trainings) return null;
-    const { training_attendees, training_coaches, ...training } = row.trainings;
-    return {
-      ...base,
-      type: 'training',
-      training,
-      attendees: resolve(training_attendees),
-      coaches: resolve(training_coaches),
-      location: row.location,
-    };
+    return { ...base, type: 'training', attendees: resolve(ofKind('attendee')), coaches: resolve(ofKind('coach')) };
   }
 
   if (row.type === 'social') {
-    return { ...base, type: 'social', location: row.location };
+    return { ...base, type: 'social' };
   }
 
   // A type this build doesn't know: render as "not found" instead of crashing.

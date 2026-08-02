@@ -1,4 +1,4 @@
-import type { TournamentMatch, TournamentTeam } from '../types';
+import type { EventTeam, TournamentMatch } from '../types';
 import { TOURNAMENT_WIN_POINTS, TOURNAMENT_DRAW_POINTS } from '../types';
 
 export interface TeamStanding {
@@ -14,7 +14,7 @@ export interface TeamStanding {
 }
 
 export function computeStandings(
-  teams: TournamentTeam[],
+  teams: EventTeam[],
   matches: TournamentMatch[],
 ): TeamStanding[] {
   const standingMap = new Map<number, TeamStanding>();

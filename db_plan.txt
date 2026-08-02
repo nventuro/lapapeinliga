@@ -1,73 +1,78 @@
-DB RESTRUCTURE PLAN (deferred)
-==============================
+DB RESTRUCTURE PLAN — executed 2026-08-01
+=========================================
 
-Context: the five event types are implemented as parallel copy-pasted plumbing.
-Eight roster/junction tables (match_team_players, match_reserves,
-training_attendees, training_coaches, tournament_team_players,
-tournament_reserves, external_match_players, external_match_reserves), each
-with a near-identical RLS block, five near-identical removal-check trigger
-functions (20260417130000), and an event_participants view that has been
-rebuilt wholesale three times and now has 8 UNION branches (20260621120000).
-Adding a participant-bearing event type today touches ~7 database objects.
-This plan collapses that. Do it when event types next grow, or when the
-per-type plumbing needs its next non-trivial change.
+Sections 1-3 of this plan (unified event_participants table, unified event
+teams table, event-type capabilities reference table) plus section 4 are DONE,
+in migrations:
 
-1. Single event_participants TABLE (replaces the 8 junction tables + view)
-   - Shape: (event_id FK -> events, player_id FK -> players,
-     kind text CHECK IN ('team_member','reserve','attendee','coach'),
-     team_id bigint NULL, goals int NOT NULL DEFAULT 0,
-     PRIMARY KEY (event_id, player_id)).
-   - team_id references a unified teams table (see 2) and is non-null only for
-     kind='team_member'. goals is only meaningful for external matches; a CHECK
-     tied to the event type can wait for the capabilities table (see 3).
-   - One RLS block (mods insert/delete, world read), ONE removal-integrity
-     trigger instead of five, and the awards/cost/tagging code already keys on
-     exactly (event_id, player_id) so client changes are mechanical.
-   - Migration: INSERT INTO the new table from all 8 old tables (the current
-     view's UNION branches are exactly the backfill query), swap the view name
-     to the table, drop the old tables. Client: useEventDetail's select
-     becomes one embed; TeamRosterConfig (src/components/teamRosterConfig.ts)
-     collapses to a single config.
+  20260802110000_event_type_capabilities.sql
+  20260802110001_unify_participants_and_teams.sql
+  20260802110002_hardening_cheap_wins.sql
+  20260802110003_restrict_player_deletion.sql
 
-2. Unified event teams table
-   - match_teams and tournament_teams differ only by shirt_color. One table:
-     (id, event_id, name, shirt_color NULL) + UNIQUE (event_id, id) so
-     winner/fixture FKs stay composite (the 20260802100001 pattern).
-   - tournament_matches then references (event_id, team_x_id).
+Adding a participant-bearing event type now costs one row in `event_types`
+plus one member of the `EventType` union in src/types.ts; the compiler
+(unhandledEventType) points at every dispatch site that needs a branch.
 
-3. event_type capabilities reference table ("make capabilities data, not code")
-   - event_type(type PK, votable bool, has_participants bool, has_finances
-     bool); events.type gets an FK to it.
-   - _event_vote_window reads `votable` instead of the hardcoded
-     IN ('match','tournament') (which as of 20260802100000 exists in ONE place,
-     mirrored by the write RPCs; the reference table removes even that echo).
-   - Client mirror: hasParticipantList/hasFinances/hasAwards in src/types.ts
-     stay as the compile-time mirror (same pattern as AwardType vs award_types).
-   - Adding event type #6 then costs: one row here + one client union member,
-     with the compiler (unhandledEventType) pointing at every dispatch site.
+Verified by `npm run db:test` (scripts/migration-replay.mjs), which replays the
+entire migration history against a throwaway Postgres with production-shaped
+seed data and asserts the backfill, constraints, RLS and triggers. Run it before
+any db:push — it catches what tsc and the Supabase linter cannot, and CI runs it
+on every change under supabase/migrations/.
 
-4. Decisions to make consciously (cheap, independent of the above)
-   - Social-event visibility: events/locations are anon-readable, which is fine
-     for rented pitches but a social event can carry someone's home address in
-     locations.maps_url with an exact date/time, world-readable while signed
-     out. Decide: acceptable (private group, obscure URL) or gate social rows
-     (policy `type <> 'social' OR auth.role() = 'authenticated'`).
-   - Player deletion still CASCADEs through rosters, votes and media tags
-     (only event_award_resolutions is RESTRICT as of 20260802100001). If
-     history matters, consider soft-delete (players.deleted_at) instead of row
-     deletion; stats already tolerate missing players.
-   - media_tags.name is case-SENSITIVE unique ('Asado' and 'asado' fork);
-     locations.name and team names have no uniqueness at all (the "new
-     location" flow can create duplicate venues). Add lower(name) unique
-     indexes where duplicates hurt, with a dedup backfill first.
-   - No audit columns exist anywhere (created_at/created_by); with three
-     privilege tiers writing, nothing attributes a change. Add created_at
-     DEFAULT now() broadly; created_by via a default from auth.jwt() on the
-     tables mods write.
-   - events.short_id (28 bits) has no collision retry: an unlucky INSERT just
-     fails. Wrap generation in a retry loop inside a SECURITY DEFINER helper,
-     or accept the ~1-in-thousands failure.
+Two deviations from the plan as written, both deliberate:
 
-Sequencing sketch: 3 (reference table, no data movement) -> 1+2 in one
-migration with backfill inside a transaction -> drop old tables once a deploy
-cycle has proven the new paths -> 4 items independently, anytime.
+  * The winner column moved to events.winning_team_id, but mods do NOT get an
+    UPDATE policy on events. The old matches/tournaments arrangement (mod
+    UPDATE + a BEFORE UPDATE trigger restricting non-admins to one column)
+    cannot be lifted onto events: that trigger fires for every writer,
+    including the table owner, and is_admin() is false without an end-user
+    JWT — so it would reject every future migration and service-role write.
+    The winner is set through the SECURITY DEFINER `set_event_winner` RPC
+    instead, matching how every other mod/player-scoped write already works.
+
+  * Old tables were dropped in the same migration as the backfill rather than
+    a deploy cycle later: everything here ships in one `db push`, so a delayed
+    drop would land in the same batch anyway. Count assertions inside the
+    transaction abort the whole migration on any mismatch.
+
+
+DECIDED 2026-08-02
+------------------
+
+1. Social-event visibility — DECIDED: leave as is. events and locations stay
+   anon-readable. Checked at the time: all 18 locations were named commercial
+   venues (clubs, predios, polideportivos) and the only social event was at
+   Club Comunicaciones, so nothing private was exposed. The residual risk is a
+   future social event at a private address, where the name, the exact date and
+   time, and the maps pin would be readable while logged out. If that ever
+   matters, the fix is one policy on events:
+   `type <> 'social' OR auth.role() = 'authenticated'`.
+
+2. Player deletion — DONE in 20260802110003, but NOT via soft-delete.
+   event_participants.player_id and media_player_tags.player_id became
+   ON DELETE RESTRICT, joining event_award_resolutions (20260802100001), and a
+   BEFORE DELETE trigger on players explains the refusal in Spanish (PlantelPage
+   alerts error.message straight to the admin). Deleting a player with history
+   is now refused instead of silently erasing it; a player with no history at
+   all still deletes.
+
+   Soft-delete (players.deleted_at) was rejected: it taxes every player query,
+   players_public, the roster UI and the unique-name constraint forever, and it
+   solves a problem nobody has — deleting someone while KEEPING their history.
+   The real defect was that the erasure was SILENT. Revisit only if preserving
+   a deleted player's record becomes an actual requirement.
+
+   Live data at the time: of 56 players, 39 already held an award and were
+   protected; 16 of the remaining 17 had real history (up to 6 appearances and
+   5 photo tags) that one confirm dialog would have wiped.
+
+Consciously decided NOT to do (recorded so they aren't re-litigated):
+
+  * Team-name uniqueness within an event: duplicates are immediately visible
+    user error and every relation keys on team ids, so a constraint would add
+    friction without preventing a real failure.
+  * created_by audit columns: these tables are world-readable, so recording
+    the author would let anyone enumerate which players are mods/admins —
+    which 20260417120000 deliberately hides. Real actor attribution needs an
+    RLS-gated audit table; created_at alone was added everywhere instead.

@@ -1,42 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { EventFinances, EventType } from '../types';
-import { EVENT_TYPE_LABELS, EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, externalMatchResult, unhandledEventType } from '../types';
+import { EVENT_TYPE_LABELS, EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, externalMatchResult } from '../types';
 import { supabase, orderEvents, buildEventLabels } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import CostSummary from './CostSummary';
 import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import Tooltip from './Tooltip';
-
-interface MatchSubRow {
-  id: number;
-  winning_team_id: number | null;
-  match_teams: { id: number; name: string; match_team_players: { count: number }[] }[];
-  match_reserves: { count: number }[];
-}
-
-interface TrainingSubRow {
-  id: number;
-  training_attendees: { count: number }[];
-  training_coaches: { count: number }[];
-}
-
-interface TournamentSubRow {
-  id: number;
-  winning_team_id: number | null;
-  tournament_teams: { id: number; name: string; tournament_team_players: { count: number }[] }[];
-  tournament_reserves: { count: number }[];
-}
-
-interface ExternalMatchSubRow {
-  id: number;
-  our_score: number | null;
-  their_score: number | null;
-  external_team: { name: string } | null;
-  external_match_players: { count: number }[];
-  external_match_reserves: { count: number }[];
-}
 
 interface EventRow {
   id: number;
@@ -45,12 +16,16 @@ interface EventRow {
   type: EventType;
   played_at: string;
   played_at_time: string;
+  winning_team_id: number | null;
   finances: EventFinances | null;
   location: { name: string } | null;
-  matches: MatchSubRow | null;
-  trainings: TrainingSubRow | null;
-  tournaments: TournamentSubRow | null;
-  external_matches: ExternalMatchSubRow | null;
+  event_teams: { id: number; name: string }[];
+  event_participants: { count: number }[];
+  external_matches: {
+    our_score: number | null;
+    their_score: number | null;
+    external_team: { name: string } | null;
+  } | null;
 }
 
 // Finances live in the mod/admin-only event_finances table; PostgREST embeds
@@ -58,33 +33,6 @@ interface EventRow {
 type RawEventRow = Omit<EventRow, 'finances'> & {
   event_finances: EventFinances | null;
 };
-
-function totalParticipants(event: EventRow): number {
-  if (event.type === 'match') {
-    if (!event.matches) return 0;
-    const teamPlayers = event.matches.match_teams.reduce((sum, t) => sum + (t.match_team_players[0]?.count ?? 0), 0);
-    const reserves = event.matches.match_reserves[0]?.count ?? 0;
-    return teamPlayers + reserves;
-  }
-  if (event.type === 'tournament') {
-    if (!event.tournaments) return 0;
-    const teamPlayers = event.tournaments.tournament_teams.reduce((sum, t) => sum + (t.tournament_team_players[0]?.count ?? 0), 0);
-    const reserves = event.tournaments.tournament_reserves[0]?.count ?? 0;
-    return teamPlayers + reserves;
-  }
-  if (event.type === 'external_match') {
-    if (!event.external_matches) return 0;
-    const roster = event.external_matches.external_match_players[0]?.count ?? 0;
-    const reserves = event.external_matches.external_match_reserves[0]?.count ?? 0;
-    return roster + reserves;
-  }
-  if (event.type === 'training') {
-    if (!event.trainings) return 0;
-    return (event.trainings.training_attendees[0]?.count ?? 0) + (event.trainings.training_coaches[0]?.count ?? 0);
-  }
-  if (event.type === 'social') return 0; // no participant list
-  return unhandledEventType(event.type, 0);
-}
 
 export default function EventListPage() {
   const { isAdmin, showCosts } = useAppContext();
@@ -95,15 +43,16 @@ export default function EventListPage() {
 
   useEffect(() => {
     async function fetchEvents() {
+      // The events→event_teams embed needs the FK hint because the winner FK
+      // on events creates a second relationship between the two tables.
       const query = supabase
         .from('events')
         .select(`
           *,
           event_finances(cost, payee_alias_cbu),
-          matches(id, winning_team_id, match_teams!match_teams_match_id_fkey(id, name, match_team_players(count)), match_reserves(count)),
-          trainings(id, training_attendees(count), training_coaches(count)),
-          tournaments(id, winning_team_id, tournament_teams!tournament_teams_tournament_id_fkey(id, name, tournament_team_players(count)), tournament_reserves(count)),
-          external_matches(id, our_score, their_score, external_team:external_teams(name), external_match_players(count), external_match_reserves(count)),
+          event_teams!event_teams_event_id_fkey(id, name),
+          event_participants(count),
+          external_matches(our_score, their_score, external_team:external_teams(name)),
           location:locations(name)
         `);
       const { data, error } = await orderEvents(query, false);
@@ -147,18 +96,13 @@ export default function EventListPage() {
       <div className="space-y-3">
         {events.map((event) => {
           const eventLabel = labels.get(event.id) ?? '?';
-          const participantCount = totalParticipants(event);
-          const match = event.type === 'match' ? event.matches : null;
-          const tournament = event.type === 'tournament' ? event.tournaments : null;
+          const participantCount = event.event_participants[0]?.count ?? 0;
           const externalMatch = event.type === 'external_match' ? event.external_matches : null;
           const externalResult = externalMatch
             ? externalMatchResult(externalMatch.our_score, externalMatch.their_score)
             : null;
-          const winnerTeam = match?.winning_team_id
-            ? match.match_teams.find((t) => t.id === match.winning_team_id)
-            : null;
-          const tournamentWinner = tournament?.winning_team_id
-            ? tournament.tournament_teams.find((t) => t.id === tournament.winning_team_id)
+          const winnerTeam = event.winning_team_id != null
+            ? event.event_teams.find((t) => t.id === event.winning_team_id)
             : null;
           const TypeIcon = EVENT_TYPE_ICONS[event.type];
 
@@ -186,14 +130,14 @@ export default function EventListPage() {
                 <p className="text-sm text-muted mt-1">
                   {event.location ? `${event.location.name} · ` : ''}{formatTime(event.played_at_time)}
                 </p>
-                {event.type === 'match' && match && (
+                {event.type === 'match' && event.event_teams.length > 0 && (
                   <p className="text-xs text-muted mt-1.5">
-                    {match.match_teams.map((t) => t.name).join(' vs ')}
+                    {event.event_teams.map((t) => t.name).join(' vs ')}
                   </p>
                 )}
-                {event.type === 'tournament' && tournament && (
+                {event.type === 'tournament' && event.event_teams.length > 0 && (
                   <p className="text-xs text-muted mt-1.5">
-                    {tournament.tournament_teams.map((t) => t.name).join(' / ')}
+                    {event.event_teams.map((t) => t.name).join(' / ')}
                   </p>
                 )}
                 {event.type === 'external_match' && externalMatch && (
@@ -206,9 +150,9 @@ export default function EventListPage() {
                     {participantCount} participantes
                   </p>
                 )}
-                {(winnerTeam || tournamentWinner) && (
+                {winnerTeam && (
                   <p className="text-sm font-medium text-primary mt-1">
-                    Ganador: {(winnerTeam ?? tournamentWinner)!.name}
+                    Ganador: {winnerTeam.name}
                   </p>
                 )}
                 {externalMatch && externalResult && (
