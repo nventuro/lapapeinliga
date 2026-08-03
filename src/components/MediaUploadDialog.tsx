@@ -4,7 +4,7 @@ import { useUploadQueue } from '../hooks/useUploadQueue';
 import { useEventsIndex } from '../hooks/useEventsIndex';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { EQUIPO_TAG_NAME } from '../types';
-import type { MediaTag, TaggedPlayer } from '../types';
+import type { MediaTag, Player, TaggedPlayer } from '../types';
 import type { UploadFileEntry } from '../utils/mediaUpload';
 import { supabase } from '../lib/supabase';
 import { toLocalISODate } from '../utils/dateUtils';
@@ -23,13 +23,19 @@ interface MediaUploadDialogProps {
   prefilledEventId?: number | null;
   /** Files uploaded from a trophy's page belong to it as well as to any fecha. */
   trophyId?: number | null;
+  /**
+   * Who to offer for tagging, when the caller already knows. A trophy carries
+   * its own list of who was part of it, and there is no fecha to derive one
+   * from -- without this the picker falls back to the entire club.
+   */
+  tagCandidates?: Player[];
 }
 
 function todayISO(): string {
   return toLocalISODate(new Date());
 }
 
-export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEventId, trophyId = null }: MediaUploadDialogProps) {
+export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEventId, trophyId = null, tagCandidates }: MediaUploadDialogProps) {
   // Step 1: batch metadata
   const [date, setDate] = useState(todayISO);
   const [selectedEventId, setSelectedEventId] = useState<string>(
@@ -57,10 +63,19 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
   const { players: allPlayers } = useAppContext();
   const eventId = selectedEventId ? Number(selectedEventId) : null;
-  const { participants, loading: participantsLoading } = useEventParticipants(
+  const { participants: eventParticipants, loading: eventParticipantsLoading } = useEventParticipants(
     eventId,
     events.find((e) => e.id === eventId)?.type ?? null,
   );
+  const participants = tagCandidates ?? eventParticipants;
+  const participantsLoading = tagCandidates ? false : eventParticipantsLoading;
+
+  /**
+   * Whether `participants` is an actual roster -- a fecha's or a trophy's --
+   * rather than the whole club, which is what useEventParticipants falls back
+   * to. Only then does auto-tagging on "equipo" mean anything.
+   */
+  const hasKnownRoster = tagCandidates != null || eventId !== null;
   const queue = useUploadQueue({ eventId, trophyId, date, onItemUploaded });
 
   function handleClose() {
@@ -128,8 +143,8 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
       let { taggedPlayers } = oldEntry;
 
-      // Auto-tag all event participants when "equipo" tag is added
-      if (!hadEquipo && hasEquipo && eventId !== null && participants.length > 0) {
+      // Auto-tag everyone on the roster when the "equipo" tag is added
+      if (!hadEquipo && hasEquipo && hasKnownRoster && participants.length > 0) {
         const currentIds = new Set(taggedPlayers.map((p) => p.id));
         const newPlayers: TaggedPlayer[] = participants
           .filter((p) => !currentIds.has(p.id))

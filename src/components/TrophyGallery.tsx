@@ -79,6 +79,7 @@ export default function TrophyGallery({
             onClose={() => { setShowUpload(false); refetch(); onCoverChanged(); }}
             onItemUploaded={() => refetch()}
             trophyId={trophyId}
+            tagCandidates={participants}
           />
         )}
       </section>
@@ -141,6 +142,7 @@ export default function TrophyGallery({
           onClose={() => { setShowUpload(false); refetch(); onCoverChanged(); }}
           onItemUploaded={() => refetch()}
           trophyId={trophyId}
+          tagCandidates={participants}
         />
       )}
     </section>
