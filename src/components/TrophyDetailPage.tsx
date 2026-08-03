@@ -80,7 +80,7 @@ export default function TrophyDetailPage() {
         </div>
 
         <div className="relative aspect-3/2 rounded-xl overflow-hidden mt-3">
-          <TrophyCover cover={trophy.cover} title={trophy.title} full />
+          <TrophyCover cover={trophy.cover} title={trophy.title} />
         </div>
 
         <h2 className="text-2xl font-bold mt-4 break-words">{trophy.title}</h2>
@@ -95,6 +95,14 @@ export default function TrophyDetailPage() {
           </Link>
         )}
       </div>
+
+      {trophy.description && (
+        /* whitespace-pre-line so the paragraph breaks an admin typed survive;
+           the field is a textarea, so they will type some. */
+        <p className="text-sm leading-relaxed whitespace-pre-line text-muted-strong">
+          {trophy.description}
+        </p>
+      )}
 
       {trophy.participants.length > 0 && (
         <section>

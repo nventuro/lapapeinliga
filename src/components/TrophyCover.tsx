@@ -5,8 +5,6 @@ import { TrophyIcon } from './icons';
 interface TrophyCoverProps {
   cover: MediaItem | null;
   title: string;
-  /** Thumbnails are enough for the list; the detail page wants the full image. */
-  full?: boolean;
 }
 
 /**
@@ -16,8 +14,15 @@ interface TrophyCoverProps {
  * A cover-led layout falls apart the moment a cover is missing, so the empty
  * case is a designed surface rather than a blank box: the navy band the club
  * already uses, carrying its pinstripes and the crest's trophy mark.
+ *
+ * Always the full image, never the thumbnail: even the smaller cards are the
+ * width of the page, which is 358 CSS px on a phone and 672 on desktop -- times
+ * the device pixel ratio. A THUMBNAIL_MAX_WIDTH (400px) source is upscaled
+ * severalfold there and reads as visibly pixelated. `loading="lazy"` is what
+ * keeps the weight off the page instead: covers below the fold cost nothing
+ * until they are scrolled to.
  */
-export default function TrophyCover({ cover, title, full = false }: TrophyCoverProps) {
+export default function TrophyCover({ cover, title }: TrophyCoverProps) {
   if (!cover) {
     return (
       <div className="absolute inset-0 bg-primary pinstripes flex items-center justify-center">
@@ -28,7 +33,7 @@ export default function TrophyCover({ cover, title, full = false }: TrophyCoverP
 
   return (
     <img
-      src={mediaUrl(full ? cover.storage_path : cover.thumbnail_path)}
+      src={mediaUrl(cover.storage_path)}
       alt={title}
       className="absolute inset-0 w-full h-full object-cover"
       loading="lazy"
