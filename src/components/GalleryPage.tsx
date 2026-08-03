@@ -183,41 +183,36 @@ export default function GalleryPage() {
 
 
   if (loading) {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Galería</h2>
-        </div>
-        <p className="text-muted text-center py-16">Cargando...</p>
-      </div>
-    );
+    return <p className="text-muted text-center py-16">Cargando...</p>;
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">Galería</h2>
-        {isModOrAdmin && items.length > 0 && (
-          <Tooltip label="Subir fotos">
-            <button
-              onClick={() => setShowUpload(true)}
-              className="p-2 text-muted hover:text-accent transition-colors"
-            >
-              <UploadIcon className="w-5 h-5" />
-            </button>
-          </Tooltip>
-        )}
-      </div>
-
       {/* Filters */}
       <div className="space-y-3 mb-6">
-        {/* Event dropdown */}
-        <EventSelect
-          events={events}
-          eventLabels={eventLabels}
-          value={eventIdParam ?? ''}
-          onChange={handleEventFilter}
-        />
+        {/* Event dropdown, sharing its row with the upload action: the tab strip
+            already names the page, so there is no heading for the action to sit
+            beside and it would otherwise float alone over the grid. */}
+        <div className="flex gap-2">
+          <div className="flex-1 min-w-0">
+            <EventSelect
+              events={events}
+              eventLabels={eventLabels}
+              value={eventIdParam ?? ''}
+              onChange={handleEventFilter}
+            />
+          </div>
+          {isModOrAdmin && items.length > 0 && (
+            <Tooltip label="Subir fotos">
+              <button
+                onClick={() => setShowUpload(true)}
+                className="shrink-0 px-3 py-2 border border-border rounded-lg bg-surface text-muted hover:text-accent hover:border-accent transition-colors"
+              >
+                <UploadIcon className="w-5 h-5" />
+              </button>
+            </Tooltip>
+          )}
+        </div>
 
         {/* Player search filter */}
         {taggedPlayers.length > 0 && (

@@ -20,6 +20,78 @@
   );
 }
 
+/* The foil treatment on a featured trophy cover -- the lead card in the list and
+   the detail hero. Four layers Tailwind cannot express on its own, applied by
+   `TrophyCover` when `featured` is set.
+
+   `foil-sweep` blends with `screen`, which blends against everything painted
+   below it in the nearest stacking context -- so the cover container must be
+   `isolate`, or the glimmer reaches past the card and lights up the page. */
+@utility foil-sweep {
+  background-image: linear-gradient(
+    105deg,
+    transparent 39%,
+    /* Plain white: this is a specular highlight, not a UI color. */
+    color-mix(in srgb, white 50%, transparent) 46%,
+    color-mix(in srgb, var(--color-lime) 75%, transparent) 50%,
+    color-mix(in srgb, var(--color-celeste) 48%, transparent) 54%,
+    transparent 61%
+  );
+  /* `screen` and not `overlay`: overlay keeps its contrast over a bright cover,
+     but it drives the lime hard enough to tint faces yellow, and every cover
+     here has faces in it. */
+  mix-blend-mode: screen;
+  animation: foil-sweep 6s linear infinite;
+}
+
+/* The metallic hairline. The gradient is drawn over the whole card and then
+   masked down to a 1.5px ring by subtracting the content box from the padding
+   box -- the only way to get a gradient border without a second element. */
+@utility foil-ring {
+  padding: 1.5px;
+  background-image: linear-gradient(
+    118deg,
+    var(--color-lime) 0%,
+    white 12%,
+    var(--color-celeste) 26%,
+    var(--color-primary) 40%,
+    var(--color-lime) 56%,
+    white 70%,
+    var(--color-celeste) 84%,
+    var(--color-lime) 100%
+  );
+  background-size: 280% 100%;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: foil-edge 7s linear infinite;
+}
+
+/* The grade under the glimmer: a floodlight bloom from the top corner and a
+   vignette pulling the bottom down. Covers are phone photos taken at night on
+   whatever pitch was free, so this is what makes them look shot on purpose.
+   The bloom is a literal stadium-light warmth, deliberately outside the
+   palette -- a celeste bloom would read as a color cast, not as light. */
+@utility cover-grade {
+  background-image:
+    radial-gradient(120% 78% at 72% -12%, color-mix(in srgb, #fff0c6 40%, transparent), transparent 62%),
+    radial-gradient(110% 95% at 45% 118%, color-mix(in srgb, var(--color-primary) 55%, transparent), transparent 66%);
+}
+
+/* Film grain, as an inline noise tile. Kept at 0.3 -- past roughly a third it
+   stops reading as grain and starts reading as a badly compressed JPEG. */
+@utility cover-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  mix-blend-mode: overlay;
+  opacity: 0.3;
+}
+
 /* Palette derived from the club crest (src/assets/crest.png): navy #1a2c4c,
    celeste #62afd5, lime #d1d82a. The crest colors are used as-is for fills, but
    celeste and lime are far too light to carry text (2.44:1 and 1.55:1 on white),
@@ -195,6 +267,54 @@
   100% {
     transform: translate(var(--burst-x), calc(var(--burst-y) + 700px)) rotate(720deg);
     opacity: 0;
+  }
+}
+
+/* The glimmer: about 3s crossing the cover, then about 3s of nothing before it
+   comes round again. Looping it end to end reads as a spinner -- the pause is
+   what makes it read as light crossing a surface. Linear on purpose: a specular
+   highlight travels at a constant speed, and easing it makes it look elastic.
+   The band is off-frame either side of `translateX(±70%)`, so both fades happen
+   where they cannot be seen and the pass has no visible start or stop. */
+@keyframes foil-sweep {
+  0% {
+    transform: translateX(-70%);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(70%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(70%);
+    opacity: 0;
+  }
+}
+
+/* The ring's gradient creeping around the perimeter, the way foil stock catches
+   light as it tilts. Slower than the glimmer and always running, since it is a
+   1.5px line rather than a moving highlight. */
+@keyframes foil-edge {
+  to {
+    background-position: 280% 0;
+  }
+}
+
+/* The foil is decoration. Without motion the glimmer has nothing left to say,
+   so it goes entirely rather than parking mid-cover as a bright diagonal smear;
+   the ring keeps its gradient and just stops creeping. */
+@media (prefers-reduced-motion: reduce) {
+  .foil-sweep {
+    display: none;
+  }
+  .foil-ring {
+    animation: none;
   }
 }
 

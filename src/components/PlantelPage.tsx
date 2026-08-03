@@ -157,16 +157,6 @@ export default function PlantelPage() {
                           <MailOffIcon className="w-4 h-4 text-warning" />
                         </Tooltip>
                       )}
-                      {playersWithPhotos.has(player.id) && (
-                        <Tooltip label="Ver fotos">
-                          <button
-                            onClick={() => navigate(`/galeria?player=${player.id}`)}
-                            className="text-muted hover:text-accent transition-colors p-1"
-                          >
-                            <PhotosIcon className="w-4 h-4" />
-                          </button>
-                        </Tooltip>
-                      )}
                       {mostWonIds.has(player.id) && (
                         <Tooltip label={`Más partidos ganados (${gamesWon.get(player.id)})`}>
                           <TrophyIcon className="w-4 h-4 text-lime-strong" />
@@ -218,6 +208,16 @@ export default function PlantelPage() {
                             </button>
                           </Tooltip>
                         </>
+                      )}
+                      {playersWithPhotos.has(player.id) && (
+                        <Tooltip label="Ver fotos">
+                          <button
+                            onClick={() => navigate(`/galeria?player=${player.id}`)}
+                            className="text-muted hover:text-accent transition-colors p-1"
+                          >
+                            <PhotosIcon className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
                       )}
                     </div>
                   </li>

@@ -33,13 +33,17 @@ function Faces({ participants }: { participants: Player[] }) {
   );
 }
 
+/**
+ * `isolate` is what keeps the lead card's glimmer blending against its own
+ * cover and nothing else -- see `featured` in TrophyCover.
+ */
 function TrophyCard({ trophy, lead }: { trophy: TrophyWithDetails; lead: boolean }) {
   return (
     <Link
       to={`/trofeos/${trophy.id}`}
-      className={`relative block rounded-xl overflow-hidden ${lead ? 'aspect-4/5' : 'aspect-16/10'}`}
+      className={`relative block rounded-xl overflow-hidden isolate ${lead ? 'aspect-4/5' : 'aspect-16/10'}`}
     >
-      <TrophyCover cover={trophy.cover} title={trophy.title} />
+      <TrophyCover cover={trophy.cover} title={trophy.title} featured={lead} />
       {/* The scrim is what makes the title legible over an unknown photo. */}
       <div className="absolute inset-x-0 bottom-0 pt-16 bg-gradient-to-t from-primary/95 via-primary/70 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-4">
@@ -74,19 +78,20 @@ export default function TrophyListPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">Trofeos</h2>
-        {isAdmin && trophies.length > 0 && (
+      {/* The tab strip already names the page, so the action stands on its own
+          row rather than beside a heading. */}
+      {isAdmin && trophies.length > 0 && (
+        <div className="flex justify-end mb-4">
           <Tooltip label="Agregar trofeo">
             <button
               onClick={() => setCreating(true)}
-              className="p-2 text-muted hover:text-accent transition-colors"
+              className="px-3 py-2 border border-border rounded-lg bg-surface text-muted hover:text-accent hover:border-accent transition-colors"
             >
               <PlusIcon className="w-5 h-5" />
             </button>
           </Tooltip>
-        )}
-      </div>
+        </div>
+      )}
 
       {trophies.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted">

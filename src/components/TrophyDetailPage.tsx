@@ -79,8 +79,10 @@ export default function TrophyDetailPage() {
           )}
         </div>
 
-        <div className="relative aspect-3/2 rounded-xl overflow-hidden mt-3">
-          <TrophyCover cover={trophy.cover} title={trophy.title} />
+        {/* `isolate` confines the cover's glimmer to the card -- see `featured`
+            in TrophyCover. */}
+        <div className="relative aspect-3/2 rounded-xl overflow-hidden isolate mt-3">
+          <TrophyCover cover={trophy.cover} title={trophy.title} featured />
         </div>
 
         <h2 className="text-2xl font-bold mt-4 break-words">{trophy.title}</h2>
