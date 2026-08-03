@@ -500,12 +500,17 @@ export type MediaItemWithTags = MediaItem & {
 /** Max length for a trophy title; the database enforces the same cap. */
 export const MAX_TROPHY_TITLE_LENGTH = 120;
 
+/** Max length for the story behind a trophy. Same cap in the database. */
+export const MAX_TROPHY_DESCRIPTION_LENGTH = 1000;
+
 /** How many people the cover card names before the rest collapse into a count. */
 export const TROPHY_COVER_FACE_COUNT = 5;
 
 export type Trophy = {
   id: number;
   title: string;
+  /** How it was won, in whatever detail is worth keeping. Null when unwritten. */
+  description: string | null;
   won_at: string;
   /** The fecha it was won at, when there is one. Context only -- it never
    *  dictates the participant list (a final is rarely played by everyone). */

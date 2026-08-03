@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { TaggedPlayer, TrophyWithDetails } from '../types';
-import { MAX_TROPHY_TITLE_LENGTH } from '../types';
+import { MAX_TROPHY_DESCRIPTION_LENGTH, MAX_TROPHY_TITLE_LENGTH } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { useModalDialog } from '../hooks/useModalDialog';
@@ -23,6 +23,7 @@ export default function TrophyFormDialog({ trophy, onClose, onSaved }: TrophyFor
   const { dialogRef, backdropClick } = useModalDialog(onClose);
 
   const [title, setTitle] = useState(trophy?.title ?? '');
+  const [description, setDescription] = useState(trophy?.description ?? '');
   const [wonAt, setWonAt] = useState(trophy?.won_at ?? toLocalISODate(new Date()));
   const [eventId, setEventId] = useState(trophy?.event_id ? String(trophy.event_id) : '');
   const [participants, setParticipants] = useState<TaggedPlayer[]>(
@@ -60,6 +61,8 @@ export default function TrophyFormDialog({ trophy, onClose, onSaved }: TrophyFor
 
     const fields = {
       title: trimmedTitle,
+      // Empty means absent, and absent is NULL -- the column's CHECK rejects ''.
+      description: description.trim() || null,
       won_at: wonAt,
       event_id: linkedEventId,
     };
@@ -146,6 +149,19 @@ export default function TrophyFormDialog({ trophy, onClose, onSaved }: TrophyFor
               className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted"
               autoFocus
               maxLength={MAX_TROPHY_TITLE_LENGTH}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted" htmlFor="trophy-description">Cómo fue (opcional)</label>
+            <textarea
+              id="trophy-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="Cómo se ganó, quién la rompió, lo que valga la pena contar."
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted resize-y"
+              maxLength={MAX_TROPHY_DESCRIPTION_LENGTH}
             />
           </div>
 

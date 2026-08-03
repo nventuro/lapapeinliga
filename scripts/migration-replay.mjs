@@ -517,6 +517,16 @@ async function assertions(db) {
     RETURNING id`, [linkedEvent.id]);
   check('a trophy needs neither an event nor a cover', standalone.id > 0);
 
+  check('a blank description is rejected in favour of NULL',
+    await rejects(db,
+      `INSERT INTO trophies (title, won_at, description) VALUES ('x','2026-01-01','   ')`));
+  check('an over-long description is rejected',
+    await rejects(db,
+      `INSERT INTO trophies (title, won_at, description) VALUES ('x','2026-01-01',repeat('y',1001))`));
+  check('a description within the cap is accepted',
+    await succeeds(db,
+      `INSERT INTO trophies (title, won_at, description) VALUES ('x','2026-01-01','Ganamos en penales.')`));
+
   check('empty title rejected',
     await rejects(db, `INSERT INTO trophies (title, won_at) VALUES ('   ','2026-01-01')`));
   check('over-long title rejected',
