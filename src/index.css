@@ -113,8 +113,10 @@
   --color-on-primary: #ffffff;
 
   /* The crest celeste at full strength. Fills and decoration only -- same rule
-     as `lime`. For text and links use `accent`, which is this hue darkened. */
+     as `lime`. For text and links use `accent`, which is this hue darkened.
+     Text *on* a celeste fill is the navy, which clears 5.53:1 there. */
   --color-celeste: #62afd5;
+  --color-on-celeste: #1a2c4c;
 
   /* Accent: the crest celeste, darkened to carry text. Links, highlighted
      values, active states outside the navy band. Dark enough to stay readable

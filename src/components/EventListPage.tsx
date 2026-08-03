@@ -146,41 +146,53 @@ function EventCost({ event, className }: { event: EventRow; className: string })
   return <CostSummary finances={event.finances} participantCount={participantsOf(event)} className={className} />;
 }
 
-function NextEventCard({ event, label }: { event: EventRow; label: string }) {
+/**
+ * The card's left rail: the event number over its type icon. Every card in the
+ * list carries one at the same width, so the titles and dates share a single
+ * left edge all the way down the page.
+ *
+ * Only the icon is wrapped in the `Tooltip`: that renders an `inline-flex`
+ * span, and wrapping the whole rail in it stopped the rail from stretching to
+ * the card's height, leaving the divider hanging short of both corners.
+ */
+function EventRail({ event, label, className }: { event: EventRow; label: string; className: string }) {
   const TypeIcon = EVENT_TYPE_ICONS[event.type];
+  return (
+    <div className={`flex flex-col items-center justify-center gap-1 px-3 border-r min-w-14 ${className}`}>
+      <span className="text-xs font-semibold">#{label}</span>
+      <Tooltip label={EVENT_TYPE_LABELS[event.type]}>
+        <TypeIcon className="w-5 h-5" />
+      </Tooltip>
+    </div>
+  );
+}
+
+function NextEventCard({ event, label }: { event: EventRow; label: string }) {
   return (
     <Link
       to={`/fechas/${event.short_id}`}
-      className="block bg-surface border border-accent-border rounded-xl p-4 shadow-sm hover:border-accent transition-colors"
+      className="flex bg-surface border border-accent-border rounded-xl overflow-hidden shadow-sm hover:border-accent transition-colors"
     >
-      <div className="flex items-center gap-2 text-muted">
-        <Tooltip label={EVENT_TYPE_LABELS[event.type]}>
-          <TypeIcon className="w-5 h-5" />
-        </Tooltip>
-        <span className="text-xs font-semibold">#{label}</span>
-      </div>
-      <div className="mt-1.5">
+      {/* Sharing the rail is what puts this card on the same left edge as the
+          history below it, so what marks it as the next date has to be color
+          rather than shape -- hence the crest celeste on the rail. */}
+      <EventRail event={event} label={label} className="bg-celeste border-celeste text-on-celeste" />
+      <div className="flex-1 p-4">
         <EventSummary event={event} titleClassName="font-bold text-lg leading-tight" />
+        <EventChips event={event} />
+        <EventCost event={event} className="text-xs mt-2" />
       </div>
-      <EventChips event={event} />
-      <EventCost event={event} className="text-xs mt-2" />
     </Link>
   );
 }
 
 function EventRowLink({ event, label }: { event: EventRow; label: string }) {
-  const TypeIcon = EVENT_TYPE_ICONS[event.type];
   return (
     <Link
       to={`/fechas/${event.short_id}`}
-      className="flex bg-surface border border-border rounded-xl hover:border-neutral-hover transition-colors"
+      className="flex bg-surface border border-border rounded-xl overflow-hidden hover:border-neutral-hover transition-colors"
     >
-      <Tooltip label={EVENT_TYPE_LABELS[event.type]}>
-        <div className="flex flex-col items-center justify-center gap-1 px-3 border-r border-border text-muted min-w-14">
-          <span className="text-xs font-semibold">#{label}</span>
-          <TypeIcon className="w-5 h-5" />
-        </div>
-      </Tooltip>
+      <EventRail event={event} label={label} className="border-border text-muted" />
       <div className="flex-1 p-4">
         <EventSummary event={event} titleClassName="font-medium" />
         <EventChips event={event} />
