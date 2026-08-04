@@ -80,6 +80,11 @@ export default function TrophyDetailPage() {
     ? events.find((e) => e.id === trophy.event_id)
     : undefined;
 
+  const winnersWord = trophy.participants.length > 0
+    && trophy.participants.every((p) => p.gender === 'female')
+    ? 'vencedoras'
+    : 'vencedores';
+
   return (
     <div className="space-y-6">
       <div>
@@ -163,7 +168,7 @@ export default function TrophyDetailPage() {
 
       {trophy.participants.length > 0 && (
         <section>
-          <SectionLabel dim>VENCEDORES · {trophy.participants.length}</SectionLabel>
+          <SectionLabel dim>{winnersWord.toUpperCase()} · {trophy.participants.length}</SectionLabel>
           <div className="flex flex-wrap items-center gap-1.5">
             {trophy.participants.map((player) => (
               <Link
@@ -192,7 +197,7 @@ export default function TrophyDetailPage() {
           {deleteError && <p className="text-xs text-error mb-2">{deleteError}</p>}
           <ConfirmAction
             label="Eliminar trofeo"
-            message="¿Seguro? Se borra el trofeo y su lista de vencedores. Las fotos no se borran: pasan a la galería."
+            message={`¿Seguro? Se borra el trofeo y su lista de ${winnersWord}. Las fotos no se borran: pasan a la galería.`}
             onConfirm={handleDelete}
           />
         </div>
