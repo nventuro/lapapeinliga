@@ -125,16 +125,29 @@ function EventChips({ event }: { event: EventRow }) {
   return null;
 }
 
-/** Title, date, place and lineup -- identical wording wherever an event is shown. */
-function EventSummary({ event, titleClassName }: { event: EventRow; titleClassName: string }) {
+/**
+ * Title, date, place and lineup -- identical wording wherever an event is shown.
+ *
+ * `showLogistics` gates the place · time line. It answers "where do I have to
+ * be, and when" -- a question that expires at kickoff -- so the history rows
+ * drop it and the line lives on only where it is still ahead: the next-date
+ * card, the agenda strip, and the detail page.
+ */
+function EventSummary({ event, titleClassName, showLogistics = true }: {
+  event: EventRow;
+  titleClassName: string;
+  showLogistics?: boolean;
+}) {
   const lineup = lineupOf(event);
   return (
     <>
       <p className={titleClassName}>{event.name ?? formatDate(event.played_at)}</p>
       {event.name && <p className="text-sm text-muted mt-0.5">{formatDate(event.played_at)}</p>}
-      <p className="text-sm text-muted mt-1">
-        {event.location ? `${event.location.name} · ` : ''}{formatTime(event.played_at_time)}
-      </p>
+      {showLogistics && (
+        <p className="text-sm text-muted mt-1">
+          {event.location ? `${event.location.name} · ` : ''}{formatTime(event.played_at_time)}
+        </p>
+      )}
       {lineup && <p className="text-sm text-muted mt-1">{lineup}</p>}
     </>
   );
@@ -194,7 +207,7 @@ function EventRowLink({ event, label }: { event: EventRow; label: string }) {
     >
       <EventRail event={event} label={label} className="border-border text-muted" />
       <div className="flex-1 p-4">
-        <EventSummary event={event} titleClassName="font-medium" />
+        <EventSummary event={event} titleClassName="font-medium" showLogistics={false} />
         <EventChips event={event} />
         <EventCost event={event} className="text-xs mt-2" />
       </div>

@@ -506,6 +506,9 @@ export const MAX_TROPHY_DESCRIPTION_LENGTH = 1000;
 /** How many people the cover card names before the rest collapse into a count. */
 export const TROPHY_COVER_FACE_COUNT = 5;
 
+/** Neutral cover focus: plain centering, what every cover starts with. */
+export const TROPHY_COVER_FOCUS_CENTER = 50;
+
 export type Trophy = {
   id: number;
   title: string;
@@ -516,6 +519,10 @@ export type Trophy = {
    *  dictates the participant list (a final is rarely played by everyone). */
   event_id: number | null;
   cover_media_id: number | null;
+  /** The point of the cover (percent of each axis) every crop keeps in view.
+   *  The database resets both to TROPHY_COVER_FOCUS_CENTER on a cover change. */
+  cover_focus_x: number;
+  cover_focus_y: number;
 };
 
 /** A trophy with everything both the list and the detail page render. */

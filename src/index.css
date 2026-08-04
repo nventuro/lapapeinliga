@@ -20,9 +20,10 @@
   );
 }
 
-/* The foil treatment on a featured trophy cover -- the lead card in the list and
-   the detail hero. Four layers Tailwind cannot express on its own, applied by
-   `TrophyCover` when `featured` is set.
+/* The foil treatment on a trophy cover -- every card in the list and the detail
+   hero. Four layers Tailwind cannot express on its own, applied by
+   `TrophyCover`, with each card's animations phase-shifted (a negative
+   animation-delay) so a column of covers glimmers one at a time.
 
    `foil-sweep` blends with `screen`, which blends against everything painted
    below it in the nearest stacking context -- so the cover container must be

@@ -32,7 +32,7 @@ export function useTrophies(): UseTrophiesResult {
   const { data, loading, error, refetch } = useSupabaseQuery<FetchedTrophies>(async () => {
     const { data: rows, error: trophiesError } = await supabase
       .from('trophies')
-      .select('id, title, description, won_at, event_id, cover_media_id')
+      .select('id, title, description, won_at, event_id, cover_media_id, cover_focus_x, cover_focus_y')
       .order('won_at', { ascending: false })
       .order('id', { ascending: false });
     if (trophiesError) throw new Error(trophiesError.message);

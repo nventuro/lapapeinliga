@@ -34,16 +34,34 @@ function Faces({ participants }: { participants: Player[] }) {
 }
 
 /**
- * `isolate` is what keeps the lead card's glimmer blending against its own
- * cover and nothing else -- see `featured` in TrophyCover.
+ * Seconds between one card's foil pass and the next one down. Deliberately not
+ * a divisor of the 6s sweep cycle (index.css), so a long column lands every
+ * card at a different phase instead of regrouping into a single flash every
+ * few beats.
  */
-function TrophyCard({ trophy, lead }: { trophy: TrophyWithDetails; lead: boolean }) {
+const FOIL_STAGGER_SECONDS = 1.9;
+
+/**
+ * `isolate` is what keeps each card's glimmer blending against its own
+ * cover and nothing else -- see the foil notes in TrophyCover.
+ */
+function TrophyCard({ trophy, lead, foilDelaySeconds }: {
+  trophy: TrophyWithDetails;
+  lead: boolean;
+  foilDelaySeconds: number;
+}) {
   return (
     <Link
       to={`/trofeos/${trophy.id}`}
       className={`relative block rounded-xl overflow-hidden isolate ${lead ? 'aspect-4/5' : 'aspect-16/10'}`}
     >
-      <TrophyCover cover={trophy.cover} title={trophy.title} featured={lead} />
+      <TrophyCover
+        cover={trophy.cover}
+        title={trophy.title}
+        focusX={trophy.cover_focus_x}
+        focusY={trophy.cover_focus_y}
+        foilDelaySeconds={foilDelaySeconds}
+      />
       {/* The scrim is what makes the title legible over an unknown photo. */}
       <div className="absolute inset-x-0 bottom-0 pt-16 bg-gradient-to-t from-primary/95 via-primary/70 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-4">
@@ -110,7 +128,12 @@ export default function TrophyListPage() {
       ) : (
         <div className="space-y-3">
           {trophies.map((trophy, index) => (
-            <TrophyCard key={trophy.id} trophy={trophy} lead={index === 0} />
+            <TrophyCard
+              key={trophy.id}
+              trophy={trophy}
+              lead={index === 0}
+              foilDelaySeconds={index * FOIL_STAGGER_SECONDS}
+            />
           ))}
         </div>
       )}

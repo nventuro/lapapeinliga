@@ -11,9 +11,10 @@ import GenderIcon from './GenderIcon';
 import SectionLabel from './SectionLabel';
 import Tooltip from './Tooltip';
 import TrophyCover from './TrophyCover';
+import TrophyCoverAdjust from './TrophyCoverAdjust';
 import TrophyFormDialog from './TrophyFormDialog';
 import TrophyGallery from './TrophyGallery';
-import { EditIcon } from './icons';
+import { EditIcon, MoveIcon } from './icons';
 
 export default function TrophyDetailPage() {
   const { id } = useParams();
@@ -24,9 +25,28 @@ export default function TrophyDetailPage() {
   const { events, labels } = useEventsIndex();
   const [editing, setEditing] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [adjusting, setAdjusting] = useState(false);
+  const [savingFocus, setSavingFocus] = useState(false);
+  const [adjustError, setAdjustError] = useState<string | null>(null);
 
   const trophyId = Number(id);
   const trophy = Number.isInteger(trophyId) ? trophies.find((t) => t.id === trophyId) : undefined;
+
+  async function handleSaveFocus(x: number, y: number) {
+    setSavingFocus(true);
+    setAdjustError(null);
+    const { error: saveFailure } = await supabase
+      .from('trophies')
+      .update({ cover_focus_x: x, cover_focus_y: y })
+      .eq('id', trophyId);
+    setSavingFocus(false);
+    if (saveFailure) {
+      setAdjustError(saveFailure.message);
+      return;
+    }
+    setAdjusting(false);
+    refetch();
+  }
 
   async function handleDelete() {
     const { error: deleteFailure } = await supabase.from('trophies').delete().eq('id', trophyId);
@@ -79,11 +99,46 @@ export default function TrophyDetailPage() {
           )}
         </div>
 
-        {/* `isolate` confines the cover's glimmer to the card -- see `featured`
-            in TrophyCover. */}
+        {/* `isolate` confines the cover's glimmer to the card -- see the foil
+            notes in TrophyCover. */}
         <div className="relative aspect-3/2 rounded-xl overflow-hidden isolate mt-3">
-          <TrophyCover cover={trophy.cover} title={trophy.title} featured />
+          {adjusting && trophy.cover ? (
+            <TrophyCoverAdjust
+              cover={trophy.cover}
+              initialX={trophy.cover_focus_x}
+              initialY={trophy.cover_focus_y}
+              saving={savingFocus}
+              onSave={handleSaveFocus}
+              onCancel={() => { setAdjusting(false); setAdjustError(null); }}
+            />
+          ) : (
+            <>
+              <TrophyCover
+                cover={trophy.cover}
+                title={trophy.title}
+                focusX={trophy.cover_focus_x}
+                focusY={trophy.cover_focus_y}
+              />
+              {/* The wrapper div carries the positioning because Tooltip's own
+                  span is `relative` -- an absolute button inside it would
+                  anchor to the span, not the hero. z-20 lifts it over the foil
+                  ring (z-10), which would otherwise swallow the tap. */}
+              {isAdmin && trophy.cover && (
+                <div className="absolute bottom-3 right-3 z-20">
+                  <Tooltip label="Encuadrar portada">
+                    <button
+                      onClick={() => setAdjusting(true)}
+                      className="p-2 rounded-full bg-primary/70 text-on-primary hover:bg-primary transition-colors"
+                    >
+                      <MoveIcon className="w-4 h-4" />
+                    </button>
+                  </Tooltip>
+                </div>
+              )}
+            </>
+          )}
         </div>
+        {adjustError && <p className="text-xs text-error mt-2">{adjustError}</p>}
 
         <h2 className="text-2xl font-bold mt-4 break-words">{trophy.title}</h2>
         <p className="text-sm text-muted mt-0.5">{formatDate(trophy.won_at)}</p>
@@ -108,7 +163,7 @@ export default function TrophyDetailPage() {
 
       {trophy.participants.length > 0 && (
         <section>
-          <SectionLabel dim>ESTUVIERON · {trophy.participants.length}</SectionLabel>
+          <SectionLabel dim>VENCEDORES · {trophy.participants.length}</SectionLabel>
           <div className="flex flex-wrap items-center gap-1.5">
             {trophy.participants.map((player) => (
               <Link
@@ -137,7 +192,7 @@ export default function TrophyDetailPage() {
           {deleteError && <p className="text-xs text-error mb-2">{deleteError}</p>}
           <ConfirmAction
             label="Eliminar trofeo"
-            message="¿Seguro? Se borra el trofeo y quiénes estuvieron. Las fotos no se borran: pasan a la galería."
+            message="¿Seguro? Se borra el trofeo y su lista de vencedores. Las fotos no se borran: pasan a la galería."
             onConfirm={handleDelete}
           />
         </div>

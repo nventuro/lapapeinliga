@@ -6,21 +6,30 @@ interface TrophyCoverProps {
   cover: MediaItem | null;
   title: string;
   /**
-   * Adds the foil treatment -- the grade, the glimmer crossing it and the
-   * metallic ring. Only for the two covers that are the size of the page: the
-   * lead card and the detail hero. On the smaller cards of the list it would be
-   * several of these animating at once in a scrolling column, which is the
-   * difference between a trophy and a slot machine.
-   *
-   * The container MUST be `isolate`: the glimmer blends with `screen`, and an
-   * un-isolated card blends it against the page behind the card too.
+   * The point of the image (percent of each axis) this crop keeps in view --
+   * the trophy's `cover_focus_x`/`cover_focus_y`. One stored point serves every
+   * frame because that is `object-position`'s own semantic: the x%/y% point of
+   * the image is pinned to the x%/y% point of the box, whatever the box's
+   * aspect ratio.
    */
-  featured?: boolean;
+  focusX: number;
+  focusY: number;
+  /**
+   * How far along its cycle this cover's foil already is, applied as a
+   * negative animation-delay. Every cover gets the foil treatment, and a
+   * column of covers all glimmering on the same beat reads as a slot machine
+   * rather than a trophy case -- the stagger is what keeps each pass reading
+   * as one light crossing one surface.
+   */
+  foilDelaySeconds?: number;
 }
 
 /**
  * The cover image behind a trophy card, with the stand-in used when there is
- * no cover yet.
+ * no cover yet. Always foiled -- the grade, the glimmer crossing it and the
+ * metallic ring. The container MUST be `isolate`: the glimmer blends with
+ * `screen`, and an un-isolated card blends it against the page behind the
+ * card too.
  *
  * A cover-led layout falls apart the moment a cover is missing, so the empty
  * case is a designed surface rather than a blank box: the navy band the club
@@ -33,7 +42,12 @@ interface TrophyCoverProps {
  * keeps the weight off the page instead: covers below the fold cost nothing
  * until they are scrolled to.
  */
-export default function TrophyCover({ cover, title, featured = false }: TrophyCoverProps) {
+export default function TrophyCover({
+  cover, title, focusX, focusY, foilDelaySeconds = 0,
+}: TrophyCoverProps) {
+  // Negative: the animation is already mid-cycle on mount, so the covers are
+  // spread across the beat from the first frame instead of queueing behind it.
+  const foilDelay = { animationDelay: `-${foilDelaySeconds}s` };
   return (
     <>
       {cover ? (
@@ -41,6 +55,7 @@ export default function TrophyCover({ cover, title, featured = false }: TrophyCo
           src={mediaUrl(cover.storage_path)}
           alt={title}
           className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: `${focusX}% ${focusY}%` }}
           loading="lazy"
         />
       ) : (
@@ -49,19 +64,15 @@ export default function TrophyCover({ cover, title, featured = false }: TrophyCo
         </div>
       )}
 
-      {featured && (
-        <>
-          <div className="absolute inset-0 cover-grade" />
-          <div className="absolute inset-0 cover-grain" />
-          {/* Exactly the size of the cover: the band's travel is a percentage of
-              this element, so anything larger makes it cross in a fraction of
-              the time and spend the rest of the pass off-frame. */}
-          <div className="absolute inset-0 foil-sweep" />
-          {/* Above the scrim the pages draw over the cover, so the ring reads as
-              the card's edge rather than as a line under a gradient. */}
-          <div className="absolute inset-0 z-10 rounded-xl foil-ring" />
-        </>
-      )}
+      <div className="absolute inset-0 cover-grade" />
+      <div className="absolute inset-0 cover-grain" />
+      {/* Exactly the size of the cover: the band's travel is a percentage of
+          this element, so anything larger makes it cross in a fraction of
+          the time and spend the rest of the pass off-frame. */}
+      <div className="absolute inset-0 foil-sweep" style={foilDelay} />
+      {/* Above the scrim the pages draw over the cover, so the ring reads as
+          the card's edge rather than as a line under a gradient. */}
+      <div className="absolute inset-0 z-10 rounded-xl foil-ring" style={foilDelay} />
     </>
   );
 }
