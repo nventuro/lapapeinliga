@@ -34,7 +34,6 @@ import {
   IconAxe,
   IconSwords,
   IconConfetti,
-  IconPlayerPlayFilled,
   IconArrowsMove,
 } from '@tabler/icons-react';
 
@@ -194,10 +193,6 @@ export function SwordsIcon({ className = 'w-4 h-4' }: IconProps) {
 
 export function ConfettiIcon({ className = 'w-4 h-4' }: IconProps) {
   return <IconConfetti className={className} stroke={STROKE} />;
-}
-
-export function PlayIcon({ className = 'w-4 h-4' }: IconProps) {
-  return <IconPlayerPlayFilled className={className} stroke={STROKE} />;
 }
 
 export function MoveIcon({ className = 'w-4 h-4' }: IconProps) {

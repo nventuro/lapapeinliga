@@ -470,23 +470,15 @@ export const EQUIPO_TAG_NAME = 'equipo';
 export const THUMBNAIL_MAX_WIDTH = 400;
 export const FULL_IMAGE_MAX_WIDTH = 1600;
 
-// Upload size caps; the media-upload edge function enforces the same limits
+// Upload size cap; the media-upload edge function enforces the same limit
 // server-side by signing the Content-Length of each presigned upload.
 export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
-export const MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024;
-
-// Video processing
-export const VIDEO_BOOMERANG_DEFAULT_SECONDS = 3;
-export const VIDEO_MIN_TRIM_GAP_SECONDS = 0.2;
-export const VIDEO_PROCESSING_FPS = 15;
 
 export const EVENT_MEDIA_PREVIEW_COUNT = 3;
 
 /** How much of a player's history their profile previews before "ver todas". */
 export const PLAYER_MEDIA_PREVIEW_COUNT = 6;
 export const PLAYER_EVENT_PREVIEW_COUNT = 5;
-
-export type MediaType = 'image' | 'video';
 
 export type MediaItem = {
   id: number;
@@ -497,7 +489,6 @@ export type MediaItem = {
   thumbnail_path: string;
   caption: string | null;
   taken_at: string;
-  media_type: MediaType;
   aspect_ratio: number;
 };
 

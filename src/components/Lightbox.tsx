@@ -71,8 +71,7 @@ export default function Lightbox({
         // Try sharing the actual file
         const response = await fetch(mediaUrl(item.storage_path));
         const blob = await response.blob();
-        const ext = item.media_type === 'video' ? 'webm' : 'jpg';
-        const file = new File([blob], `foto.${ext}`, { type: blob.type });
+        const file = new File([blob], 'foto.jpg', { type: blob.type });
 
         if (navigator.canShare?.({ files: [file] })) {
           await navigator.share({ files: [file] });
@@ -161,7 +160,7 @@ export default function Lightbox({
           </div>
         </div>
 
-        {/* Media content — click outside the image/video closes */}
+        {/* Media content — click outside the image closes */}
         <div
           className="flex-1 flex items-center justify-center relative min-h-0 px-2"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -176,26 +175,14 @@ export default function Lightbox({
             </button>
           )}
 
-          {/* Image or video */}
+          {/* Image */}
           <div className="max-w-full max-h-full flex items-center justify-center">
-            {item.media_type === 'video' ? (
-              <video
-                key={item.id}
-                src={mediaUrl(item.storage_path)}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="max-w-full max-h-[70vh] rounded-lg object-contain"
-              />
-            ) : (
-              <img
-                key={item.id}
-                src={mediaUrl(item.storage_path)}
-                alt={item.caption ?? ''}
-                className="max-w-full max-h-[70vh] rounded-lg object-contain"
-              />
-            )}
+            <img
+              key={item.id}
+              src={mediaUrl(item.storage_path)}
+              alt={item.caption ?? ''}
+              className="max-w-full max-h-[70vh] rounded-lg object-contain"
+            />
           </div>
 
           {/* Next button */}

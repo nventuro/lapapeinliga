@@ -10,7 +10,6 @@ import { supabase } from '../lib/supabase';
 import { toLocalISODate } from '../utils/dateUtils';
 import DateField from './DateField';
 import TagInput from './TagInput';
-import VideoTrimEditor from './VideoTrimEditor';
 import EventSelect from './EventSelect';
 import ImageCropDialog from './ImageCropDialog';
 import PlayerTagInput from './PlayerTagInput';
@@ -109,8 +108,6 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
       caption: '',
       tags: [],
       taggedPlayers: [],
-      isVideo: file.type.startsWith('video/'),
-      processedBlob: null,
     }));
     setFiles((prev) => [...prev, ...entries]);
   }
@@ -161,14 +158,6 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
     setFiles((prev) => {
       const next = [...prev];
       next[currentIndex] = { ...next[currentIndex], taggedPlayers };
-      return next;
-    });
-  }
-
-  function setProcessedBlob(blob: Blob) {
-    setFiles((prev) => {
-      const next = [...prev];
-      next[currentIndex] = { ...next[currentIndex], processedBlob: blob };
       return next;
     });
   }
@@ -267,7 +256,6 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
   }
 
   const isLastPending = currentFile ? findNextPending(currentIndex) === null : true;
-  const canSubmitCurrent = currentFile && (!currentFile.isVideo || currentFile.processedBlob);
 
   // Count how many files are still pending edit (not yet enqueued)
   const pendingEditCount = files.filter((f) => !queue.statuses.has(f.id)).length;
@@ -314,7 +302,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
             <label className="block text-sm font-medium mb-1">Archivos</label>
             <input
               type="file"
-              accept="image/*,video/mp4,video/quicktime"
+              accept="image/*"
               multiple
               onChange={handleFileSelect}
               className="w-full text-sm text-muted file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border file:border-border file:bg-border-subtle file:text-on-surface file:text-sm file:font-medium file:cursor-pointer"
@@ -369,20 +357,13 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
               so image size doesn't depend on percentage height resolution,
               which some browsers fail at inside flex-grown containers. */}
           <div
-            className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${!currentFile.isVideo && previewState === 'loaded' ? 'cursor-pointer' : ''}`}
-            onClick={() => { if (!currentFile.isVideo && previewState === 'loaded') setCroppingIndex(currentIndex); }}
+            className={`min-h-24 flex-1 relative rounded-lg overflow-hidden bg-border-subtle flex items-center justify-center ${previewState === 'loaded' ? 'cursor-pointer' : ''}`}
+            onClick={() => { if (previewState === 'loaded') setCroppingIndex(currentIndex); }}
           >
             {previewState === 'error' ? (
               <p className="text-error text-sm px-4 text-center">
                 No se pudo cargar la vista previa. Probá saltando este archivo.
               </p>
-            ) : currentFile.isVideo ? (
-              <video
-                src={previewUrl}
-                className="absolute inset-0 w-full h-full object-contain"
-                muted
-                onError={() => setPreviewState('error')}
-              />
             ) : (
               <>
                 <img
@@ -407,17 +388,6 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
 
           {/* Controls (fixed size, never shrink) */}
           <div className="shrink-0 space-y-3">
-            {/* Video trim editor */}
-            {currentFile.isVideo && !currentFile.processedBlob && (
-              <VideoTrimEditor
-                file={currentFile.file}
-                onConfirm={(blob) => setProcessedBlob(blob)}
-              />
-            )}
-            {currentFile.isVideo && currentFile.processedBlob && (
-              <p className="text-xs text-accent">Boomerang listo</p>
-            )}
-
             {/* Caption */}
             <input
               type="text"
@@ -454,7 +424,6 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
               </button>
               <button
                 onClick={handleNext}
-                disabled={!canSubmitCurrent}
                 className="flex-1 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
               >
                 {isLastPending ? 'Subir' : 'Siguiente'}
@@ -543,7 +512,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
       )}
     </dialog>
 
-    {croppingIndex !== null && files[croppingIndex] && !files[croppingIndex].isVideo && (
+    {croppingIndex !== null && files[croppingIndex] && (
       <ImageCropDialog
         src={previewUrl}
         onClose={() => setCroppingIndex(null)}

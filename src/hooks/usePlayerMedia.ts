@@ -18,7 +18,7 @@ const EMPTY: MediaItem[] = [];
  * One player's photos for their profile. Deliberately not `useGalleryMedia`:
  * that one downloads every media row in the club and filters client-side, which
  * is right for the gallery and far too much for a page that exists once per
- * player. Videos are excluded -- a profile wants stills.
+ * player.
  */
 export function usePlayerMedia(playerId: number | null): UsePlayerMediaResult {
   const { data, loading, error } = useSupabaseQuery(async () => {
@@ -38,7 +38,6 @@ export function usePlayerMedia(playerId: number | null): UsePlayerMediaResult {
         .from('media')
         .select('*')
         .in('id', mediaIds)
-        .eq('media_type', 'image')
         // Trophy photos are not gallery photos, and "ver todas" lands on the
         // gallery -- counting them here would promise more than that page shows.
         .is('trophy_id', null)

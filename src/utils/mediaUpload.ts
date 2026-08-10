@@ -1,9 +1,8 @@
 import type { MediaTag, TaggedPlayer } from '../types';
-import { MAX_IMAGE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES } from '../types';
+import { MAX_IMAGE_UPLOAD_BYTES } from '../types';
 import { R2_PUBLIC_URL } from '../config';
 import { supabase } from '../lib/supabase';
 import { compressImage } from './imageCompression';
-import { extractFirstFrame, getVideoAspectRatio } from './videoProcessing';
 
 interface PresignedUrl {
   key: string;
@@ -17,8 +16,6 @@ export interface UploadFileEntry {
   caption: string;
   tags: MediaTag[];
   taggedPlayers: TaggedPlayer[];
-  isVideo: boolean;
-  processedBlob: Blob | null;
 }
 
 async function extractError(error: unknown): Promise<string> {
@@ -120,33 +117,20 @@ export async function uploadSingleFile(
   trophyId: number | null = null,
 ): Promise<void> {
   const id = entry.id;
-  let fullBlob: Blob;
-  let thumbBlob: Blob;
-  let fullContentType: string;
-  let aspectRatio: number;
+  const compressed = await compressImage(entry.file);
+  const fullBlob = compressed.full;
+  const thumbBlob = compressed.thumbnail;
+  const aspectRatio = compressed.aspectRatio;
+  const fullContentType = 'image/jpeg';
   const thumbContentType = 'image/jpeg';
-
-  if (entry.isVideo) {
-    fullBlob = entry.processedBlob ?? entry.file;
-    fullContentType = 'video/webm';
-    thumbBlob = await extractFirstFrame(entry.file);
-    aspectRatio = await getVideoAspectRatio(entry.file);
-  } else {
-    const compressed = await compressImage(entry.file);
-    fullBlob = compressed.full;
-    thumbBlob = compressed.thumbnail;
-    aspectRatio = compressed.aspectRatio;
-    fullContentType = 'image/jpeg';
-  }
 
   signal?.throwIfAborted();
 
-  const maxBytes = entry.isVideo ? MAX_VIDEO_UPLOAD_BYTES : MAX_IMAGE_UPLOAD_BYTES;
-  if (fullBlob.size > maxBytes) {
-    throw new Error(`El archivo es demasiado grande (máximo ${Math.round(maxBytes / 1024 / 1024)} MB).`);
+  if (fullBlob.size > MAX_IMAGE_UPLOAD_BYTES) {
+    throw new Error(`El archivo es demasiado grande (máximo ${Math.round(MAX_IMAGE_UPLOAD_BYTES / 1024 / 1024)} MB).`);
   }
 
-  const fullKey = entry.isVideo ? `video/${id}.webm` : `full/${id}.jpg`;
+  const fullKey = `full/${id}.jpg`;
   const thumbKey = `thumb/${id}.jpg`;
 
   // Retry idempotency: a previous attempt may have gotten as far as inserting
@@ -189,7 +173,6 @@ export async function uploadSingleFile(
         thumbnail_path: thumbKey,
         caption: entry.caption || null,
         taken_at: date,
-        media_type: entry.isVideo ? 'video' : 'image',
         aspect_ratio: aspectRatio,
       })
       .select()

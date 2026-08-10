@@ -540,14 +540,14 @@ async function assertions(db) {
       `INSERT INTO trophy_participants (trophy_id, player_id) VALUES ($1,6)`, [linked.id]));
 
   const shot = await one(`
-    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, media_type, aspect_ratio)
+    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, aspect_ratio)
     VALUES (NULL,$1,'full/11111111-1111-4111-8111-111111111111.jpg',
-                    'thumb/11111111-1111-4111-8111-111111111111.jpg','2026-05-01','image',1.5) RETURNING id`,
+                    'thumb/11111111-1111-4111-8111-111111111111.jpg','2026-05-01',1.5) RETURNING id`,
     [linked.id]);
   const strayShot = await one(`
-    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, media_type, aspect_ratio)
+    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, aspect_ratio)
     VALUES (NULL,$1,'full/22222222-2222-4222-8222-222222222222.jpg',
-                    'thumb/22222222-2222-4222-8222-222222222222.jpg','2024-11-02','image',1.5) RETURNING id`,
+                    'thumb/22222222-2222-4222-8222-222222222222.jpg','2024-11-02',1.5) RETURNING id`,
     [standalone.id]);
 
   // "Has photos but shows the placeholder" must be unreachable: the first
@@ -557,9 +557,9 @@ async function assertions(db) {
     autoCover.cover_media_id === shot.id, `got ${autoCover.cover_media_id}`);
 
   const secondShot = await one(`
-    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, media_type, aspect_ratio)
+    INSERT INTO media (event_id, trophy_id, storage_path, thumbnail_path, taken_at, aspect_ratio)
     VALUES (NULL,$1,'full/33333333-3333-4333-8333-333333333333.jpg',
-                    'thumb/33333333-3333-4333-8333-333333333333.jpg','2026-05-01','image',1.5) RETURNING id`,
+                    'thumb/33333333-3333-4333-8333-333333333333.jpg','2026-05-01',1.5) RETURNING id`,
     [linked.id]);
   const afterSecond = await one(`SELECT cover_media_id FROM trophies WHERE id=$1`, [linked.id]);
   check('a later photo does not steal the cover',

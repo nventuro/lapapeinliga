@@ -18,27 +18,25 @@ const corsHeaders = {
 };
 
 // The client only ever produces these exact key shapes:
-//   full/<uuid>.jpg, thumb/<uuid>.jpg, video/<uuid>.webm
+//   full/<uuid>.jpg, thumb/<uuid>.jpg
 // Validating server-side stops a caller (a presigned upload is open to any
 // moderator) from choosing arbitrary keys — overwriting other objects, writing
 // outside these prefixes — or requesting a presigned URL for an arbitrary
 // content type. Without this the key is fully attacker-controlled.
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-// Per-type size caps. The declared size is baked into the presigned URL as a
+// Size cap. The declared size is baked into the presigned URL as a
 // signed Content-Length, so R2 rejects a PUT whose body doesn't match — the
 // cap is enforced by storage, not just declared here.
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 const ALLOWED_UPLOADS: { keyRe: RegExp; contentType: string; maxBytes: number }[] = [
   { keyRe: new RegExp(`^full/${UUID}\\.jpg$`), contentType: "image/jpeg", maxBytes: MAX_IMAGE_BYTES },
   { keyRe: new RegExp(`^thumb/${UUID}\\.jpg$`), contentType: "image/jpeg", maxBytes: MAX_IMAGE_BYTES },
-  { keyRe: new RegExp(`^video/${UUID}\\.webm$`), contentType: "video/webm", maxBytes: MAX_VIDEO_BYTES },
 ];
 const MAX_UPLOAD_KEYS = 10;
 const MAX_DELETE_KEYS = 200;
 // Deletes (admin-only) may only target objects under the known prefixes — never
 // a traversal or an arbitrary path.
-const DELETE_KEY_RE = /^(full|thumb|video)\/[A-Za-z0-9._-]+\.(jpg|webp|png|webm)$/;
+const DELETE_KEY_RE = /^(full|thumb)\/[A-Za-z0-9._-]+\.(jpg|webp|png)$/;
 
 function isValidUpload(
   file: unknown,
