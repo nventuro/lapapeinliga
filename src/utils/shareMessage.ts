@@ -118,10 +118,11 @@ function buildExternalMatchShareMessage(event: ExternalMatchWithDetails, eventNu
 
   lines.push('');
   lines.push(`⚔️ ${OUR_TEAM_NAME} vs ${event.opponent.name}`);
-  const { our_score, their_score } = event.externalMatch;
-  const result = externalMatchResult(our_score, their_score);
+  const { our_score, their_score, our_penalties, their_penalties } = event.externalMatch;
+  const result = externalMatchResult(our_score, their_score, our_penalties, their_penalties);
   if (result) {
-    lines.push(`Resultado: ${our_score} - ${their_score} (${EXTERNAL_RESULT_LABELS[result]})`);
+    const shootout = our_penalties != null ? ` ${our_penalties} - ${their_penalties}` : '';
+    lines.push(`Resultado: ${our_score} - ${their_score} (${EXTERNAL_RESULT_LABELS[result]}${shootout})`);
   }
 
   // Ordered like the on-screen roster (gender, then name).

@@ -33,6 +33,8 @@ interface EventRow {
   external_matches: {
     our_score: number | null;
     their_score: number | null;
+    our_penalties: number | null;
+    their_penalties: number | null;
     external_team: { name: string } | null;
   } | null;
 }
@@ -110,13 +112,21 @@ function EventChips({ event }: { event: EventRow }) {
 
   const externalMatch = event.type === 'external_match' ? event.external_matches : null;
   const externalResult = externalMatch
-    ? externalMatchResult(externalMatch.our_score, externalMatch.their_score)
+    ? externalMatchResult(externalMatch.our_score, externalMatch.their_score, externalMatch.our_penalties, externalMatch.their_penalties)
     : null;
   if (externalMatch && externalResult) {
+    // The chip is too small for "por penales": collapse to the base label and
+    // append the shootout score instead.
+    const baseResult = externalResult === 'win_penalties' ? 'win'
+      : externalResult === 'loss_penalties' ? 'loss'
+      : externalResult;
+    const penalties = externalMatch.our_penalties != null
+      ? ` (${externalMatch.our_penalties}-${externalMatch.their_penalties} p)`
+      : '';
     return (
       <ChipRow>
-        <Chip tone={externalResult === 'win' ? 'win' : externalResult === 'loss' ? 'loss' : 'info'}>
-          {EXTERNAL_RESULT_LABELS[externalResult]} {externalMatch.our_score} - {externalMatch.their_score}
+        <Chip tone={baseResult === 'win' ? 'win' : baseResult === 'loss' ? 'loss' : 'info'}>
+          {EXTERNAL_RESULT_LABELS[baseResult]} {externalMatch.our_score} - {externalMatch.their_score}{penalties}
         </Chip>
       </ChipRow>
     );
@@ -251,7 +261,7 @@ export default function EventListPage() {
           event_finances(cost, payee_alias_cbu),
           event_teams!event_teams_event_id_fkey(id, name),
           event_participants(count),
-          external_matches(our_score, their_score, external_team:external_teams(name)),
+          external_matches(our_score, their_score, our_penalties, their_penalties, external_team:external_teams(name)),
           location:locations(name)
         `);
       const { data, error } = await orderEvents(query, false);

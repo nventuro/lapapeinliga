@@ -1,5 +1,5 @@
 import type { ExternalMatch } from '../types';
-import { externalMatchResult } from '../types';
+import { externalMatchResult, isExternalWin } from '../types';
 import { supabase } from '../lib/supabase';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 
@@ -15,10 +15,10 @@ type Tally = { wins: number; draws: number; losses: number; played: number };
 function tally(matches: ExternalMatch[]): Tally {
   const t: Tally = { wins: 0, draws: 0, losses: 0, played: 0 };
   for (const m of matches) {
-    const result = externalMatchResult(m.our_score, m.their_score);
+    const result = externalMatchResult(m.our_score, m.their_score, m.our_penalties, m.their_penalties);
     if (!result) continue;
     t.played++;
-    if (result === 'win') t.wins++;
+    if (isExternalWin(result)) t.wins++;
     else if (result === 'draw') t.draws++;
     else t.losses++;
   }
@@ -33,7 +33,7 @@ export default function ExternalMatchHeadToHead({
   const { data: record } = useSupabaseQuery(async () => {
     const { data, error } = await supabase
       .from('external_matches')
-      .select('id, event_id, external_team_id, our_score, their_score')
+      .select('id, event_id, external_team_id, our_score, their_score, our_penalties, their_penalties')
       .eq('external_team_id', externalTeamId);
     if (error) throw new Error(error.message);
     return tally(data as ExternalMatch[]);

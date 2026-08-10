@@ -316,6 +316,8 @@ export type ExternalMatch = {
   external_team_id: number;
   our_score: number | null;
   their_score: number | null;
+  our_penalties: number | null;
+  their_penalties: number | null;
 };
 
 /** A papeinliga player in an external match, with the goals they scored. */
@@ -324,23 +326,39 @@ export type ExternalMatchPlayer = {
   goals: number;
 };
 
-export type ExternalMatchResult = 'win' | 'loss' | 'draw';
+export type ExternalMatchResult = 'win' | 'loss' | 'draw' | 'win_penalties' | 'loss_penalties';
 
 export const EXTERNAL_RESULT_LABELS: Record<ExternalMatchResult, string> = {
   win: 'Ganamos',
   loss: 'Perdimos',
   draw: 'Empate',
+  win_penalties: 'Ganamos por penales',
+  loss_penalties: 'Perdimos por penales',
 };
+
+/** Whether a result is a win for our side, however it was decided. */
+export function isExternalWin(result: ExternalMatchResult | null): boolean {
+  return result === 'win' || result === 'win_penalties';
+}
 
 /**
  * Derives the result for our side from the recorded scores, or null when the
- * match has not been scored yet. Takes the scores directly (not the row) so
- * call sites never need to fabricate an `ExternalMatch` to use it.
+ * match has not been scored yet. A penalty shootout (recorded only after a
+ * tie) overrules the draw. Takes the scores directly (not the row) so call
+ * sites never need to fabricate an `ExternalMatch` to use it.
  */
-export function externalMatchResult(ourScore: number | null, theirScore: number | null): ExternalMatchResult | null {
+export function externalMatchResult(
+  ourScore: number | null,
+  theirScore: number | null,
+  ourPenalties: number | null,
+  theirPenalties: number | null,
+): ExternalMatchResult | null {
   if (ourScore == null || theirScore == null) return null;
   if (ourScore > theirScore) return 'win';
   if (ourScore < theirScore) return 'loss';
+  if (ourPenalties != null && theirPenalties != null) {
+    return ourPenalties > theirPenalties ? 'win_penalties' : 'loss_penalties';
+  }
   return 'draw';
 }
 

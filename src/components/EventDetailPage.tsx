@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { AwardType, Location, ParticipantKind } from '../types';
-import { allParticipants, EVENT_TYPE_LABELS, hasFinances, isNewLocationComplete, OUR_TEAM_NAME, WINNER_GLOW_MS } from '../types';
+import { allParticipants, EVENT_TYPE_LABELS, externalMatchResult, hasFinances, isExternalWin, isNewLocationComplete, OUR_TEAM_NAME, WINNER_GLOW_MS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
@@ -506,17 +506,22 @@ export default function EventDetailPage() {
             canEdit={isAdmin}
             saving={busy}
             glowing={glowingWinner}
-            onSave={(ourScore, theirScore) => mutate(
-              () => supabase.from('external_matches').update({ our_score: ourScore, their_score: theirScore }).eq('id', event.externalMatch.id),
+            onSave={(ourScore, theirScore, ourPenalties, theirPenalties) => mutate(
+              () => supabase.from('external_matches').update({
+                our_score: ourScore,
+                their_score: theirScore,
+                our_penalties: ourPenalties,
+                their_penalties: theirPenalties,
+              }).eq('id', event.externalMatch.id),
               // Celebrate only a win, not a loss or draw.
-              { glow: ourScore != null && theirScore != null && ourScore > theirScore },
+              { glow: isExternalWin(externalMatchResult(ourScore, theirScore, ourPenalties, theirPenalties)) },
             )}
           />
 
           <ExternalMatchHeadToHead
             externalTeamId={event.opponent.id}
             opponentName={event.opponent.name}
-            refreshToken={`${event.externalMatch.our_score}-${event.externalMatch.their_score}`}
+            refreshToken={`${event.externalMatch.our_score}-${event.externalMatch.their_score}-${event.externalMatch.our_penalties}-${event.externalMatch.their_penalties}`}
           />
         </>
       )}

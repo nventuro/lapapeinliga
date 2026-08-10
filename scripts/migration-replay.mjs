@@ -625,6 +625,25 @@ async function assertions(db) {
   await db.query(`SET test.jwt = ''`);
   check('a mod cannot write trophies (admin-only by design)', modWrite);
 
+  console.log('\nPenales:');
+  // Seeded match 1 stands at 3-2; a shootout is only storable on a tie.
+  check('penalties on a non-tie are rejected',
+    await rejects(db, `UPDATE external_matches SET our_penalties=4, their_penalties=3 WHERE id=1`));
+  await db.query(`UPDATE external_matches SET our_score=2, their_score=2 WHERE id=1`);
+  check('a half-recorded shootout is rejected',
+    await rejects(db, `UPDATE external_matches SET our_penalties=4 WHERE id=1`));
+  check('a drawn shootout is rejected',
+    await rejects(db, `UPDATE external_matches SET our_penalties=3, their_penalties=3 WHERE id=1`));
+  check('a shootout after a tie is accepted',
+    await succeeds(db, `UPDATE external_matches SET our_penalties=4, their_penalties=3 WHERE id=1`));
+  check('clearing the score alone strands the shootout → rejected',
+    await rejects(db, `UPDATE external_matches SET our_score=NULL, their_score=NULL WHERE id=1`));
+  check('score and shootout clear together',
+    await succeeds(db, `
+      UPDATE external_matches
+      SET our_score=NULL, their_score=NULL, our_penalties=NULL, their_penalties=NULL WHERE id=1`));
+  await db.query(`UPDATE external_matches SET our_score=3, their_score=2 WHERE id=1`);
+
   console.log('\nRLS / exposure:');
   const rlsOff = await all(`
     SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
