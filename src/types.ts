@@ -278,6 +278,8 @@ export type Event = {
   /** The winning event_teams row, for team-structured types; null otherwise. */
   winning_team_id: number | null;
   finances: EventFinances | null;
+  /** R2 key of the match recording (matches/<slug>.mp4); null when there is none. */
+  video_key: string | null;
 };
 
 /**

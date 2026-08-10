@@ -15,6 +15,7 @@ import ConfettiBurst from './ConfettiBurst';
 import CostSummary from './CostSummary';
 import EventFieldsForm from './EventFieldsForm';
 import EventMediaStrip from './EventMediaStrip';
+import EventVideoSection from './EventVideoSection';
 import TeamEventSection from './TeamEventSection';
 import { resolveLocationSelection, useEventFieldsState } from '../hooks/useEventFields';
 import TournamentMatchList from './TournamentMatchList';
@@ -387,6 +388,8 @@ export default function EventDetailPage() {
           </div>
         </div>
       )}
+
+      {event.video_key && <EventVideoSection videoKey={event.video_key} />}
 
       {/* Match: Teams */}
       {event.type === 'match' && (

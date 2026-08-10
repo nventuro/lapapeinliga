@@ -644,6 +644,22 @@ async function assertions(db) {
       SET our_score=NULL, their_score=NULL, our_penalties=NULL, their_penalties=NULL WHERE id=1`));
   await db.query(`UPDATE external_matches SET our_score=3, their_score=2 WHERE id=1`);
 
+  console.log('\nVideo:');
+  // RETURNING proves a row actually changed — a mistyped id would make every
+  // constraint check below pass vacuously on a zero-row update.
+  const vid = await one(
+    `UPDATE events SET video_key='matches/2026-08-09-final.mp4' WHERE id=2 RETURNING video_key`);
+  check('a well-formed video key is accepted',
+    vid?.video_key === 'matches/2026-08-09-final.mp4', JSON.stringify(vid));
+  check('a key outside matches/ is rejected',
+    await rejects(db, `UPDATE events SET video_key='full/2026-08-09-final.mp4' WHERE id=2`));
+  check('a non-mp4 key is rejected',
+    await rejects(db, `UPDATE events SET video_key='matches/final.webm' WHERE id=2`));
+  check('a full URL is rejected',
+    await rejects(db, `UPDATE events SET video_key='https://evil.example/final.mp4' WHERE id=2`));
+  check('clearing the video is allowed',
+    await succeeds(db, `UPDATE events SET video_key=NULL WHERE id=2`));
+
   console.log('\nRLS / exposure:');
   const rlsOff = await all(`
     SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace

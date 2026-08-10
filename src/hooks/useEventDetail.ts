@@ -36,6 +36,7 @@ type DetailRow = {
   played_at_time: string;
   location_id: number | null;
   winning_team_id: number | null;
+  video_key: string | null;
   event_finances: EventFinances | null;
   location: Location | null;
   event_teams: TeamRow[];
@@ -71,6 +72,7 @@ function mapRow(row: DetailRow, players: Player[]): EventWithDetails | null {
     location_id: row.location_id,
     winning_team_id: row.winning_team_id,
     finances: row.event_finances,
+    video_key: row.video_key,
     location: row.location,
   };
 
