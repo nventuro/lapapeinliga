@@ -531,50 +531,53 @@ export default function EventDetailPage() {
 
       {/* Training: Attendees and Coaches */}
       {event.type === 'training' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-          <ParticipantListCard
-            title="Jugadores"
-            players={event.attendees}
-            canEdit={isModOrAdmin}
-            saving={busy}
-            availablePlayers={availablePlayers}
-            onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'attendee' }),
-            )}
-            onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
-            )}
-            moveDestinationsFor={(player): MoveDestination[] => [
-              {
-                label: 'Pasar a entrenadores',
-                onSelect: () => moveParticipant(event.id, player.id, 'coach'),
-              },
-            ]}
-          />
+        <>
+          <EventMediaStrip eventId={event.id} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <ParticipantListCard
+              title="Jugadores"
+              players={event.attendees}
+              canEdit={isModOrAdmin}
+              saving={busy}
+              availablePlayers={availablePlayers}
+              onAddPlayer={(playerId) => mutate(() =>
+                supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'attendee' }),
+              )}
+              onRemovePlayer={(playerId) => mutate(() =>
+                supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
+              )}
+              moveDestinationsFor={(player): MoveDestination[] => [
+                {
+                  label: 'Pasar a entrenadores',
+                  onSelect: () => moveParticipant(event.id, player.id, 'coach'),
+                },
+              ]}
+            />
 
-          <ParticipantListCard
-            title="Entrenadores"
-            players={event.coaches}
-            canEdit={isModOrAdmin}
-            saving={busy}
-            availablePlayers={availablePlayers}
-            onAddPlayer={(playerId) => mutate(() =>
-              supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'coach' }),
-            )}
-            onRemovePlayer={(playerId) => mutate(() =>
-              supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
-            )}
-            moveDestinationsFor={(player): MoveDestination[] => [
-              {
-                label: 'Pasar a jugadores',
-                onSelect: () => moveParticipant(event.id, player.id, 'attendee'),
-              },
-            ]}
-          />
-        </div>
+            <ParticipantListCard
+              title="Entrenadores"
+              players={event.coaches}
+              canEdit={isModOrAdmin}
+              saving={busy}
+              availablePlayers={availablePlayers}
+              onAddPlayer={(playerId) => mutate(() =>
+                supabase.from('event_participants').insert({ event_id: event.id, player_id: playerId, kind: 'coach' }),
+              )}
+              onRemovePlayer={(playerId) => mutate(() =>
+                supabase.from('event_participants').delete().eq('event_id', event.id).eq('player_id', playerId),
+              )}
+              moveDestinationsFor={(player): MoveDestination[] => [
+                {
+                  label: 'Pasar a jugadores',
+                  onSelect: () => moveParticipant(event.id, player.id, 'attendee'),
+                },
+              ]}
+            />
+          </div>
+        </>
       )}
 
-      {(event.type === 'training' || event.type === 'social') && <EventMediaStrip eventId={event.id} />}
+      {event.type === 'social' && <EventMediaStrip eventId={event.id} />}
 
       {isAdmin && (
         <ConfirmAction
