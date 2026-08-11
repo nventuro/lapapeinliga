@@ -120,15 +120,17 @@ export default function TeamEventSection({
 
       {children}
 
-      <ResultsSection
-        winningTeamId={winningTeamId}
-        teams={teams}
-        winnerTeamName={winnerTeam?.name ?? null}
-        canEdit={canEditRoster}
-        saving={saving}
-        glowingWinner={glowingWinner}
-        onWinnerChange={onWinnerChange}
-      />
+      {canEditRoster && (
+        <ResultsSection
+          winningTeamId={winningTeamId}
+          teams={teams}
+          winnerTeamName={winnerTeam?.name ?? null}
+          canEdit={canEditRoster}
+          saving={saving}
+          glowingWinner={glowingWinner}
+          onWinnerChange={onWinnerChange}
+        />
+      )}
     </>
   );
 }

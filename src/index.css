@@ -155,6 +155,9 @@
 
   /* Error */
   --color-error: #cc2a1e;
+  /* Error text on a `primary` fill — the base error red is 1.9:1 against the
+     navy, so hero surfaces need this lightened value (9.0:1 on primary). */
+  --color-error-on-primary: #ffb3ab;
   /* Tinted ground for a badge carrying `error` text (5.40:1) -- a solid red
      fill would shout, and a loss is worth stating, not alarming about. */
   --color-error-subtle: #f6eae9;

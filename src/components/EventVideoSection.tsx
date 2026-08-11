@@ -32,11 +32,12 @@ function parseSeconds(value: string | null): number | null {
 }
 
 /**
- * Match video player with admin-curated highlights. `?t=<s>` deep-links into
- * the video and `?end=<s>` additionally stops playback there, so a link can
- * carry a clip without the file ever being cut — range requests mean only the
- * watched window is downloaded. Tapping a highlight plays from its instant
- * and puts it in the URL, so the moment on screen is always shareable.
+ * Match video player with admin-curated highlights, styled for the navy hero
+ * it sits in. `?t=<s>` deep-links into the video and `?end=<s>` additionally
+ * stops playback there, so a link can carry a clip without the file ever
+ * being cut — range requests mean only the watched window is downloaded.
+ * Tapping a highlight plays from its instant and puts it in the URL, so the
+ * moment on screen is always shareable.
  */
 export default function EventVideoSection({ eventId, videoKey }: EventVideoSectionProps) {
   const { isAdmin } = useAppContext();
@@ -136,41 +137,22 @@ export default function EventVideoSection({ eventId, videoKey }: EventVideoSecti
 
   return (
     <div className="mt-4">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-sm text-muted">Video</h3>
-        <div className="flex items-center gap-2">
-          {copied && <span className="text-xs text-accent">¡Link copiado!</span>}
-          <Tooltip label="Compartir este momento">
-            <button onClick={shareMoment} className="text-muted hover:text-accent transition-colors">
-              <ShareIcon className="w-4 h-4" />
-            </button>
-          </Tooltip>
-          {isAdmin && (
-            <Tooltip label="Guardar este momento">
-              <button onClick={startDraft} className="text-muted hover:text-accent transition-colors">
-                <PlusIcon className="w-4 h-4" />
-              </button>
-            </Tooltip>
-          )}
-        </div>
-      </div>
-
       <video
         ref={videoRef}
         src={mediaUrl(videoKey)}
         controls
         playsInline
         preload="metadata"
-        className="w-full aspect-video rounded-lg bg-on-surface"
+        className="w-full aspect-video rounded-md bg-on-surface"
         onLoadedMetadata={handleLoadedMetadata}
         onTimeUpdate={handleTimeUpdate}
       />
 
       {/* Admin: label the paused instant */}
       {draftSeconds !== null && (
-        <div className="mt-2 space-y-1">
+        <div className="mt-2.5 space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted shrink-0">Momento en {formatClock(draftSeconds)}</span>
+            <span className="text-xs text-celeste shrink-0">Momento en {formatClock(draftSeconds)}</span>
             <input
               type="text"
               value={draftLabel}
@@ -183,57 +165,70 @@ export default function EventVideoSection({ eventId, videoKey }: EventVideoSecti
             <button
               onClick={saveDraft}
               disabled={!draftLabel.trim()}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-lime text-on-lime hover:opacity-90 disabled:bg-disabled disabled:text-muted transition-opacity"
             >
               Guardar
             </button>
             <button
               onClick={() => setDraftSeconds(null)}
-              className="text-xs text-muted hover:text-muted-strong transition-colors"
+              className="text-xs text-celeste hover:text-on-primary transition-colors"
             >
               Cancelar
             </button>
           </div>
-          {draftError && <p className="text-xs text-error">{draftError}</p>}
+          {draftError && <p className="text-xs text-error-on-primary">{draftError}</p>}
         </div>
       )}
 
-      {highlights.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          {highlights.map((highlight) => {
-            const active = clipStart === highlight.seconds && clipEnd === null;
-            return (
-              <span
-                key={highlight.id}
-                className={`flex items-center rounded-full text-xs font-semibold transition-colors ${
-                  active ? 'bg-primary text-on-primary' : 'bg-accent-subtle text-accent'
-                }`}
-              >
-                <button onClick={() => playHighlight(highlight)} className="flex items-center gap-1.5 pl-2.5 py-1 last:pr-2.5">
-                  <span className="font-normal opacity-80">{formatClock(highlight.seconds)}</span>
-                  {highlight.label}
-                </button>
-                {isAdmin && (
-                  deletingId === highlight.id ? (
-                    <span className="flex items-center gap-1 px-2 py-1">
-                      <button onClick={() => deleteHighlight(highlight.id)} className="font-bold text-error">Sí</button>
-                      /
-                      <button onClick={() => setDeletingId(null)}>No</button>
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setDeletingId(highlight.id)}
-                      className="pl-1.5 pr-2 py-1 opacity-60 hover:opacity-100 transition-opacity"
-                    >
-                      &times;
-                    </button>
-                  )
-                )}
-              </span>
-            );
-          })}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+        {highlights.map((highlight) => {
+          const active = clipStart === highlight.seconds && clipEnd === null;
+          return (
+            <span
+              key={highlight.id}
+              className={`flex items-center rounded-full text-xs font-semibold border transition-colors ${
+                active ? 'bg-lime border-lime text-on-lime' : 'border-celeste/50 text-celeste'
+              }`}
+            >
+              <button onClick={() => playHighlight(highlight)} className="flex items-center gap-1.5 pl-2.5 py-1 last:pr-2.5">
+                <span className="font-normal opacity-80">{formatClock(highlight.seconds)}</span>
+                {highlight.label}
+              </button>
+              {isAdmin && (
+                deletingId === highlight.id ? (
+                  <span className="flex items-center gap-1 px-2 py-1">
+                    <button onClick={() => deleteHighlight(highlight.id)} className="font-bold">Sí</button>
+                    /
+                    <button onClick={() => setDeletingId(null)}>No</button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setDeletingId(highlight.id)}
+                    className="pl-1.5 pr-2 py-1 opacity-60 hover:opacity-100 transition-opacity"
+                  >
+                    &times;
+                  </button>
+                )
+              )}
+            </span>
+          );
+        })}
+        <span className="ml-auto flex items-center gap-2">
+          {copied && <span className="text-xs text-lime">¡Link copiado!</span>}
+          <Tooltip label="Compartir este momento">
+            <button onClick={shareMoment} className="text-celeste hover:text-on-primary transition-colors">
+              <ShareIcon className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          {isAdmin && (
+            <Tooltip label="Guardar este momento">
+              <button onClick={startDraft} className="text-celeste hover:text-on-primary transition-colors">
+                <PlusIcon className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          )}
+        </span>
+      </div>
     </div>
   );
 }

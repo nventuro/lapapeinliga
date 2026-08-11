@@ -2,20 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ConfirmAction from './ConfirmAction';
 import type { AwardType, Location, ParticipantKind } from '../types';
-import { allParticipants, EVENT_TYPE_LABELS, externalMatchResult, hasFinances, isExternalWin, isNewLocationComplete, OUR_TEAM_NAME, WINNER_GLOW_MS } from '../types';
+import { allParticipants, externalMatchResult, hasFinances, isExternalWin, isNewLocationComplete, OUR_TEAM_NAME, WINNER_GLOW_MS } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
-import { formatDate, formatTime, isValidTime } from '../utils/dateUtils';
+import { isValidTime } from '../utils/dateUtils';
 import { parseCostInput } from '../utils/costUtils';
-import { EditIcon, WhatsAppIcon } from './icons';
-import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
-import Tooltip from './Tooltip';
 import ConfettiBurst from './ConfettiBurst';
 import CostSummary from './CostSummary';
 import EventFieldsForm from './EventFieldsForm';
+import EventHero from './EventHero';
 import EventMediaStrip from './EventMediaStrip';
-import EventVideoSection from './EventVideoSection';
 import TeamEventSection from './TeamEventSection';
 import { resolveLocationSelection, useEventFieldsState } from '../hooks/useEventFields';
 import TournamentMatchList from './TournamentMatchList';
@@ -256,22 +253,12 @@ export default function EventDetailPage() {
     }
   }
 
-  const TypeIcon = EVENT_TYPE_ICONS[event.type];
-  const typeLabel = EVENT_TYPE_LABELS[event.type];
   // Social events have no cost split, so their editor and share message drop
   // the financial fields entirely.
   const showFinances = hasFinances(event.type);
   // The share message embeds who to pay, so it needs an alias/CBU — except
   // for social events, whose message is just the date, time and place.
   const canShare = (event.finances?.payee_alias_cbu != null || !showFinances) && eventNumber !== '';
-
-  // The video always leads straight into the photos, wherever a type puts them.
-  const videoAndPhotos = (
-    <>
-      {event.video_key && <EventVideoSection eventId={event.id} videoKey={event.video_key} />}
-      <EventMediaStrip eventId={event.id} />
-    </>
-  );
 
   const awardsAndMedia = (
     <>
@@ -293,27 +280,26 @@ export default function EventDetailPage() {
       {isAdmin && (
         <EventFeedbackAdminSection bodies={feedback.adminBodies} loading={feedback.loading} />
       )}
-      {videoAndPhotos}
+      <EventMediaStrip eventId={event.id} />
     </>
   );
 
   return (
     <div>
       {glowingWinner && <ConfettiBurst />}
-      <h2 className="text-xl font-bold">
-        Fecha #{eventNumber || '…'}{event.name ? ` · ${event.name}` : ''}
-      </h2>
-      <p className="flex items-center gap-1.5 text-sm text-muted mt-1">
-        <TypeIcon className="w-4 h-4" />
-        {typeLabel} — {formatDate(event.played_at)}
-      </p>
+      <EventHero
+        event={event}
+        eventNumber={eventNumber}
+        canShare={canShare}
+        onShare={() => openWhatsAppShare(buildEventShareMessage(event, eventNumber))}
+        onEdit={openDetailsEditor}
+      />
 
       {bannerError && (
         <p className="text-sm text-error mt-2">{bannerError}</p>
       )}
 
-      {/* Event details box (display or edit mode) */}
-      {editingDetails ? (
+      {editingDetails && (
         <div
           className={`bg-surface border border-border rounded-lg p-4 mt-3 space-y-3 ${closingDetails ? 'animate-slide-up-out' : 'animate-slide-down-in'}`}
           onAnimationEnd={handleEditorAnimationEnd}
@@ -343,57 +329,11 @@ export default function EventDetailPage() {
             </button>
           </div>
         </div>
-      ) : (
-        <div className="bg-surface border border-border rounded-lg px-4 py-3 mt-3 text-sm text-muted space-y-1">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p>
-                {event.location ? (
-                  <>
-                    <a
-                      href={event.location.maps_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-accent hover:text-accent-hover underline underline-offset-2"
-                    >
-                      {event.location.name}
-                    </a>
-                    {' · '}
-                  </>
-                ) : null}
-                {formatTime(event.played_at_time)}
-              </p>
-              {isAdmin && showCosts && (
-                <CostSummary finances={event.finances} participantCount={participants.length} className="gap-x-4" />
-              )}
-            </div>
-            {isModOrAdmin && (
-              <div className="flex items-center gap-1 shrink-0 self-start">
-                {isAdmin && (
-                  <Tooltip label="Editar detalles">
-                    <button
-                      type="button"
-                      onClick={openDetailsEditor}
-                      className="p-1 rounded text-muted hover:text-on-surface transition-colors"
-                    >
-                      <EditIcon className="w-4 h-4" />
-                    </button>
-                  </Tooltip>
-                )}
-                <Tooltip label={canShare ? 'Compartir por WhatsApp' : 'Completá alias/CBU para compartir'}>
-                  <button
-                    type="button"
-                    onClick={() => openWhatsAppShare(buildEventShareMessage(event, eventNumber))}
-                    disabled={!canShare}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-on-primary bg-primary hover:bg-primary-hover disabled:bg-disabled disabled:cursor-not-allowed transition-colors"
-                  >
-                    Compartir
-                    <WhatsAppIcon className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-              </div>
-            )}
-          </div>
+      )}
+
+      {isAdmin && showCosts && (
+        <div className="bg-surface border border-border rounded-lg px-4 py-3 mt-3">
+          <CostSummary finances={event.finances} participantCount={participants.length} className="gap-x-4" />
         </div>
       )}
 
@@ -462,7 +402,7 @@ export default function EventDetailPage() {
       {/* External match: our roster vs an external opponent. No awards/feedback. */}
       {event.type === 'external_match' && (
         <>
-          {videoAndPhotos}
+          <EventMediaStrip eventId={event.id} />
 
           <ExternalMatchPlayerList
             title={OUR_TEAM_NAME}
@@ -509,23 +449,25 @@ export default function EventDetailPage() {
             ]}
           />
 
-          <ExternalMatchScoreCard
-            match={event.externalMatch}
-            opponentName={event.opponent.name}
-            canEdit={isAdmin}
-            saving={busy}
-            glowing={glowingWinner}
-            onSave={(ourScore, theirScore, ourPenalties, theirPenalties) => mutate(
-              () => supabase.from('external_matches').update({
-                our_score: ourScore,
-                their_score: theirScore,
-                our_penalties: ourPenalties,
-                their_penalties: theirPenalties,
-              }).eq('id', event.externalMatch.id),
-              // Celebrate only a win, not a loss or draw.
-              { glow: isExternalWin(externalMatchResult(ourScore, theirScore, ourPenalties, theirPenalties)) },
-            )}
-          />
+          {isAdmin && (
+            <ExternalMatchScoreCard
+              match={event.externalMatch}
+              opponentName={event.opponent.name}
+              canEdit={isAdmin}
+              saving={busy}
+              glowing={glowingWinner}
+              onSave={(ourScore, theirScore, ourPenalties, theirPenalties) => mutate(
+                () => supabase.from('external_matches').update({
+                  our_score: ourScore,
+                  their_score: theirScore,
+                  our_penalties: ourPenalties,
+                  their_penalties: theirPenalties,
+                }).eq('id', event.externalMatch.id),
+                // Celebrate only a win, not a loss or draw.
+                { glow: isExternalWin(externalMatchResult(ourScore, theirScore, ourPenalties, theirPenalties)) },
+              )}
+            />
+          )}
 
           <ExternalMatchHeadToHead
             externalTeamId={event.opponent.id}
@@ -538,7 +480,7 @@ export default function EventDetailPage() {
       {/* Training: Attendees and Coaches */}
       {event.type === 'training' && (
         <>
-          {videoAndPhotos}
+          <EventMediaStrip eventId={event.id} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <ParticipantListCard
               title="Jugadores"
@@ -583,7 +525,7 @@ export default function EventDetailPage() {
         </>
       )}
 
-      {event.type === 'social' && videoAndPhotos}
+      {event.type === 'social' && <EventMediaStrip eventId={event.id} />}
 
       {isAdmin && (
         <ConfirmAction
