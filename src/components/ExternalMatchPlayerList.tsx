@@ -18,6 +18,7 @@ interface ExternalMatchPlayerListProps {
   onSetGoals: (playerId: number, goals: number) => void;
   /** Hide the whole card when empty and not editable (used for reserves). */
   hideWhenEmpty?: boolean;
+  className?: string;
 }
 
 function GoalsControl({
@@ -83,6 +84,7 @@ export default function ExternalMatchPlayerList({
   onRemovePlayer,
   onSetGoals,
   hideWhenEmpty = false,
+  className = 'mt-6',
 }: ExternalMatchPlayerListProps) {
   if (hideWhenEmpty && roster.length === 0 && !canEditParticipants) return null;
 
@@ -94,7 +96,7 @@ export default function ExternalMatchPlayerList({
   const sorted = [...roster].sort((a, b) => comparePlayersByGenderThenName(a.player, b.player));
 
   return (
-    <div className="bg-surface border border-border rounded-lg p-4 mt-6">
+    <div className={`bg-surface border border-border rounded-lg p-4 ${className}`}>
       <h3 className="font-bold text-lg mb-3">
         {title}
         <span className="font-normal text-sm text-muted ml-2">({players.length})</span>

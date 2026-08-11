@@ -8,6 +8,7 @@ import { useAppContext } from '../context/appContext';
 import { PhotosIcon, UploadIcon } from './icons';
 import MediaThumbnail from './MediaThumbnail';
 import MediaUploadDialog from './MediaUploadDialog';
+import SectionLabel from './SectionLabel';
 import Tooltip from './Tooltip';
 
 interface EventMediaStripProps {
@@ -57,7 +58,7 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
       ) : (
         <>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-sm text-muted">Fotos</h3>
+            <SectionLabel dim className="">FOTOS</SectionLabel>
             <div className="flex items-center gap-2">
               {isModOrAdmin && (
                 <Tooltip label="Subir fotos">

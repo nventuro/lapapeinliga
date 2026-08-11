@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import TeamCard from './TeamCard';
 import ParticipantListCard from './ParticipantListCard';
 import ResultsSection from './ResultsSection';
+import SectionLabel from './SectionLabel';
 import type { MoveDestination } from './ParticipantRow';
 
 type MutationOp = () => PromiseLike<{ error: { message: string } | null }>;
@@ -71,6 +72,7 @@ export default function TeamEventSection({
 
   return (
     <>
+      <SectionLabel dim className="mt-6 mb-2">EQUIPOS</SectionLabel>
       <div className={gridClassName}>
         {teams.map((team) => (
           <TeamCard

@@ -2,6 +2,7 @@ import type { ExternalMatch } from '../types';
 import { externalMatchResult, isExternalWin } from '../types';
 import { supabase } from '../lib/supabase';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import SectionLabel from './SectionLabel';
 
 interface ExternalMatchHeadToHeadProps {
   externalTeamId: number;
@@ -42,9 +43,9 @@ export default function ExternalMatchHeadToHead({
   if (!record || record.played === 0) return null;
 
   return (
-    <div className="bg-surface border border-border rounded-lg p-4 mt-4">
-      <h3 className="font-bold text-lg mb-3">Historial vs {opponentName}</h3>
-      <div className="flex gap-4 text-sm">
+    <div className="mt-4">
+      <SectionLabel dim className="mb-2 uppercase">Historial vs {opponentName}</SectionLabel>
+      <div className="bg-surface border border-border rounded-lg p-4 flex gap-4 text-sm">
         <span className="flex items-center gap-1.5">
           <span className="font-bold text-success tabular-nums">{record.wins}</span>
           <span className="text-muted">ganados</span>

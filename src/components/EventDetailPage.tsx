@@ -23,6 +23,7 @@ import ExternalMatchHeadToHead from './ExternalMatchHeadToHead';
 import AwardsSection from './AwardsSection';
 import EventFeedbackAdminSection from './EventFeedbackAdminSection';
 import ParticipantListCard from './ParticipantListCard';
+import SectionLabel from './SectionLabel';
 import type { MoveDestination } from './ParticipantRow';
 import { useEventAwards } from '../hooks/useEventAwards';
 import { useEventDetail } from '../hooks/useEventDetail';
@@ -353,7 +354,7 @@ export default function EventDetailPage() {
             canEditRoster={isModOrAdmin}
             canEditTeam={isAdmin}
             showAverageRating
-            gridClassName="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6"
+            gridClassName="grid grid-cols-1 md:grid-cols-2 gap-4"
             mutate={mutate}
             onWinnerChange={(teamId) => handleSetWinner(event.id, teamId)}
           />
@@ -375,7 +376,7 @@ export default function EventDetailPage() {
             glowingWinner={glowingWinner}
             canEditRoster={isModOrAdmin}
             canEditTeam={isAdmin}
-            gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"
+            gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             mutate={mutate}
             onWinnerChange={(teamId) => handleSetWinner(event.id, teamId)}
           >
@@ -404,7 +405,9 @@ export default function EventDetailPage() {
         <>
           <EventMediaStrip eventId={event.id} />
 
+          <SectionLabel dim className="mt-6 mb-2">EQUIPO</SectionLabel>
           <ExternalMatchPlayerList
+            className=""
             title={OUR_TEAM_NAME}
             roster={event.roster}
             canEditParticipants={isModOrAdmin}
@@ -427,6 +430,7 @@ export default function EventDetailPage() {
           />
 
           <ExternalMatchPlayerList
+            className="mt-4"
             title="Suplentes"
             roster={event.reserves}
             canEditParticipants={isModOrAdmin}
