@@ -1,6 +1,6 @@
 import type { EventWithDetails } from '../types';
 import {
-  EVENT_TYPE_LABELS, EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, externalMatchResult, isExternalWin,
+  EVENT_TYPE_LABELS, OUR_TEAM_NAME, externalMatchResult, isExternalWin,
 } from '../types';
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
@@ -35,6 +35,25 @@ export default function EventHero({ event, eventNumber, canShare, onShare, onEdi
   const winnerName = (event.type === 'match' || event.type === 'tournament') && event.winning_team_id != null
     ? event.teams.find((t) => t.id === event.winning_team_id)?.name ?? null
     : null;
+
+  // The summary row needs exactly two sides; a tournament has more, so there
+  // the verdict stands alone.
+  const twoTeams = event.type === 'match' && event.teams.length === 2 ? event.teams : null;
+  const sides = match
+    ? { left: OUR_TEAM_NAME, right: opponentName }
+    : twoTeams
+      ? { left: twoTeams[0].name, right: twoTeams[1].name }
+      : null;
+
+  const verdict = result
+    ? result === 'draw'
+      ? { kind: 'draw' as const }
+      : isExternalWin(result)
+        ? { kind: 'winner' as const, name: OUR_TEAM_NAME, ours: true }
+        : { kind: 'winner' as const, name: opponentName ?? '', ours: false }
+    : winnerName
+      ? { kind: 'winner' as const, name: winnerName, ours: true }
+      : null;
 
   return (
     <div className="bg-primary pinstripes rounded-xl text-on-primary p-4">
@@ -91,12 +110,12 @@ export default function EventHero({ event, eventNumber, canShare, onShare, onEdi
         {' · '}{formatTime(event.played_at_time)}
       </p>
 
-      {match && result && (
-        <>
-          <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-            <p className="font-display text-[10px] leading-relaxed tracking-wider uppercase text-celeste text-right">
-              {OUR_TEAM_NAME}
-            </p>
+      {sides && (
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <p className="font-display text-[10px] leading-relaxed tracking-wider uppercase text-celeste text-right">
+            {sides.left}
+          </p>
+          {match && result ? (
             <p className="font-display text-3xl whitespace-nowrap tabular-nums">
               {match.our_score}
               {hasPenalties && <span className="text-base text-lime"> ({match.our_penalties})</span>}
@@ -104,26 +123,31 @@ export default function EventHero({ event, eventNumber, canShare, onShare, onEdi
               {hasPenalties && <span className="text-base text-lime">({match.their_penalties}) </span>}
               {match.their_score}
             </p>
-            <p className="font-display text-[10px] leading-relaxed tracking-wider uppercase text-celeste">
-              {opponentName}
-            </p>
-          </div>
-          <p className="text-center mt-3">
-            <span className={`inline-block font-display text-[10px] tracking-[0.18em] uppercase px-3 py-1 rounded-full ${
-              isExternalWin(result) ? 'bg-lime text-on-lime' : 'bg-on-primary/15 text-on-primary'
-            }`}>
-              {EXTERNAL_RESULT_LABELS[result]}
-            </span>
+          ) : (
+            <p className="font-display text-base text-on-primary/60">VS</p>
+          )}
+          <p className="font-display text-[10px] leading-relaxed tracking-wider uppercase text-celeste">
+            {sides.right}
           </p>
-        </>
+        </div>
       )}
 
-      {winnerName && (
-        <div className="mt-5 text-center">
+      {verdict?.kind === 'draw' && (
+        <p className="text-center mt-3">
+          <span className="inline-block font-display text-[10px] tracking-[0.18em] uppercase px-3 py-1 rounded-full bg-on-primary/15 text-on-primary">
+            Empate
+          </span>
+        </p>
+      )}
+
+      {verdict?.kind === 'winner' && (
+        <div className={`text-center ${sides ? 'mt-3' : 'mt-5'}`}>
           <p className="font-display text-[10px] tracking-[0.22em] text-celeste">GANADOR</p>
-          <p className="font-display text-lg uppercase text-lime mt-1 flex items-center justify-center gap-1.5">
+          <p className={`font-display text-lg uppercase mt-1 flex items-center justify-center gap-1.5 ${
+            verdict.ours ? 'text-lime' : 'text-on-primary/70'
+          }`}>
             <TrophyIcon className="w-4 h-4 shrink-0" />
-            {winnerName}
+            {verdict.name}
           </p>
         </div>
       )}
