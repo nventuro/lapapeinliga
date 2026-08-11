@@ -265,6 +265,14 @@ export default function EventDetailPage() {
   // for social events, whose message is just the date, time and place.
   const canShare = (event.finances?.payee_alias_cbu != null || !showFinances) && eventNumber !== '';
 
+  // The video always leads straight into the photos, wherever a type puts them.
+  const videoAndPhotos = (
+    <>
+      {event.video_key && <EventVideoSection eventId={event.id} videoKey={event.video_key} />}
+      <EventMediaStrip eventId={event.id} />
+    </>
+  );
+
   const awardsAndMedia = (
     <>
       <AwardsSection
@@ -285,7 +293,7 @@ export default function EventDetailPage() {
       {isAdmin && (
         <EventFeedbackAdminSection bodies={feedback.adminBodies} loading={feedback.loading} />
       )}
-      <EventMediaStrip eventId={event.id} />
+      {videoAndPhotos}
     </>
   );
 
@@ -389,8 +397,6 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {event.video_key && <EventVideoSection eventId={event.id} videoKey={event.video_key} />}
-
       {/* Match: Teams */}
       {event.type === 'match' && (
         <>
@@ -456,7 +462,7 @@ export default function EventDetailPage() {
       {/* External match: our roster vs an external opponent. No awards/feedback. */}
       {event.type === 'external_match' && (
         <>
-          <EventMediaStrip eventId={event.id} />
+          {videoAndPhotos}
 
           <ExternalMatchPlayerList
             title={OUR_TEAM_NAME}
@@ -532,7 +538,7 @@ export default function EventDetailPage() {
       {/* Training: Attendees and Coaches */}
       {event.type === 'training' && (
         <>
-          <EventMediaStrip eventId={event.id} />
+          {videoAndPhotos}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <ParticipantListCard
               title="Jugadores"
@@ -577,7 +583,7 @@ export default function EventDetailPage() {
         </>
       )}
 
-      {event.type === 'social' && <EventMediaStrip eventId={event.id} />}
+      {event.type === 'social' && videoAndPhotos}
 
       {isAdmin && (
         <ConfirmAction
