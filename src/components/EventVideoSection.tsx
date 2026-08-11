@@ -44,7 +44,6 @@ export default function EventVideoSection({ eventId, videoKey }: EventVideoSecti
   const [searchParams, setSearchParams] = useSearchParams();
   const clipStart = parseSeconds(searchParams.get('t'));
   const clipEnd = parseSeconds(searchParams.get('end'));
-  const isClip = clipStart !== null || clipEnd !== null;
 
   // One-shot: pausing at the clip's end must not pin the video there — play
   // after the stop continues into the full recording.
@@ -81,11 +80,6 @@ export default function EventVideoSection({ eventId, videoKey }: EventVideoSecti
       video.pause();
       stopAtRef.current = null;
     }
-  }
-
-  function showFull() {
-    stopAtRef.current = null;
-    setSearchParams({}, { replace: true });
   }
 
   function playHighlight(highlight: VideoHighlight) {
@@ -146,14 +140,6 @@ export default function EventVideoSection({ eventId, videoKey }: EventVideoSecti
         <h3 className="font-bold text-sm text-muted">Video</h3>
         <div className="flex items-center gap-2">
           {copied && <span className="text-xs text-accent">¡Link copiado!</span>}
-          {isClip && (
-            <button
-              onClick={showFull}
-              className="text-xs text-accent hover:text-accent-hover transition-colors"
-            >
-              Ver video completo
-            </button>
-          )}
           <Tooltip label="Compartir este momento">
             <button onClick={shareMoment} className="text-muted hover:text-accent transition-colors">
               <ShareIcon className="w-4 h-4" />
@@ -179,16 +165,6 @@ export default function EventVideoSection({ eventId, videoKey }: EventVideoSecti
         onLoadedMetadata={handleLoadedMetadata}
         onTimeUpdate={handleTimeUpdate}
       />
-
-      {isClip && (
-        <p className="text-xs text-muted mt-1">
-          Estás viendo un recorte (
-          {clipEnd !== null
-            ? `${formatClock(clipStart ?? 0)}–${formatClock(clipEnd)}`
-            : `desde ${formatClock(clipStart ?? 0)}`}
-          ).
-        </p>
-      )}
 
       {/* Admin: label the paused instant */}
       {draftSeconds !== null && (
