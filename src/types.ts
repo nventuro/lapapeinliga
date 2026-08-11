@@ -282,6 +282,17 @@ export type Event = {
   video_key: string | null;
 };
 
+/** Max length for a video highlight label; the database enforces the same cap. */
+export const MAX_VIDEO_HIGHLIGHT_LABEL_LENGTH = 80;
+
+/** An admin-curated labelled instant in an event's match video. */
+export type VideoHighlight = {
+  id: number;
+  event_id: number;
+  seconds: number;
+  label: string;
+};
+
 /**
  * A participant's role on an event, mirroring event_participants.kind.
  * team_member is a rostered player (with a team for matches/tournaments,

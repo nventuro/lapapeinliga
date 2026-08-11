@@ -1,10 +1,18 @@
 import { useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { MAX_VIDEO_HIGHLIGHT_LABEL_LENGTH } from '../types';
+import type { VideoHighlight } from '../types';
+import { supabase } from '../lib/supabase';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import { useAppContext } from '../context/appContext';
 import { mediaUrl } from '../utils/mediaUpload';
+import { PlusIcon, ShareIcon } from './icons';
+import Tooltip from './Tooltip';
 
 const COPY_FEEDBACK_MS = 2000;
 
 interface EventVideoSectionProps {
+  eventId: number;
   videoKey: string;
 }
 
@@ -24,12 +32,14 @@ function parseSeconds(value: string | null): number | null {
 }
 
 /**
- * Match video player with shareable moments. `?t=<s>` deep-links into the
- * video and `?end=<s>` additionally stops playback there, so a link can carry
- * a clip without the file ever being cut — range requests mean only the
- * watched window is downloaded.
+ * Match video player with admin-curated highlights. `?t=<s>` deep-links into
+ * the video and `?end=<s>` additionally stops playback there, so a link can
+ * carry a clip without the file ever being cut — range requests mean only the
+ * watched window is downloaded. Tapping a highlight plays from its instant
+ * and puts it in the URL, so the moment on screen is always shareable.
  */
-export default function EventVideoSection({ videoKey }: EventVideoSectionProps) {
+export default function EventVideoSection({ eventId, videoKey }: EventVideoSectionProps) {
+  const { isAdmin } = useAppContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const clipStart = parseSeconds(searchParams.get('t'));
@@ -40,9 +50,24 @@ export default function EventVideoSection({ videoKey }: EventVideoSectionProps) 
   // after the stop continues into the full recording.
   const stopAtRef = useRef<number | null>(clipEnd);
 
-  const [markStart, setMarkStart] = useState<number | null>(null);
-  const [markEnd, setMarkEnd] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Admin highlight creation
+  const [draftSeconds, setDraftSeconds] = useState<number | null>(null);
+  const [draftLabel, setDraftLabel] = useState('');
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const { data, refetch } = useSupabaseQuery(async () => {
+    const { data, error } = await supabase
+      .from('event_video_highlights')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('seconds');
+    if (error) throw new Error(error.message);
+    return data as VideoHighlight[];
+  }, [eventId]);
+  const highlights = data ?? [];
 
   function handleLoadedMetadata() {
     const video = videoRef.current;
@@ -63,31 +88,85 @@ export default function EventVideoSection({ videoKey }: EventVideoSectionProps) 
     setSearchParams({}, { replace: true });
   }
 
-  async function copyLink() {
-    const start = markStart ?? Math.floor(videoRef.current?.currentTime ?? 0);
-    const params = new URLSearchParams({ t: String(start) });
-    if (markEnd !== null && markEnd > start) params.set('end', String(markEnd));
-    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
+  function playHighlight(highlight: VideoHighlight) {
+    const video = videoRef.current;
+    if (!video) return;
+    stopAtRef.current = null;
+    video.currentTime = highlight.seconds;
+    void video.play();
+    setSearchParams({ t: String(highlight.seconds) }, { replace: true });
   }
 
-  const markButtonClass =
-    'px-2 py-1 rounded-lg text-xs font-medium border border-border text-muted hover:text-muted-strong hover:border-neutral-hover transition-colors';
+  async function shareMoment() {
+    const seconds = Math.floor(videoRef.current?.currentTime ?? 0);
+    const params = seconds > 0 ? `?t=${seconds}` : '';
+    const url = `${window.location.origin}${window.location.pathname}${params}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ url });
+      } catch {
+        // User cancelled the share sheet — ignore
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
+    }
+  }
+
+  function startDraft() {
+    videoRef.current?.pause();
+    setDraftSeconds(Math.floor(videoRef.current?.currentTime ?? 0));
+    setDraftLabel('');
+    setDraftError(null);
+  }
+
+  async function saveDraft() {
+    if (draftSeconds === null || !draftLabel.trim()) return;
+    const { error } = await supabase
+      .from('event_video_highlights')
+      .insert({ event_id: eventId, seconds: draftSeconds, label: draftLabel.trim() });
+    if (error) {
+      setDraftError('No se pudo guardar el momento.');
+      return;
+    }
+    setDraftSeconds(null);
+    refetch();
+  }
+
+  async function deleteHighlight(id: number) {
+    setDeletingId(null);
+    await supabase.from('event_video_highlights').delete().eq('id', id);
+    refetch();
+  }
 
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-sm text-muted">Video</h3>
-        {isClip && (
-          <button
-            onClick={showFull}
-            className="text-xs text-accent hover:text-accent-hover transition-colors"
-          >
-            Ver video completo
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {copied && <span className="text-xs text-accent">¡Link copiado!</span>}
+          {isClip && (
+            <button
+              onClick={showFull}
+              className="text-xs text-accent hover:text-accent-hover transition-colors"
+            >
+              Ver video completo
+            </button>
+          )}
+          <Tooltip label="Compartir este momento">
+            <button onClick={shareMoment} className="text-muted hover:text-accent transition-colors">
+              <ShareIcon className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          {isAdmin && (
+            <Tooltip label="Guardar este momento">
+              <button onClick={startDraft} className="text-muted hover:text-accent transition-colors">
+                <PlusIcon className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       <video
@@ -111,26 +190,74 @@ export default function EventVideoSection({ videoKey }: EventVideoSectionProps) 
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 mt-2">
-        <span className="text-xs text-muted">Compartir momento:</span>
-        <button onClick={() => setMarkStart(Math.floor(videoRef.current?.currentTime ?? 0))} className={markButtonClass}>
-          {markStart !== null ? `Inicio ${formatClock(markStart)}` : 'Marcar inicio'}
-        </button>
-        <button onClick={() => setMarkEnd(Math.ceil(videoRef.current?.currentTime ?? 0))} className={markButtonClass}>
-          {markEnd !== null ? `Fin ${formatClock(markEnd)}` : 'Marcar fin'}
-        </button>
-        {(markStart !== null || markEnd !== null) && (
-          <button
-            onClick={() => { setMarkStart(null); setMarkEnd(null); }}
-            className="text-xs text-muted hover:text-muted-strong transition-colors"
-          >
-            Limpiar
-          </button>
-        )}
-        <button onClick={copyLink} className="text-xs font-medium text-accent hover:text-accent-hover transition-colors">
-          {copied ? '¡Link copiado!' : 'Copiar link'}
-        </button>
-      </div>
+      {/* Admin: label the paused instant */}
+      {draftSeconds !== null && (
+        <div className="mt-2 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted shrink-0">Momento en {formatClock(draftSeconds)}</span>
+            <input
+              type="text"
+              value={draftLabel}
+              onChange={(e) => setDraftLabel(e.target.value)}
+              maxLength={MAX_VIDEO_HIGHLIGHT_LABEL_LENGTH}
+              placeholder="Qué pasó acá"
+              autoFocus
+              className="flex-1 min-w-0 px-3 py-1.5 border border-border rounded-lg text-sm bg-surface text-on-surface placeholder:text-muted"
+            />
+            <button
+              onClick={saveDraft}
+              disabled={!draftLabel.trim()}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-on-primary hover:bg-primary-hover disabled:bg-disabled disabled:text-muted transition-colors"
+            >
+              Guardar
+            </button>
+            <button
+              onClick={() => setDraftSeconds(null)}
+              className="text-xs text-muted hover:text-muted-strong transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+          {draftError && <p className="text-xs text-error">{draftError}</p>}
+        </div>
+      )}
+
+      {highlights.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {highlights.map((highlight) => {
+            const active = clipStart === highlight.seconds && clipEnd === null;
+            return (
+              <span
+                key={highlight.id}
+                className={`flex items-center rounded-full text-xs font-semibold transition-colors ${
+                  active ? 'bg-primary text-on-primary' : 'bg-accent-subtle text-accent'
+                }`}
+              >
+                <button onClick={() => playHighlight(highlight)} className="flex items-center gap-1.5 pl-2.5 py-1 last:pr-2.5">
+                  <span className="font-normal opacity-80">{formatClock(highlight.seconds)}</span>
+                  {highlight.label}
+                </button>
+                {isAdmin && (
+                  deletingId === highlight.id ? (
+                    <span className="flex items-center gap-1 px-2 py-1">
+                      <button onClick={() => deleteHighlight(highlight.id)} className="font-bold text-error">Sí</button>
+                      /
+                      <button onClick={() => setDeletingId(null)}>No</button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setDeletingId(highlight.id)}
+                      className="pl-1.5 pr-2 py-1 opacity-60 hover:opacity-100 transition-opacity"
+                    >
+                      &times;
+                    </button>
+                  )
+                )}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

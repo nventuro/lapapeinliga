@@ -389,7 +389,7 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {event.video_key && <EventVideoSection videoKey={event.video_key} />}
+      {event.video_key && <EventVideoSection eventId={event.id} videoKey={event.video_key} />}
 
       {/* Match: Teams */}
       {event.type === 'match' && (

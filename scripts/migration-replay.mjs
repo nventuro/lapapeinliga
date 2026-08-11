@@ -496,8 +496,9 @@ async function assertions(db) {
   const audited = await all(`
     SELECT table_name FROM information_schema.columns
     WHERE table_schema='public' AND column_name='created_at' ORDER BY table_name`);
-  // 10 from the 20260802110002 audit, plus trophies (20260802120000).
-  check('created_at added broadly', audited.length === 11, `${audited.length} tables`);
+  // 10 from the 20260802110002 audit, plus trophies (20260802120000) and
+  // video highlights (20260811013959).
+  check('created_at added broadly', audited.length === 12, `${audited.length} tables`);
 
   const short = await one(`
     INSERT INTO events (name,type,played_at,played_at_time) VALUES ('X','social','2026-03-01','20:00')
@@ -659,6 +660,26 @@ async function assertions(db) {
     await rejects(db, `UPDATE events SET video_key='https://evil.example/final.mp4' WHERE id=2`));
   check('clearing the video is allowed',
     await succeeds(db, `UPDATE events SET video_key=NULL WHERE id=2`));
+
+  const hl = await one(`
+    INSERT INTO event_video_highlights (event_id, seconds, label)
+    VALUES (2, 750, 'Gol de prueba') RETURNING id`);
+  check('a highlight is accepted', hl.id > 0);
+  check('a second highlight on the same frame is rejected',
+    await rejects(db, `INSERT INTO event_video_highlights (event_id, seconds, label) VALUES (2, 750, 'Otro')`));
+  check('negative seconds are rejected',
+    await rejects(db, `INSERT INTO event_video_highlights (event_id, seconds, label) VALUES (2, -1, 'X')`));
+  check('an empty label is rejected',
+    await rejects(db, `INSERT INTO event_video_highlights (event_id, seconds, label) VALUES (2, 10, '')`));
+  check('an over-long label is rejected',
+    await rejects(db, `INSERT INTO event_video_highlights (event_id, seconds, label) VALUES (2, 10, repeat('x', 81))`));
+  await db.query(`SET ROLE anon`);
+  const anonHighlights = await all(`SELECT count(*)::int AS n FROM event_video_highlights`);
+  const anonHlWrite = await rejects(db,
+    `INSERT INTO event_video_highlights (event_id, seconds, label) VALUES (2, 20, 'Colado')`);
+  await db.query(`RESET ROLE`);
+  check('anon can read highlights', anonHighlights[0].n === 1, `${anonHighlights[0].n} rows`);
+  check('anon cannot write highlights', anonHlWrite);
 
   console.log('\nRLS / exposure:');
   const rlsOff = await all(`
