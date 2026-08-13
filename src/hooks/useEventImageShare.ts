@@ -59,15 +59,17 @@ export function useEventImageShare(event: EventWithDetails | null, eventNumber: 
         return;
       }
 
-      const blob = await capturePosterImage(poster);
-      if (!blob) {
-        shareAsText();
-        setPhase('idle');
-        return;
-      }
-
-      const file = new File([blob], `fecha-${eventNumberRef.current}.png`, { type: 'image/png' });
-      if (navigator.canShare?.({ files: [file] })) {
+      // Probe support with an empty file so no time is spent rasterizing
+      // before knowing which path applies.
+      const probe = new File([], 'fecha.png', { type: 'image/png' });
+      if (navigator.canShare?.({ files: [probe] })) {
+        const blob = await capturePosterImage(poster);
+        if (!blob) {
+          shareAsText();
+          setPhase('idle');
+          return;
+        }
+        const file = new File([blob], `fecha-${eventNumberRef.current}.png`, { type: 'image/png' });
         // A rejection here is the user closing the share sheet — not a
         // failure to share, so no fallback.
         await navigator.share({ files: [file] }).catch(() => {});
@@ -76,12 +78,30 @@ export function useEventImageShare(event: EventWithDetails | null, eventNumber: 
       }
 
       if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        // The write only counts as user-initiated for a few seconds after
+        // the click, and rasterizing can outlast that — so the write is
+        // registered now and handed the capture as a promise.
+        const pending = capturePosterImage(poster).then((blob) => {
+          if (!blob) throw new Error('capture failed');
+          return blob;
+        });
         try {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': pending })]);
           setPhase('copied');
           return;
         } catch {
-          // Clipboard can be denied by permission or focus loss; fall through.
+          // Some browsers reject promise payloads outright; the capture may
+          // still have finished in time to write the blob directly.
+          const blob = await pending.catch(() => null);
+          if (blob) {
+            try {
+              await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+              setPhase('copied');
+              return;
+            } catch {
+              // Denied by permission or focus loss; fall through.
+            }
+          }
         }
       }
 
