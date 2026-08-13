@@ -7,12 +7,13 @@ import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { isValidTime } from '../utils/dateUtils';
 import { parseCostInput } from '../utils/costUtils';
-import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
 import ConfettiBurst from './ConfettiBurst';
 import CostSummary from './CostSummary';
 import EventFieldsForm from './EventFieldsForm';
 import EventHero from './EventHero';
 import EventMediaStrip from './EventMediaStrip';
+import EventSharePoster from './EventSharePoster';
+import ShareCopiedDialog from './ShareCopiedDialog';
 import TeamEventSection from './TeamEventSection';
 import { resolveLocationSelection, useEventFieldsState } from '../hooks/useEventFields';
 import TournamentMatchList from './TournamentMatchList';
@@ -28,6 +29,7 @@ import type { MoveDestination } from './ParticipantRow';
 import { useEventAwards } from '../hooks/useEventAwards';
 import { useEventDetail } from '../hooks/useEventDetail';
 import { useEventFeedback } from '../hooks/useEventFeedback';
+import { useEventImageShare } from '../hooks/useEventImageShare';
 import { useEventsIndex } from '../hooks/useEventsIndex';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 
@@ -58,6 +60,12 @@ export default function EventDetailPage() {
     if (glowTimerRef.current != null) clearTimeout(glowTimerRef.current);
   }, []);
 
+  const {
+    phase: sharePhase,
+    posterMountRef,
+    start: startImageShare,
+    closeDialog: closeShareDialog,
+  } = useEventImageShare(event, eventNumber);
   const awards = useEventAwards(event?.id ?? null, event?.type ?? null);
   const feedback = useEventFeedback(
     event?.id ?? null,
@@ -254,11 +262,11 @@ export default function EventDetailPage() {
     }
   }
 
-  // Social events have no cost split, so their editor and share message drop
-  // the financial fields entirely.
+  // Social events have no cost split, so their editor and share drop the
+  // financial fields entirely.
   const showFinances = hasFinances(event.type);
-  // The share message embeds who to pay, so it needs an alias/CBU — except
-  // for social events, whose message is just the date, time and place.
+  // The share embeds who to pay, so it needs an alias/CBU — except for
+  // social events, whose share is just the date, time and place.
   const canShare = (event.finances?.payee_alias_cbu != null || !showFinances) && eventNumber !== '';
 
   const awardsAndMedia = (
@@ -292,9 +300,18 @@ export default function EventDetailPage() {
         event={event}
         eventNumber={eventNumber}
         canShare={canShare}
-        onShare={() => openWhatsAppShare(buildEventShareMessage(event, eventNumber))}
+        onShare={startImageShare}
         onEdit={openDetailsEditor}
       />
+
+      {/* Mounted only for the capture, off-screen but laid out (display:none
+          would give the rasterizer nothing to measure). */}
+      {sharePhase === 'capturing' && (
+        <div ref={posterMountRef} aria-hidden className="fixed top-0 -left-[9999px]">
+          <EventSharePoster event={event} eventNumber={eventNumber} />
+        </div>
+      )}
+      {sharePhase === 'copied' && <ShareCopiedDialog onClose={closeShareDialog} />}
 
       {bannerError && (
         <p className="text-sm text-error mt-2">{bannerError}</p>
