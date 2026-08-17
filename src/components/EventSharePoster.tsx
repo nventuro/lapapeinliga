@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { EventWithDetails, EventTeam, ExternalMatchPlayer, Player } from '../types';
 import {
   allParticipants, compareByName, comparePlayersByGenderThenName, EVENT_TYPE_LABELS, OUR_TEAM_NAME,
@@ -217,33 +218,50 @@ function SocialInvite({ event, eventNumber }: EventSharePosterProps) {
  * club celeste against an away grey.
  */
 export default function EventSharePoster({ event, eventNumber }: EventSharePosterProps) {
+  // A long enough roster outgrows the fixed 4:5 frame, and anything past the
+  // frame edge would be cut out of the shared image. The content is laid out
+  // at its natural height and, when that overflows, uniformly scaled down
+  // (gaining proportional width) until the whole poster fits the frame.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useLayoutEffect(() => {
+    const height = Math.ceil(contentRef.current!.getBoundingClientRect().height);
+    if (height > POSTER_HEIGHT) setScale(POSTER_HEIGHT / height);
+  }, []);
   return (
-    <div
-      className="bg-primary text-on-primary font-sans flex flex-col overflow-hidden"
-      style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT }}
-    >
-      {event.type === 'social' ? (
-        <SocialInvite event={event} eventNumber={eventNumber} />
-      ) : (
-        <>
-          <PosterHeader event={event} eventNumber={eventNumber} />
-          {event.type === 'match' && <MatchPanels teams={event.teams} />}
-          {event.type === 'tournament' && <TournamentPanels teams={event.teams} />}
-          {event.type === 'training' && (
-            <TrainingPanels attendees={event.attendees} coaches={event.coaches} />
-          )}
-          {event.type === 'external_match' && (
-            <>
-              <VersusLine opponentName={event.opponent.name} />
-              <ExternalMatchPanels roster={event.roster} opponentName={event.opponent.name} />
-            </>
-          )}
-          {(event.type === 'match' || event.type === 'tournament') && <ReservesStrip players={event.reserves} />}
-          {event.type === 'external_match' && <ReservesStrip players={event.reserves.map((r) => r.player)} />}
-          {event.type === 'training' && <ReservesStrip players={[]} />}
-        </>
-      )}
-      <CostFooter event={event} />
+    <div className="bg-primary overflow-hidden" style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT }}>
+      <div
+        ref={contentRef}
+        className="text-on-primary font-sans flex flex-col origin-top-left"
+        style={{
+          width: POSTER_WIDTH / scale,
+          minHeight: POSTER_HEIGHT / scale,
+          transform: `scale(${scale})`,
+        }}
+      >
+        {event.type === 'social' ? (
+          <SocialInvite event={event} eventNumber={eventNumber} />
+        ) : (
+          <>
+            <PosterHeader event={event} eventNumber={eventNumber} />
+            {event.type === 'match' && <MatchPanels teams={event.teams} />}
+            {event.type === 'tournament' && <TournamentPanels teams={event.teams} />}
+            {event.type === 'training' && (
+              <TrainingPanels attendees={event.attendees} coaches={event.coaches} />
+            )}
+            {event.type === 'external_match' && (
+              <>
+                <VersusLine opponentName={event.opponent.name} />
+                <ExternalMatchPanels roster={event.roster} opponentName={event.opponent.name} />
+              </>
+            )}
+            {(event.type === 'match' || event.type === 'tournament') && <ReservesStrip players={event.reserves} />}
+            {event.type === 'external_match' && <ReservesStrip players={event.reserves.map((r) => r.player)} />}
+            {event.type === 'training' && <ReservesStrip players={[]} />}
+          </>
+        )}
+        <CostFooter event={event} />
+      </div>
     </div>
   );
 }
