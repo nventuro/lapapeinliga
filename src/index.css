@@ -20,10 +20,13 @@
    `canvas`, so on a light ground the stripes are either invisible or, turned up
    far enough to see, loud enough to make text vibrate. */
 @utility pinstripes {
+  /* The stripe is `celeste` at 14%, spelled as an rgba() literal: written with
+     color-mix() or any other form that computes to color(), Firefox paints the
+     stripe and field segments swapped when the share poster is rasterized. */
   background-image: repeating-linear-gradient(
     90deg,
     transparent 0 22px,
-    color-mix(in srgb, var(--color-celeste) 14%, transparent) 22px 24px
+    rgba(98, 175, 213, 0.14) 22px 24px
   );
 }
 
