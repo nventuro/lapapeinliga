@@ -6,14 +6,53 @@ import { POSTER_PIXEL_RATIO } from '../components/EventSharePoster';
 
 export type ImageSharePhase = 'idle' | 'capturing' | 'copied';
 
+function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * The poster's fonts, as @font-face CSS with every font file inlined as a
+ * data: URI, built from the page's own Google Fonts stylesheet. The capture
+ * renders in an isolated document that cannot reach the page's fonts, so
+ * they must travel inside the image. html-to-image's own font collection is
+ * not usable for this: it reads `CSSFontFaceRule.style.fontFamily`, which
+ * Firefox does not expose, and the whole capture throws.
+ */
+let posterFontCSS: Promise<string | undefined> | undefined;
+function loadPosterFontCSS(): Promise<string | undefined> {
+  posterFontCSS ??= (async () => {
+    const link = document.querySelector<HTMLLinkElement>(
+      'link[rel="stylesheet"][href*="fonts.googleapis.com"]',
+    );
+    if (!link) return undefined;
+    const css = await (await fetch(link.href)).text();
+    const urls = [...new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map((m) => m[1]))];
+    const inlined = await Promise.all(
+      urls.map(async (url) => [url, await blobToDataURL(await (await fetch(url)).blob())] as const),
+    );
+    return inlined.reduce((out, [url, dataURL]) => out.replaceAll(url, dataURL), css);
+  })().catch(() => {
+    // Not cached: a failed fetch may be transient, so the next capture retries.
+    posterFontCSS = undefined;
+    return undefined;
+  });
+  return posterFontCSS;
+}
+
 /** Rasterizes a mounted poster node to a PNG blob, or null when that fails. */
 export async function capturePosterImage(poster: HTMLElement): Promise<Blob | null> {
   try {
     await document.fonts.ready;
+    const fontEmbedCSS = await loadPosterFontCSS();
     // WebKit's first rasterization pass can miss embedded fonts and images;
     // capture twice and keep the second.
-    await toBlob(poster, { pixelRatio: POSTER_PIXEL_RATIO });
-    return await toBlob(poster, { pixelRatio: POSTER_PIXEL_RATIO });
+    await toBlob(poster, { pixelRatio: POSTER_PIXEL_RATIO, fontEmbedCSS });
+    return await toBlob(poster, { pixelRatio: POSTER_PIXEL_RATIO, fontEmbedCSS });
   } catch {
     return null;
   }
