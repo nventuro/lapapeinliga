@@ -67,9 +67,13 @@ export default function MainLayout() {
             </Link>
             {session ? (
               <div className="relative shrink-0" ref={menuRef}>
+                {/* The lime ring is the only always-visible sign that admin
+                    mode is on; the toggle itself sits inside the closed menu. */}
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
-                  className="p-1.5 rounded-full border border-on-primary/30 hover:border-on-primary/70 text-on-primary/80 hover:text-on-primary transition-colors flex items-center gap-1.5"
+                  className={`p-1.5 rounded-full border text-on-primary/80 hover:text-on-primary transition-colors flex items-center gap-1.5 ${
+                    adminMode ? 'border-lime' : 'border-on-primary/30 hover:border-on-primary/70'
+                  }`}
                 >
                   {session.user.user_metadata.avatar_url ? (
                     <img
