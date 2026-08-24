@@ -199,10 +199,15 @@
   --color-gender-male: #4295c9;
   --color-gender-female: #e05098;
 
-  /* Shirt colors -- literal jersey shades (claros vs oscuros), deliberately
-     outside the brand palette so they never read as a team's identity */
+  /* Shirt colors -- literal jersey shades (claros, oscuros, rojos, azules),
+     deliberately outside the brand palette so they never read as a team's
+     identity. Red and blue are fills that carry white text on the share
+     poster (6.5:1 and 6.7:1); the blue is a saturated royal so that, next to
+     the navy band, it reads as a different shirt and not as the club color. */
   --color-shirt-light: #e2e5e9;
   --color-shirt-dark: #374151;
+  --color-shirt-red: #b91c1c;
+  --color-shirt-blue: #1d4ed8;
 
   /* Confetti accents. Brand-led, and all light enough to stay visible against
      `canvas` -- a navy piece would read as a speck of dirt, not celebration.

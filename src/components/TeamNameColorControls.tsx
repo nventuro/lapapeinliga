@@ -1,11 +1,13 @@
 import type { ShirtColor } from '../types';
-import { ShirtIcon, ShuffleIcon } from './icons';
+import { SHIRT_COLOR_LABELS } from '../types';
+import { ShuffleIcon } from './icons';
+import ShirtColorIcon from './ShirtColorIcon';
 import Tooltip from './Tooltip';
 
 interface TeamNameColorControlsProps {
   name: string;
   onNameChange: (value: string) => void;
-  // Omit to hide the shirt-color toggle entirely (e.g. tournament teams have no shirt color).
+  // Omit to hide the shirt-color toggle entirely (teams with no recorded shirt color).
   shirtColor?: ShirtColor;
   onShirtColorToggle?: () => void;
   // Omit to hide the randomize button (only the create flow offers suggested names).
@@ -52,16 +54,14 @@ export default function TeamNameColorControls({
         </Tooltip>
       )}
       {shirtColor && onShirtColorToggle && (
-        <Tooltip label={shirtColor === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
+        <Tooltip label={SHIRT_COLOR_LABELS[shirtColor].shirt}>
           <button
             type="button"
             onClick={onShirtColorToggle}
             disabled={disabled}
             className="p-2 rounded-lg border border-border hover:bg-border-subtle transition-colors"
           >
-            <ShirtIcon
-              className={`w-5 h-5 ${shirtColor === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-            />
+            <ShirtColorIcon color={shirtColor} className="w-5 h-5" />
           </button>
         </Tooltip>
       )}

@@ -157,7 +157,30 @@ export interface Team {
 /** Maps player ID → team index (or 'reserves') for locked players. */
 export type PlayerLocks = Map<number, number | 'reserves'>;
 
-export type ShirtColor = 'light' | 'dark';
+/** The shirt colors a team can wear, in the order the color picker cycles through them. */
+export const SHIRT_COLORS = ['light', 'dark', 'red', 'blue'] as const;
+export type ShirtColor = (typeof SHIRT_COLORS)[number];
+
+/**
+ * How each shirt color is worded: as a team ("Claros"), as the jersey
+ * ("Camiseta clara"), and as the emoji that stands in for it in plain text.
+ */
+export const SHIRT_COLOR_LABELS: Record<ShirtColor, { team: string; shirt: string; emoji: string }> = {
+  light: { team: 'Claros', shirt: 'Camiseta clara', emoji: '⚪' },
+  dark: { team: 'Oscuros', shirt: 'Camiseta oscura', emoji: '⚫' },
+  red: { team: 'Rojos', shirt: 'Camiseta roja', emoji: '🔴' },
+  blue: { team: 'Azules', shirt: 'Camiseta azul', emoji: '🔵' },
+};
+
+/** The color the picker moves to from `color`, wrapping around at the end. */
+export function nextShirtColor(color: ShirtColor): ShirtColor {
+  return SHIRT_COLORS[(SHIRT_COLORS.indexOf(color) + 1) % SHIRT_COLORS.length];
+}
+
+/** The shirt a new event's teams start with: palette order, one per team, repeating past the end. */
+export function defaultShirtColor(teamIndex: number): ShirtColor {
+  return SHIRT_COLORS[teamIndex % SHIRT_COLORS.length];
+}
 
 export type Location = {
   id: number;
@@ -300,7 +323,7 @@ export type VideoHighlight = {
  */
 export type ParticipantKind = 'team_member' | 'reserve' | 'attendee' | 'coach';
 
-/** A team within an event. shirt_color is null for types that don't track one. */
+/** A team within an event. shirt_color is null when no shirt was recorded for it. */
 export type EventTeam = {
   id: number;
   event_id: number;

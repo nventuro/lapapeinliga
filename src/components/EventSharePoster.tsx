@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { EventWithDetails, EventTeam, ExternalMatchPlayer, Player } from '../types';
+import type { EventWithDetails, EventTeam, ExternalMatchPlayer, Player, ShirtColor } from '../types';
 import {
   allParticipants, compareByName, comparePlayersByGenderThenName, EVENT_TYPE_LABELS, OUR_TEAM_NAME,
+  SHIRT_COLOR_LABELS,
 } from '../types';
 import { formatDateForShare, formatTime } from '../utils/dateUtils';
 import { formatPesos, perPlayerCost } from '../utils/costUtils';
@@ -92,17 +93,30 @@ function ShirtTag({ children, className }: { children: React.ReactNode; classNam
   );
 }
 
+// Tailwind only emits classes it can see spelled out, so each shirt maps to
+// its panel classes in a literal table rather than a template string.
+const SHIRT_PANEL_CLASS: Record<ShirtColor, string> = {
+  light: 'bg-shirt-light text-on-surface',
+  dark: 'bg-shirt-dark text-on-primary',
+  red: 'bg-shirt-red text-on-primary',
+  blue: 'bg-shirt-blue text-on-primary',
+};
+
+/** The tag pill on a shirt panel: bordered on the light shirt, a translucent
+    dark pill on every shirt that carries white text. */
+function shirtTagClass(color: ShirtColor): string {
+  return color === 'light' ? 'bg-surface text-muted border border-neutral' : 'bg-on-surface/40 text-on-primary/75';
+}
+
 /** The match body: each panel is the shirt its team wears. */
 function MatchPanels({ teams }: { teams: EventTeam[] }) {
   return (
     <div className="flex-1 grid grid-cols-2">
       {teams.map((team) => {
-        const dark = team.shirt_color === 'dark';
+        const color = team.shirt_color ?? 'light';
         return (
-          <div key={team.id} className={`py-5 px-4 text-center ${dark ? 'bg-shirt-dark text-on-primary' : 'bg-shirt-light text-on-surface'}`}>
-            <ShirtTag className={dark ? 'bg-on-surface/40 text-on-primary/75' : 'bg-surface text-muted border border-neutral'}>
-              {dark ? 'Oscuros' : 'Claros'}
-            </ShirtTag>
+          <div key={team.id} className={`py-5 px-4 text-center ${SHIRT_PANEL_CLASS[color]}`}>
+            <ShirtTag className={shirtTagClass(color)}>{SHIRT_COLOR_LABELS[color].team}</ShirtTag>
             <p className="font-display text-[15px] uppercase mt-2.5">{team.name}</p>
             <TeamPlayerList players={team.players} className="mt-3" />
           </div>
@@ -112,20 +126,30 @@ function MatchPanels({ teams }: { teams: EventTeam[] }) {
   );
 }
 
-/** Tournament teams carry no shirt color: same ground for all, one
-    full-width band per team with the players inline, at any team count.
-    With no shirt to name the room, the team name takes the tag pill. */
+/** One full-width band per team at any team count, the players inline. Each
+    band is the shirt its team wears, tagged like a match panel; a team with no
+    recorded shirt sits on the plain light ground with its name as the tag. */
 function TournamentPanels({ teams }: { teams: EventTeam[] }) {
   return (
     <div className="flex-1 grid grid-cols-1 auto-rows-fr gap-px">
-      {teams.map((team) => (
-        <div key={team.id} className="bg-shirt-light text-on-surface flex flex-col items-center justify-center gap-2 py-2 px-8 text-center">
-          <ShirtTag className="bg-surface text-muted border border-neutral">{team.name}</ShirtTag>
-          <p className="text-[13px] font-semibold leading-snug">
-            {[...team.players].sort(comparePlayersByGenderThenName).map((p) => p.name).join(' · ')}
-          </p>
-        </div>
-      ))}
+      {teams.map((team) => {
+        const color = team.shirt_color ?? 'light';
+        return (
+          <div key={team.id} className={`flex flex-col items-center justify-center gap-2 py-2 px-8 text-center ${SHIRT_PANEL_CLASS[color]}`}>
+            {team.shirt_color ? (
+              <>
+                <ShirtTag className={shirtTagClass(color)}>{SHIRT_COLOR_LABELS[color].team}</ShirtTag>
+                <p className="font-display text-[13px] uppercase -mt-0.5">{team.name}</p>
+              </>
+            ) : (
+              <ShirtTag className={shirtTagClass(color)}>{team.name}</ShirtTag>
+            )}
+            <p className="text-[13px] font-semibold leading-snug">
+              {[...team.players].sort(comparePlayersByGenderThenName).map((p) => p.name).join(' · ')}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -213,9 +237,9 @@ function SocialInvite({ event, eventNumber }: EventSharePosterProps) {
  * off-screen and captures the returned node.
  *
  * The design rule across types is "the ground you stand on says where you
- * belong": match panels are the shirt colors, tournament teams share one
- * ground, trainings put everyone in one room, and external matches face the
- * club celeste against an away grey.
+ * belong": match panels and tournament bands are the shirt colors, trainings
+ * put everyone in one room, and external matches face the club celeste
+ * against an away grey.
  */
 export default function EventSharePoster({ event, eventNumber }: EventSharePosterProps) {
   // A long enough roster outgrows the fixed 4:5 frame, and anything past the

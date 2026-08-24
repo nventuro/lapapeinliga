@@ -1,5 +1,5 @@
-import type { MatchWithDetails, TrainingWithDetails, TournamentWithDetails, ExternalMatchWithDetails, EventType, EventWithDetails, Player, SocialWithDetails } from '../types';
-import { allParticipants, compareByName, comparePlayersByGenderThenName, EVENT_TYPE_LABELS, EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, externalMatchResult } from '../types';
+import type { MatchWithDetails, TrainingWithDetails, TournamentWithDetails, ExternalMatchWithDetails, EventTeam, EventType, EventWithDetails, Player, SocialWithDetails } from '../types';
+import { allParticipants, compareByName, comparePlayersByGenderThenName, EVENT_TYPE_LABELS, EXTERNAL_RESULT_LABELS, OUR_TEAM_NAME, SHIRT_COLOR_LABELS, externalMatchResult } from '../types';
 import { formatDateForShare, formatTime } from './dateUtils';
 import { formatPesos, perPlayerCost } from './costUtils';
 
@@ -59,13 +59,19 @@ function playerLines(players: Player[]): string[] {
   return [...players].sort(compareByName).map((p) => `- ${p.name}`);
 }
 
+/** A team's heading: its name, plus the shirt it wears when one is recorded. */
+function teamHeading(team: EventTeam): string {
+  if (!team.shirt_color) return team.name;
+  const { team: label, emoji } = SHIRT_COLOR_LABELS[team.shirt_color];
+  return `${team.name} (${label} ${emoji})`;
+}
+
 function buildMatchShareMessage(event: MatchWithDetails, eventNumber: string): string {
   const lines = buildHeader(event, eventNumber);
 
   for (const team of event.teams) {
-    const shirtLabel = team.shirt_color === 'dark' ? 'Oscuros ⚫' : 'Claros ⚪';
     lines.push('');
-    lines.push(`${team.name} (${shirtLabel})`);
+    lines.push(teamHeading(team));
     lines.push(...teamPlayerLines(team.players));
   }
 
@@ -99,7 +105,7 @@ function buildTournamentShareMessage(event: TournamentWithDetails, eventNumber: 
 
   for (const team of event.teams) {
     lines.push('');
-    lines.push(team.name);
+    lines.push(teamHeading(team));
     lines.push(...teamPlayerLines(team.players));
   }
 

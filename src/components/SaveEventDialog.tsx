@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useModalDialog } from '../hooks/useModalDialog';
 import { useNavigate } from 'react-router-dom';
 import type { Team, ParticipantKind, Player, ShirtColor, Location, ExternalTeam, ExternalTeamSelection } from '../types';
-import { EVENT_TYPE_LABELS, compareByName, hasFinances, isNewLocationComplete, isExternalTeamSelectionComplete, unhandledEventType } from '../types';
+import { EVENT_TYPE_LABELS, compareByName, defaultShirtColor, hasFinances, isNewLocationComplete, isExternalTeamSelectionComplete, nextShirtColor, unhandledEventType } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAppContext } from '../context/appContext';
 import { isValidTime, toLocalISODate } from '../utils/dateUtils';
@@ -63,20 +63,20 @@ async function insertParticipants(rows: ParticipantInsert[]): Promise<string | n
   return error?.message ?? null;
 }
 
-/** Creates the event's teams (shirt colors for matches only) and its full roster. */
+/** Creates the event's teams and its full roster. */
 async function insertTeamsAndRoster(
   eventId: number,
   teams: Team[],
   reserves: Player[],
   teamNames: string[],
-  shirtColors: ShirtColor[] | null,
+  shirtColors: ShirtColor[],
 ): Promise<string | null> {
   const { data: insertedTeams, error: teamsError } = await supabase
     .from('event_teams')
     .insert(teamNames.map((name, i) => ({
       event_id: eventId,
       name: name.trim(),
-      ...(shirtColors ? { shirt_color: shirtColors[i] } : {}),
+      shirt_color: shirtColors[i],
     })))
     .select('id');
 
@@ -153,7 +153,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
     hasTeams ? initialTeamNames(props.teams.length, suggestedTeamNames) : [],
   );
   const [shirtColors, setShirtColors] = useState<ShirtColor[]>(() =>
-    props.type === 'match' ? props.teams.map((_, i) => (i % 2 === 0 ? 'light' : 'dark')) : [],
+    hasTeams ? props.teams.map((_, i) => defaultShirtColor(i)) : [],
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -196,7 +196,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
   function handleShirtColorToggle(index: number) {
     setShirtColors((prev) => {
       const next = [...prev];
-      next[index] = next[index] === 'light' ? 'dark' : 'light';
+      next[index] = nextShirtColor(next[index]);
       return next;
     });
   }
@@ -289,8 +289,8 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
 
     // Insert child records. If any step fails, delete the event (cascades to all children).
     const childError =
-      props.type === 'match' ? await insertTeamsAndRoster(event.id, props.teams, props.reserves, teamNames, shirtColors)
-      : props.type === 'tournament' ? await insertTeamsAndRoster(event.id, props.teams, props.reserves, teamNames, null)
+      props.type === 'match' || props.type === 'tournament'
+        ? await insertTeamsAndRoster(event.id, props.teams, props.reserves, teamNames, shirtColors)
       : props.type === 'external_match' ? await insertExternalMatchChildren(event.id, externalTeamId!, props.roster, props.reserves)
       : props.type === 'training' ? await insertParticipants([
           ...participantRows(event.id, props.attendees, 'attendee'),
@@ -345,7 +345,7 @@ export default function SaveEventDialog(props: SaveEventDialogProps) {
               <TeamNameColorControls
                 name={teamName}
                 onNameChange={(value) => handleTeamNameChange(i, value)}
-                shirtColor={props.type === 'match' ? shirtColors[i] : undefined}
+                shirtColor={shirtColors[i]}
                 onShirtColorToggle={() => handleShirtColorToggle(i)}
                 onRandomize={suggestedTeamNames.length > 0 ? () => handleRandomizeName(i) : undefined}
                 required

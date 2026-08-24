@@ -302,7 +302,7 @@ async function assertions(db) {
   check('match teams kept shirt colors and event',
     teamEvents.filter((t) => t.event_id === 1).every((t) => t.shirt_color !== null)
     && teamEvents.filter((t) => t.event_id === 1).length === 2);
-  check('tournament teams have no shirt color',
+  check('backfilled tournament teams have no shirt color',
     teamEvents.filter((t) => t.event_id === 3).every((t) => t.shirt_color === null)
     && teamEvents.filter((t) => t.event_id === 3).length === 3);
 
@@ -699,6 +699,14 @@ async function assertions(db) {
   await db.query(`RESET ROLE`);
   check('anon cannot read event_types', anonRows.length === 0, `${anonRows.length} rows`);
   check('anon can still read event_participants', anonParticipants[0].n > 0);
+
+  console.log('\nCamisetas:');
+  check('red and blue shirts are accepted', await succeeds(db,
+    `INSERT INTO event_teams (event_id, name, shirt_color) VALUES (3,'Rojos','red'), (3,'Azules','blue')`));
+  check('an unknown shirt color is rejected',
+    await rejects(db, `INSERT INTO event_teams (event_id, name, shirt_color) VALUES (3,'Verdes','green')`));
+  check('a team may still have no shirt', await succeeds(db,
+    `INSERT INTO event_teams (event_id, name) VALUES (3,'Sin camiseta')`));
 }
 
 async function rejects(db, sql, params) {

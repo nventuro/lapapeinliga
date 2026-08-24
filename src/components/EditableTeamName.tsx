@@ -1,20 +1,22 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ShirtColor } from '../types';
-import { EditIcon, ShirtIcon, TrophyIcon } from './icons';
+import { nextShirtColor, SHIRT_COLOR_LABELS } from '../types';
+import { EditIcon, TrophyIcon } from './icons';
 import Tooltip from './Tooltip';
+import ShirtColorIcon from './ShirtColorIcon';
 import TeamNameColorControls from './TeamNameColorControls';
 
 interface EditableTeamNameProps {
   name: string;
-  // Omit for teams without a shirt color (tournament teams).
+  // Omit for teams with no recorded shirt color.
   shirtColor?: ShirtColor;
   isWinner?: boolean;
   // Rendered on the right of the header in display mode (e.g. team average).
   trailing?: ReactNode;
   canEdit?: boolean;
   saving?: boolean;
-  // Receives the trimmed name and (for match teams) the chosen shirt color.
+  // Receives the trimmed name and, when the team has one, the chosen shirt color.
   onSave?: (name: string, shirtColor?: ShirtColor) => void;
 }
 
@@ -53,7 +55,7 @@ export default function EditableTeamName({
           name={draftName}
           onNameChange={setDraftName}
           shirtColor={draftColor}
-          onShirtColorToggle={draftColor ? () => setDraftColor((c) => (c === 'light' ? 'dark' : 'light')) : undefined}
+          onShirtColorToggle={draftColor ? () => setDraftColor((c) => (c ? nextShirtColor(c) : c)) : undefined}
           disabled={saving}
           autoFocus
         />
@@ -89,10 +91,8 @@ export default function EditableTeamName({
         )}
         <h3 className="font-bold text-lg truncate">{name}</h3>
         {shirtColor && (
-          <Tooltip label={shirtColor === 'light' ? 'Camiseta clara' : 'Camiseta oscura'}>
-            <ShirtIcon
-              className={`w-5 h-5 shrink-0 ${shirtColor === 'light' ? 'text-shirt-light' : 'text-shirt-dark'}`}
-            />
+          <Tooltip label={SHIRT_COLOR_LABELS[shirtColor].shirt}>
+            <ShirtColorIcon color={shirtColor} className="w-5 h-5 shrink-0" />
           </Tooltip>
         )}
         {canEdit && onSave && (
