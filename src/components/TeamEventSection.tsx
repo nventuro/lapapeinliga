@@ -71,7 +71,7 @@ export default function TeamEventSection({
   return (
     <>
       <SectionLabel dim className="mt-6 mb-2">EQUIPOS</SectionLabel>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="participant-grid">
         {teams.map((team) => (
           <TeamCard
             key={team.id}

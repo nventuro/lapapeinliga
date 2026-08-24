@@ -8,6 +8,13 @@
   }
 }
 
+/* Cards that list people (teams, attendees, coaches) sit two across at most:
+   each card holds a column of names, and a third column leaves them too narrow
+   to read on a desktop width. */
+@utility participant-grid {
+  @apply grid grid-cols-1 gap-4 md:grid-cols-2;
+}
+
 /* The club kit's pinstripes, at the 1-in-9 ratio measured off both jerseys and
    the crest artwork. FOR NAVY SURFACES ONLY -- celeste is 1.45:1 against
    `canvas`, so on a light ground the stripes are either invisible or, turned up

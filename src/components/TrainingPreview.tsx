@@ -23,7 +23,7 @@ export default function TrainingPreview({ attendees, coaches, onReset }: Trainin
     <div>
       <h2 className="text-xl font-bold mb-4">Entrenamiento armado</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="participant-grid mb-6">
         <div className="bg-surface border border-border rounded-lg p-4">
           <h3 className="font-bold text-lg mb-3">
             Jugadores

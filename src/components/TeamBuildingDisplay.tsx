@@ -211,7 +211,7 @@ export default function TeamBuildingDisplay({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="participant-grid mb-4">
         {teams.map((team, teamIndex) => {
           const size = team.players.length;
           const maleCount = team.players.filter((p) => p.gender === 'male').length;

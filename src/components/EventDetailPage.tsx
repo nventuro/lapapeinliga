@@ -500,7 +500,7 @@ export default function EventDetailPage() {
       {event.type === 'training' && (
         <>
           <EventMediaStrip eventId={event.id} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+          <div className="participant-grid mt-6">
             <ParticipantListCard
               title="Jugadores"
               players={event.attendees}
