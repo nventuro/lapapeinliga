@@ -1,10 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
-import { toBlob } from 'html-to-image';
+import { getFontEmbedCSS, toBlob } from 'html-to-image';
 import type { EventWithDetails } from '../types';
 import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
 import { POSTER_PIXEL_RATIO } from '../components/EventSharePoster';
 
-export type ImageSharePhase = 'idle' | 'capturing' | 'copied';
+export type ImageSharePhase = 'idle' | 'capturing' | 'preview' | 'copied';
+
+/** How many rasterization passes to try before giving up on two agreeing. */
+const MAX_CAPTURE_PASSES = 4;
+
+/** The poster as a PNG, plus an object URL for showing it. */
+interface ShareImage {
+  blob: Blob;
+  url: string;
+}
+
+/**
+ * The faces the poster sets, as `document.fonts.load` shorthands. The poster
+ * measures itself on mount to decide whether it fits the frame, so it must be
+ * mounted with these loaded, not in the fallbacks a still-loading font leaves.
+ */
+const POSTER_FONTS = ['600 14px Archivo', '800 22px Archivo', '9px Graduate'];
+
+function loadPosterFonts(): Promise<unknown> {
+  return Promise.all(POSTER_FONTS.map((font) => document.fonts.load(font)));
+}
 
 function blobToDataURL(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -44,115 +64,142 @@ function loadPosterFontCSS(): Promise<string | undefined> {
   return posterFontCSS;
 }
 
-/** Rasterizes a mounted poster node to a PNG blob, or null when that fails. */
+
+async function sameBytes(a: Blob, b: Blob): Promise<boolean> {
+  if (a.size !== b.size) return false;
+  const [x, y] = await Promise.all([a.arrayBuffer(), b.arrayBuffer()]);
+  const u = new Uint8Array(x);
+  const v = new Uint8Array(y);
+  return u.every((byte, i) => byte === v[i]);
+}
+
+/**
+ * Rasterizes a mounted poster node to a PNG blob, or null when the result
+ * cannot be trusted — the caller then offers the text share instead.
+ */
 export async function capturePosterImage(poster: HTMLElement): Promise<Blob | null> {
   try {
     await document.fonts.ready;
-    const fontEmbedCSS = await loadPosterFontCSS();
-    // WebKit's first rasterization pass can miss embedded fonts and images;
-    // capture twice and keep the second.
-    await toBlob(poster, { pixelRatio: POSTER_PIXEL_RATIO, fontEmbedCSS });
-    return await toBlob(poster, { pixelRatio: POSTER_PIXEL_RATIO, fontEmbedCSS });
+    // A font file that could not be inlined stays a remote URL, which the
+    // capture document cannot load, and the poster would silently come out
+    // in the fallback faces.
+    const fontEmbedCSS = (await loadPosterFontCSS()) ?? (await getFontEmbedCSS(poster));
+    if (fontEmbedCSS === '' || /url\((?!["']?data:)/.test(fontEmbedCSS)) return null;
+    // WebKit can paint the image before its embedded fonts have loaded, so a
+    // pass is only trusted once the next one reproduces it byte for byte.
+    let previous: Blob | null = null;
+    for (let pass = 0; pass < MAX_CAPTURE_PASSES; pass++) {
+      const blob = await toBlob(poster, { pixelRatio: POSTER_PIXEL_RATIO, fontEmbedCSS });
+      if (!blob) return null;
+      if (previous && (await sameBytes(previous, blob))) return blob;
+      previous = blob;
+    }
+    return previous;
   } catch {
     return null;
   }
 }
 
 /**
- * Shares an event as an image. `start()` kicks off a capture; while phase is
- * 'capturing' the caller must render the poster inside `posterMountRef`, and
- * while it is 'copied' it must show the paste-into-WhatsApp dialog (closed
- * via `closeDialog`).
+ * Shares an event as an image, with the image shown before it leaves the
+ * device. `start()` kicks off a capture; while `renderPoster` is true the
+ * caller must render the poster inside `posterMountRef`, and while `phase`
+ * is anything but 'idle' it must show the preview dialog, wired to
+ * `shareImage`, `shareText`, `retry` and `close`.
  *
- * The image travels by whichever path the browser supports: the OS share
- * sheet where files can be shared (phones), otherwise the clipboard
- * (desktop). When neither works, the plain-text WhatsApp message goes out
- * instead, so sharing never dead-ends.
+ * The share sheet (phones) and the clipboard (desktop) both have to be
+ * reached from a user gesture, so `shareImage` does its privileged call
+ * synchronously from the tap on the preview, with the image already in hand.
+ * When neither path works, the plain-text WhatsApp message goes out instead,
+ * so sharing never dead-ends.
  */
 export function useEventImageShare(event: EventWithDetails | null, eventNumber: string) {
   const [phase, setPhase] = useState<ImageSharePhase>('idle');
+  const [image, setImage] = useState<ShareImage | null>(null);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
   const posterMountRef = useRef<HTMLDivElement>(null);
 
-  // The capture effect reads these through refs so it depends only on
-  // `phase` and cannot re-fire mid-capture on unrelated re-renders.
-  const eventRef = useRef(event);
-  const eventNumberRef = useRef(eventNumber);
+  // The poster is mounted only once its fonts are loaded: it measures itself
+  // on mount, and a face arriving afterwards would reflow it past the frame.
   useEffect(() => {
-    eventRef.current = event;
-    eventNumberRef.current = eventNumber;
-  }, [event, eventNumber]);
-
-  useEffect(() => {
-    if (phase !== 'capturing') return;
-
-    const shareAsText = () => {
-      const current = eventRef.current;
-      if (current) openWhatsAppShare(buildEventShareMessage(current, eventNumberRef.current));
+    if (phase !== 'capturing' || fontsLoaded) return;
+    let cancelled = false;
+    loadPosterFonts().then(() => {
+      if (!cancelled) setFontsLoaded(true);
+    });
+    return () => {
+      cancelled = true;
     };
+  }, [phase, fontsLoaded]);
+  const renderPoster = phase === 'capturing' && fontsLoaded;
 
+  useEffect(() => {
+    if (!renderPoster) return;
+    let cancelled = false;
+    const poster = posterMountRef.current?.firstElementChild;
     (async () => {
-      const poster = posterMountRef.current?.firstElementChild;
-      if (!(poster instanceof HTMLElement)) {
-        shareAsText();
-        setPhase('idle');
-        return;
-      }
-
-      // Probe support with an empty file so no time is spent rasterizing
-      // before knowing which path applies.
-      const probe = new File([], 'fecha.png', { type: 'image/png' });
-      if (navigator.canShare?.({ files: [probe] })) {
-        const blob = await capturePosterImage(poster);
-        if (!blob) {
-          shareAsText();
-          setPhase('idle');
-          return;
-        }
-        const file = new File([blob], `fecha-${eventNumberRef.current}.png`, { type: 'image/png' });
-        // A rejection here is the user closing the share sheet — not a
-        // failure to share, so no fallback.
-        await navigator.share({ files: [file] }).catch(() => {});
-        setPhase('idle');
-        return;
-      }
-
-      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
-        // The write only counts as user-initiated for a few seconds after
-        // the click, and rasterizing can outlast that — so the write is
-        // registered now and handed the capture as a promise.
-        const pending = capturePosterImage(poster).then((blob) => {
-          if (!blob) throw new Error('capture failed');
-          return blob;
-        });
-        try {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': pending })]);
-          setPhase('copied');
-          return;
-        } catch {
-          // Some browsers reject promise payloads outright; the capture may
-          // still have finished in time to write the blob directly.
-          const blob = await pending.catch(() => null);
-          if (blob) {
-            try {
-              await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-              setPhase('copied');
-              return;
-            } catch {
-              // Denied by permission or focus loss; fall through.
-            }
-          }
-        }
-      }
-
-      shareAsText();
-      setPhase('idle');
+      const blob = poster instanceof HTMLElement ? await capturePosterImage(poster) : null;
+      if (cancelled) return;
+      setImage(blob ? { blob, url: URL.createObjectURL(blob) } : null);
+      setPhase('preview');
     })();
-  }, [phase]);
+    return () => {
+      cancelled = true;
+    };
+  }, [renderPoster]);
+
+  const clearImage = () => {
+    if (image) URL.revokeObjectURL(image.url);
+    setImage(null);
+  };
+
+  const close = () => {
+    setPhase('idle');
+    clearImage();
+  };
+
+  const shareText = () => {
+    if (event) openWhatsAppShare(buildEventShareMessage(event, eventNumber));
+    close();
+  };
+
+  const shareImage = () => {
+    if (!image) {
+      shareText();
+      return;
+    }
+    const file = new File([image.blob], `fecha-${eventNumber}.png`, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] })) {
+      // A rejection is the user closing the share sheet; the preview stays up
+      // so they can try again or send the text instead.
+      navigator.share({ files: [file] }).then(close, () => {});
+      return;
+    }
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      navigator.clipboard
+        .write([new ClipboardItem({ 'image/png': image.blob })])
+        .then(() => setPhase('copied'), shareText);
+      return;
+    }
+    shareText();
+  };
+
+  const capture = () => {
+    clearImage();
+    setPhase('capturing');
+  };
 
   return {
     phase,
+    imageUrl: image?.url ?? null,
+    renderPoster,
     posterMountRef,
-    start: () => setPhase((p) => (p === 'idle' ? 'capturing' : p)),
-    closeDialog: () => setPhase('idle'),
+    start: () => {
+      if (phase === 'idle') capture();
+    },
+    shareImage,
+    shareText,
+    retry: capture,
+    close,
   };
 }

@@ -14,7 +14,7 @@ import EventDetailSkeleton from './EventDetailSkeleton';
 import EventHero from './EventHero';
 import EventMediaStrip from './EventMediaStrip';
 import EventSharePoster from './EventSharePoster';
-import ShareCopiedDialog from './ShareCopiedDialog';
+import SharePreviewDialog from './SharePreviewDialog';
 import TeamEventSection from './TeamEventSection';
 import { resolveLocationSelection, useEventFieldsState } from '../hooks/useEventFields';
 import TournamentMatchList from './TournamentMatchList';
@@ -63,9 +63,14 @@ export default function EventDetailPage() {
 
   const {
     phase: sharePhase,
+    imageUrl: shareImageUrl,
+    renderPoster,
     posterMountRef,
     start: startImageShare,
-    closeDialog: closeShareDialog,
+    shareImage: shareAsImage,
+    shareText: shareAsText,
+    retry: retryImageShare,
+    close: closeShareDialog,
   } = useEventImageShare(event, eventNumber);
   const awards = useEventAwards(event?.id ?? null, event?.type ?? null);
   const feedback = useEventFeedback(
@@ -307,12 +312,21 @@ export default function EventDetailPage() {
 
       {/* Mounted only for the capture, off-screen but laid out (display:none
           would give the rasterizer nothing to measure). */}
-      {sharePhase === 'capturing' && (
+      {renderPoster && (
         <div ref={posterMountRef} aria-hidden className="fixed top-0 -left-[9999px]">
           <EventSharePoster event={event} eventNumber={eventNumber} />
         </div>
       )}
-      {sharePhase === 'copied' && <ShareCopiedDialog onClose={closeShareDialog} />}
+      {sharePhase !== 'idle' && (
+        <SharePreviewDialog
+          phase={sharePhase}
+          imageUrl={shareImageUrl}
+          onShare={shareAsImage}
+          onShareText={shareAsText}
+          onRetry={retryImageShare}
+          onClose={closeShareDialog}
+        />
+      )}
 
       {bannerError && (
         <p className="text-sm text-error mt-2">{bannerError}</p>

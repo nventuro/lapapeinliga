@@ -86,8 +86,11 @@ function TeamPlayerList({ players, className }: { players: Player[]; className?:
 }
 
 function ShirtTag({ children, className }: { children: React.ReactNode; className?: string }) {
+  // Never wraps: the rasterizer fixes the pill at its measured width, and a
+  // sub-pixel difference in text metrics has to overflow into the padding
+  // rather than push a word below the pill.
   return (
-    <span className={`font-display inline-block text-[9px] tracking-[0.24em] uppercase px-2.5 py-1 rounded-full ${className ?? ''}`}>
+    <span className={`font-display inline-block whitespace-nowrap text-[9px] tracking-[0.24em] uppercase px-2.5 py-1 rounded-full ${className ?? ''}`}>
       {children}
     </span>
   );
@@ -105,7 +108,7 @@ const SHIRT_PANEL_CLASS: Record<ShirtColor, string> = {
 /** The tag pill on a shirt panel: bordered on the light shirt, a translucent
     dark pill on every shirt that carries white text. */
 function shirtTagClass(color: ShirtColor): string {
-  return color === 'light' ? 'bg-surface text-muted border border-neutral' : 'bg-on-surface/40 text-on-primary/75';
+  return color === 'light' ? 'bg-surface text-muted border border-neutral' : 'bg-shirt-tag text-on-primary-muted';
 }
 
 /** The match body: each panel is the shirt its team wears. */
@@ -188,7 +191,7 @@ function ExternalMatchPanels({ roster, opponentName }: { roster: ExternalMatchPl
         <TeamPlayerList players={roster.map((r) => r.player)} className="mt-3" />
       </div>
       <div className="bg-shirt-dark grid place-items-center px-2">
-        <p className="font-display text-[20px] uppercase tracking-[0.08em] text-center text-on-primary/85 [writing-mode:vertical-rl]">
+        <p className="font-display text-[20px] uppercase tracking-[0.08em] text-center text-on-primary-muted [writing-mode:vertical-rl]">
           {opponentName}
         </p>
       </div>
@@ -202,7 +205,7 @@ function VersusLine({ opponentName }: { opponentName: string }) {
       <p className="font-display text-[10px] leading-relaxed tracking-wider uppercase text-celeste text-right">
         {OUR_TEAM_NAME}
       </p>
-      <p className="font-display text-[15px] text-on-primary/60">VS</p>
+      <p className="font-display text-[15px] text-on-primary-muted">VS</p>
       <p className="font-display text-[10px] leading-relaxed tracking-wider uppercase text-celeste">
         {opponentName}
       </p>
@@ -218,7 +221,7 @@ function SocialInvite({ event, eventNumber }: EventSharePosterProps) {
       <p className="font-display text-[11px] tracking-[0.22em] uppercase text-lime mt-5">
         Fecha #{eventNumber} · {EVENT_TYPE_LABELS[event.type]}
       </p>
-      <h2 className="text-[30px] font-extrabold leading-tight text-balance mt-2">
+      <h2 className="text-[30px] font-extrabold leading-tight mt-2">
         {event.name ?? EVENT_TYPE_LABELS[event.type]}
       </h2>
       <div className="w-10 h-0.5 bg-celeste rounded-full mt-4" />

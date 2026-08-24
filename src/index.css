@@ -252,6 +252,13 @@
   --color-shirt-dark: #374151;
   --color-shirt-red: #b91c1c;
   --color-shirt-blue: #1d4ed8;
+  /* Translucent overlays for the share poster: the tag pill's scrim on a
+     colored shirt, and dimmed white text on any dark fill. Spelled as rgba()
+     literals rather than opacity modifiers for the same reason as the
+     pinstripes -- Tailwind writes those as color-mix(), and the poster is
+     rasterized by whichever browser is sharing it. */
+  --color-shirt-tag: rgba(22, 35, 60, 0.4);
+  --color-on-primary-muted: rgba(255, 255, 255, 0.75);
 
   /* Confetti accents. Brand-led, and all light enough to stay visible against
      `canvas` -- a navy piece would read as a speck of dirt, not celebration.
