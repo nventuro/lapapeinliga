@@ -21,7 +21,6 @@ interface TeamEventSectionProps {
   canEditRoster: boolean;
   canEditTeam: boolean;
   showAverageRating?: boolean;
-  gridClassName: string;
   mutate: (op: MutationOp) => Promise<void>;
   onWinnerChange: (teamId: number | null) => void;
   /** Rendered between the reserves and the results (fixtures, standings). */
@@ -47,7 +46,6 @@ export default function TeamEventSection({
   canEditRoster,
   canEditTeam,
   showAverageRating = false,
-  gridClassName,
   mutate,
   onWinnerChange,
   children,
@@ -73,7 +71,7 @@ export default function TeamEventSection({
   return (
     <>
       <SectionLabel dim className="mt-6 mb-2">EQUIPOS</SectionLabel>
-      <div className={gridClassName}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {teams.map((team) => (
           <TeamCard
             key={team.id}
