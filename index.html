@@ -43,7 +43,26 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- The launch frame: the header band as plain HTML, at the size and
+           position the app's own header takes, so the first paint already
+           looks like the app and the header lands on the same pixels once
+           React mounts and replaces this. The classes are Tailwind's,
+           compiled from this file like the ones on <html>. The invisible tab
+           holds the nav row's height; the tabs themselves arrive with React,
+           whose icons cannot be drawn here. -->
+      <div class="min-h-dvh bg-canvas text-on-surface flex flex-col">
+        <header class="bg-primary pinstripes text-on-primary">
+          <div class="max-w-2xl mx-auto px-4 pt-5 sm:pt-7">
+            <div class="flex items-center gap-2.5 sm:gap-3.5">
+              <img src="/src/assets/crest-on-dark.png" alt="" class="w-11 h-11 sm:w-14 sm:h-14 shrink-0" />
+              <span class="font-display text-xl sm:text-3xl uppercase tracking-wide">La Papeinliga</span>
+            </div>
+            <div class="mt-4 sm:mt-5 w-fit text-sm sm:text-base font-semibold pb-2.5 sm:pb-3 border-b-[3px] border-transparent invisible">Fechas</div>
+          </div>
+        </header>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

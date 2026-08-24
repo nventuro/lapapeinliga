@@ -35,16 +35,8 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (authLoading) {
-    return (
-      <div className="min-h-dvh bg-canvas text-on-surface flex items-center justify-center">
-        <p className="text-muted text-lg">Cargando...</p>
-      </div>
-    );
-  }
-
   return (
-    <AppProvider session={session}>
+    <AppProvider session={session} authLoading={authLoading}>
       <MainLayout />
     </AppProvider>
   );

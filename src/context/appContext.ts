@@ -4,6 +4,9 @@ import type { Player, PlayerPreference, UserRole } from '../types';
 
 export interface AppContextValue {
   session: Session | null;
+  // True until the session, the user's role and the roster have loaded once.
+  // Pages are not shown while it is; the header is.
+  loading: boolean;
   players: Player[];
   preferences: PlayerPreference[];
   teamNames: string[];

@@ -10,6 +10,7 @@ import { parseCostInput } from '../utils/costUtils';
 import ConfettiBurst from './ConfettiBurst';
 import CostSummary from './CostSummary';
 import EventFieldsForm from './EventFieldsForm';
+import EventDetailSkeleton from './EventDetailSkeleton';
 import EventHero from './EventHero';
 import EventMediaStrip from './EventMediaStrip';
 import EventSharePoster from './EventSharePoster';
@@ -222,7 +223,7 @@ export default function EventDetailPage() {
   }
 
   if (loading && !event) {
-    return <p className="text-muted text-center py-8">Cargando fecha...</p>;
+    return <EventDetailSkeleton />;
   }
 
   // A full-screen error only when there is nothing to show: a failed REFETCH

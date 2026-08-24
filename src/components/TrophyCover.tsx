@@ -1,5 +1,6 @@
 import type { MediaItem } from '../types';
 import { mediaUrl } from '../utils/mediaUpload';
+import FadeInImage from './FadeInImage';
 import { TrophyIcon } from './icons';
 
 interface TrophyCoverProps {
@@ -50,18 +51,19 @@ export default function TrophyCover({
   const foilDelay = { animationDelay: `-${foilDelaySeconds}s` };
   return (
     <>
-      {cover ? (
-        <img
+      {/* The navy ground sits under the photo too, so a cover fades in over
+          the same surface the empty state shows. */}
+      <div className="absolute inset-0 bg-primary pinstripes flex items-center justify-center">
+        {!cover && <TrophyIcon className="w-10 h-10 text-lime/40" />}
+      </div>
+      {cover && (
+        <FadeInImage
           src={mediaUrl(cover.storage_path)}
           alt={title}
           className="absolute inset-0 w-full h-full object-cover"
           style={{ objectPosition: `${focusX}% ${focusY}%` }}
           loading="lazy"
         />
-      ) : (
-        <div className="absolute inset-0 bg-primary pinstripes flex items-center justify-center">
-          <TrophyIcon className="w-10 h-10 text-lime/40" />
-        </div>
       )}
 
       <div className="absolute inset-0 cover-grade" />

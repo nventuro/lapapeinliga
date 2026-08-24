@@ -13,6 +13,7 @@ import TagInput from './TagInput';
 import EventSelect from './EventSelect';
 import ImageCropDialog from './ImageCropDialog';
 import PlayerTagInput from './PlayerTagInput';
+import Skeleton from './Skeleton';
 import { useEventParticipants } from '../hooks/useEventParticipants';
 import { useAppContext } from '../context/appContext';
 
@@ -375,7 +376,7 @@ export default function MediaUploadDialog({ onClose, onItemUploaded, prefilledEv
                   onError={() => setPreviewState('error')}
                 />
                 {previewState === 'loading' && (
-                  <span className="text-muted text-sm">Cargando...</span>
+                  <Skeleton className="absolute inset-0" />
                 )}
                 {previewState === 'loaded' && (
                   <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-on-surface/60 text-surface px-2 py-0.5 rounded-full pointer-events-none">

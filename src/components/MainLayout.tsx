@@ -7,6 +7,7 @@ import ToggleSwitch from './ToggleSwitch';
 import Tooltip from './Tooltip';
 import EditNameDialog from './EditNameDialog';
 import Footer from './Footer';
+import RouteSkeleton from './RouteSkeleton';
 import { useTabStripScroll } from '../hooks/useTabStripScroll';
 import crest from '../assets/crest-on-dark.png';
 
@@ -22,7 +23,7 @@ const NAV_ITEMS = [
 const NAV_FADE_PX = 28;
 
 export default function MainLayout() {
-  const { session, isActualAdmin, adminMode, setAdminMode, showRatings, setShowRatings, showCosts, setShowCosts, signIn } = useAppContext();
+  const { session, loading, isActualAdmin, adminMode, setAdminMode, showRatings, setShowRatings, showCosts, setShowCosts, signIn } = useAppContext();
   const currentPlayer = useCurrentPlayer();
   const location = useLocation();
   const { ref: navRef, fadeStart, fadeEnd } = useTabStripScroll(location.pathname);
@@ -151,7 +152,9 @@ export default function MainLayout() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : loading ? null : (
+              /* Only once the session is known: a sign-in button that turns
+                 into the avatar a moment later would be a lie. */
               <button
                 onClick={signIn}
                 className="shrink-0 p-1.5 rounded-full border border-on-primary/30 hover:border-on-primary/70 text-on-primary/80 hover:text-on-primary transition-colors"
@@ -195,7 +198,7 @@ export default function MainLayout() {
       </header>
 
       <div className="max-w-2xl mx-auto w-full px-4 pt-6 flex-1">
-        <Outlet />
+        {loading ? <RouteSkeleton /> : <Outlet />}
       </div>
 
       <Footer />

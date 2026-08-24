@@ -45,8 +45,10 @@ export default function EventMediaStrip({ eventId }: EventMediaStripProps) {
   // Empty state: show upload button for admins, nothing for non-admins
   if (items.length === 0 && !isModOrAdmin) return null;
 
+  // Whether there is a strip at all is unknown until the photos arrive, so it
+  // cannot hold its place beforehand; fading in is what keeps it from popping.
   return (
-    <div className="mt-4">
+    <div className="mt-4 animate-fade-in motion-reduce:animate-none">
       {items.length === 0 ? (
         <button
           onClick={() => setShowUpload(true)}

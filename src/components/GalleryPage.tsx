@@ -10,6 +10,7 @@ import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { supabase } from '../lib/supabase';
 import { PhotosIcon, UploadIcon } from './icons';
 import MasonryGrid from './MasonryGrid';
+import MasonryGridSkeleton from './MasonryGridSkeleton';
 import Lightbox from './Lightbox';
 import MediaUploadDialog from './MediaUploadDialog';
 import Tooltip from './Tooltip';
@@ -182,10 +183,6 @@ export default function GalleryPage() {
   }, [events]);
 
 
-  if (loading) {
-    return <p className="text-muted text-center py-16">Cargando...</p>;
-  }
-
   return (
     <div>
       {/* Filters */}
@@ -258,7 +255,10 @@ export default function GalleryPage() {
         )}
       </div>
 
-      {items.length === 0 ? (
+      {/* The filters stay up through the load: they never depended on the photos. */}
+      {loading ? (
+        <MasonryGridSkeleton />
+      ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted">
           <PhotosIcon className="w-12 h-12 mb-3" />
           <p className="text-lg font-medium">Todavía no hay fotos</p>

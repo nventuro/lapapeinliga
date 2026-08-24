@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
 import type { Player, TaggedPlayer } from '../types';
+import Skeleton from './Skeleton';
+
+const CHIP_PLACEHOLDER_WIDTHS = ['w-16', 'w-20', 'w-14', 'w-24', 'w-12'];
 
 interface PlayerTagInputProps {
   candidates: Player[];
@@ -40,7 +43,17 @@ export default function PlayerTagInput({ candidates, allPlayers, selected, onCha
   }
 
   if (loading) {
-    return <p className="text-xs text-muted">Cargando jugadores...</p>;
+    return (
+      <div aria-busy="true" className="space-y-1.5">
+        <span className="text-xs text-muted">Personas</span>
+        <span className="sr-only">Cargando…</span>
+        <div className="flex flex-wrap gap-1.5">
+          {CHIP_PLACEHOLDER_WIDTHS.map((width) => (
+            <Skeleton key={width} className={`h-5 rounded-full ${width}`} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (candidates.length === 0 && allPlayers.length === 0) {

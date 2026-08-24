@@ -5,6 +5,7 @@ import {
 import { useAppContext } from '../context/appContext';
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { EditIcon, TrophyIcon, WhatsAppIcon } from './icons';
+import Skeleton from './Skeleton';
 import Tooltip from './Tooltip';
 import EventVideoSection from './EventVideoSection';
 
@@ -59,7 +60,7 @@ export default function EventHero({ event, eventNumber, canShare, onShare, onEdi
     <div className="bg-primary pinstripes rounded-xl text-on-primary p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="font-display text-[11px] tracking-[0.22em] uppercase text-lime pt-1">
-          Fecha #{eventNumber || '…'} · {EVENT_TYPE_LABELS[event.type]}
+          Fecha #{eventNumber || <Skeleton inline onFill className="h-2.5 w-5 rounded align-middle" />} · {EVENT_TYPE_LABELS[event.type]}
         </p>
         {isModOrAdmin && (
           <span className="flex items-center gap-1 shrink-0">

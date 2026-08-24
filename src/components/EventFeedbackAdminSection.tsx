@@ -1,7 +1,11 @@
+import Skeleton from './Skeleton';
+
 interface EventFeedbackAdminSectionProps {
   bodies: string[] | null;
   loading: boolean;
 }
+
+const COMMENT_PLACEHOLDERS = 2;
 
 export default function EventFeedbackAdminSection({ bodies, loading }: EventFeedbackAdminSectionProps) {
   if (bodies == null) return null;
@@ -17,7 +21,15 @@ export default function EventFeedbackAdminSection({ bodies, loading }: EventFeed
         )}
       </div>
       {loading ? (
-        <p className="text-sm text-muted">Cargando...</p>
+        <div aria-busy="true" className="space-y-2">
+          <span className="sr-only">Cargando…</span>
+          {Array.from({ length: COMMENT_PLACEHOLDERS }, (_, i) => (
+            <div key={i} className="border border-border-subtle rounded-lg p-3 space-y-2">
+              <Skeleton className="h-4 w-full rounded" />
+              <Skeleton className="h-4 w-2/3 rounded" />
+            </div>
+          ))}
+        </div>
       ) : bodies.length === 0 ? (
         <p className="text-sm text-muted italic">Nadie dejó comentarios.</p>
       ) : (

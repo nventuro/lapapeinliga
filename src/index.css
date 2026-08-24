@@ -100,6 +100,50 @@
   opacity: 0.3;
 }
 
+/* Placeholder blocks for content still on its way -- applied by `Skeleton`.
+   The sheen crosses at a walking pace so a page full of them reads as one
+   calm surface, not a field of spinners. The on-fill variant is for the navy
+   hero and the celeste rail, where the canvas greys would read as a hole. */
+@utility skeleton {
+  background-color: var(--color-neutral);
+  background-image: linear-gradient(
+    90deg,
+    var(--color-neutral) 0%,
+    var(--color-border-subtle) 40%,
+    var(--color-neutral) 80%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-sheen 1.8s linear infinite;
+}
+
+@utility skeleton-on-fill {
+  background-color: color-mix(in srgb, var(--color-on-primary) 14%, transparent);
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-on-primary) 14%, transparent) 0%,
+    color-mix(in srgb, var(--color-on-primary) 26%, transparent) 40%,
+    color-mix(in srgb, var(--color-on-primary) 14%, transparent) 80%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-sheen 1.8s linear infinite;
+}
+
+@keyframes skeleton-sheen {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+/* Without motion the sheen is a pale stripe parked on every block, so the
+   blocks go flat instead. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .skeleton-on-fill {
+    background-image: none;
+    animation: none;
+  }
+}
+
 /* Palette derived from the club crest (src/assets/crest.png): navy #1a2c4c,
    celeste #62afd5, lime #d1d82a. The crest colors are used as-is for fills, but
    celeste and lime are far too light to carry text (2.44:1 and 1.55:1 on white),
@@ -216,16 +260,18 @@
   --color-confetti-amber: #f59e0b;
 
   /* Animations */
-  --animate-tooltip-in: tooltip-in 120ms ease-out;
+  --animate-tooltip-in: fade-in 120ms ease-out;
+  /* For a section that arrives after the page around it has settled. */
+  --animate-fade-in: fade-in 300ms ease-out;
   --animate-lime-glow-pulse: lime-glow-pulse 4s ease-out;
   --animate-slide-down-in: slide-down-in 0.8s ease-out;
   --animate-slide-up-out: slide-up-out 0.4s ease-in forwards;
 }
 
-/* The bubble is mounted on hover rather than faded from opacity-0, so this runs
-   on insert -- a transition would not, since there is no previous style to
-   animate from. */
-@keyframes tooltip-in {
+/* Runs on insert: what uses it is mounted the moment it appears (a tooltip on
+   hover, a section once its data lands), so a transition would have no
+   previous style to animate from. */
+@keyframes fade-in {
   from {
     opacity: 0;
   }

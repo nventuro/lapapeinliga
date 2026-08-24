@@ -6,9 +6,12 @@ import { AppContext } from './appContext';
 
 export function AppProvider({
   session,
+  authLoading,
   children,
 }: {
   session: Session | null;
+  /** True while the session is still being read; nothing is fetched until it is known. */
+  authLoading: boolean;
   children: React.ReactNode;
 }) {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -40,8 +43,14 @@ export function AppProvider({
   // previous session (e.g. an admin's, still in flight at sign-out) could
   // resolve late and clobber state with data the new session must not hold.
   const fetchData = useCallback(async (admin: boolean, signal?: { cancelled: boolean }) => {
-    const table = admin ? 'players' : 'players_public';
-    const playersResult = await supabase.from(table).select('*').order('name');
+    // None of these depend on each other, so they share one round trip. Team
+    // names are public; preferences are admin-only (RLS restricted), so
+    // non-admins don't ask.
+    const [playersResult, teamNamesResult, prefsResult] = await Promise.all([
+      supabase.from(admin ? 'players' : 'players_public').select('*').order('name'),
+      supabase.from('team_names').select('name').order('name'),
+      admin ? supabase.from('player_preferences').select('*') : null,
+    ]);
     if (signal?.cancelled) return;
 
     if (playersResult.error) {
@@ -50,23 +59,14 @@ export function AppProvider({
     }
 
     setPlayers(playersResult.data as Player[]);
-    // Admin-only data must not survive into a non-admin session.
-    if (!admin) setPreferences([]);
-
-    // Team names are public — fetch unconditionally
-    const teamNamesResult = await supabase.from('team_names').select('name').order('name');
-    if (signal?.cancelled) return;
     if (!teamNamesResult.error) {
       setTeamNames(teamNamesResult.data.map((r) => r.name));
     }
 
-    // Preferences are admin-only (RLS restricted)
-    if (admin) {
-      const prefsResult = await supabase.from('player_preferences').select('*');
-      if (signal?.cancelled) return;
-      if (!prefsResult.error) {
-        setPreferences(prefsResult.data as PlayerPreference[]);
-      }
+    // Admin-only data must not survive into a non-admin session.
+    if (!admin) setPreferences([]);
+    if (prefsResult && !prefsResult.error) {
+      setPreferences(prefsResult.data as PlayerPreference[]);
     }
 
     setError(null);
@@ -87,6 +87,7 @@ export function AppProvider({
 
   // Initial data load + role check
   useEffect(() => {
+    if (authLoading) return;
     const signal = { cancelled: false };
 
     async function init() {
@@ -94,9 +95,13 @@ export function AppProvider({
 
       let resolvedRole: UserRole = 'basic';
       if (session) {
+        // The public data is the same whoever asks, so it travels with the
+        // role check instead of waiting for it; only admins then need a
+        // second trip, for their private view.
         const [roleRes, myPlayerRes] = await Promise.all([
           supabase.rpc('current_user_role'),
           supabase.rpc('get_my_player_id'),
+          fetchData(false, signal),
         ]);
         if (signal.cancelled) return;
 
@@ -117,19 +122,20 @@ export function AppProvider({
           if (stored === 'true') setShowRatingsState(true);
           const storedCosts = localStorage.getItem(SHOW_COSTS_KEY);
           if (storedCosts === 'true') setShowCostsState(true);
+          await fetchData(true, signal);
         }
       } else {
         setRole('basic');
         setCurrentPlayerId(null);
+        await fetchData(false, signal);
       }
 
-      await fetchData(resolvedRole === 'admin', signal);
       if (!signal.cancelled) setLoading(false);
     }
     init();
 
     return () => { signal.cancelled = true; };
-  }, [session, fetchData]);
+  }, [session, authLoading, fetchData]);
 
   const refetchData = useCallback(async () => {
     // Data privileges follow the real role, not the non-admin preview.
@@ -148,14 +154,6 @@ export function AppProvider({
     localStorage.removeItem(SHOW_COSTS_KEY);
     supabase.auth.signOut();
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-dvh bg-canvas text-on-surface flex items-center justify-center">
-        <p className="text-muted text-lg">Cargando...</p>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -176,7 +174,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ session, players, preferences, teamNames, role, isAdmin, isModOrAdmin, isActualAdmin, adminMode, setAdminMode, currentPlayerId, showRatings: effectiveShowRatings, setShowRatings, showCosts: effectiveShowCosts, setShowCosts, refetchData, signIn }}>
+    <AppContext.Provider value={{ session, loading, players, preferences, teamNames, role, isAdmin, isModOrAdmin, isActualAdmin, adminMode, setAdminMode, currentPlayerId, showRatings: effectiveShowRatings, setShowRatings, showCosts: effectiveShowCosts, setShowCosts, refetchData, signIn }}>
       {children}
     </AppContext.Provider>
   );

@@ -63,10 +63,12 @@ export default function TrophyGallery({
 
   if (loading) return null;
 
+  // Whether there is a gallery at all is unknown until the photos arrive, so
+  // it cannot hold its place beforehand; fading in keeps it from popping.
   if (items.length === 0) {
     if (!isModOrAdmin) return null;
     return (
-      <section>
+      <section className="animate-fade-in motion-reduce:animate-none">
         <button
           onClick={() => setShowUpload(true)}
           className="w-full py-3 border border-dashed border-border rounded-lg text-sm text-muted hover:text-accent hover:border-accent flex items-center justify-center gap-2 transition-colors"
@@ -87,7 +89,7 @@ export default function TrophyGallery({
   }
 
   return (
-    <section>
+    <section className="animate-fade-in motion-reduce:animate-none">
       <div className="flex items-center justify-between">
         <SectionLabel dim>FOTOS · {items.length}</SectionLabel>
         <div className="flex items-center gap-3 mb-2">

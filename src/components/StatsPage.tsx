@@ -20,6 +20,7 @@ import { AWARD_ICONS } from './awardIcons';
 import GenderIcon from './GenderIcon';
 import SectionLabel from './SectionLabel';
 import StatTile from './StatTile';
+import StatsSkeleton from './StatsSkeleton';
 import Tooltip from './Tooltip';
 
 /** A count entry may override how its number reads (e.g. "73%") while still
@@ -243,7 +244,7 @@ export default function StatsPage() {
   } = useEventStats();
 
   if (loading) {
-    return <p className="text-muted text-center py-8">Cargando estadísticas...</p>;
+    return <StatsSkeleton />;
   }
 
   if (error) {

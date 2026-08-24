@@ -9,6 +9,7 @@ import { PlusIcon, TrophyIcon } from './icons';
 import Tooltip from './Tooltip';
 import TrophyCover from './TrophyCover';
 import TrophyFormDialog from './TrophyFormDialog';
+import TrophyListSkeleton from './TrophyListSkeleton';
 
 /** The circles on the lead card. Initials only -- the names are one tap away. */
 function Faces({ participants }: { participants: Player[] }) {
@@ -87,7 +88,7 @@ export default function TrophyListPage() {
   const [creating, setCreating] = useState(false);
 
   if (loading) {
-    return <p className="text-muted text-center py-16">Cargando trofeos...</p>;
+    return <TrophyListSkeleton />;
   }
 
   if (error) {

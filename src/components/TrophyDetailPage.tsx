@@ -12,6 +12,7 @@ import SectionLabel from './SectionLabel';
 import Tooltip from './Tooltip';
 import TrophyCover from './TrophyCover';
 import TrophyCoverAdjust from './TrophyCoverAdjust';
+import TrophyDetailSkeleton from './TrophyDetailSkeleton';
 import TrophyFormDialog from './TrophyFormDialog';
 import TrophyGallery from './TrophyGallery';
 import { EditIcon, MoveIcon } from './icons';
@@ -58,7 +59,7 @@ export default function TrophyDetailPage() {
   }
 
   if (loading) {
-    return <p className="text-muted text-center py-16">Cargando...</p>;
+    return <TrophyDetailSkeleton />;
   }
 
   if (error) {

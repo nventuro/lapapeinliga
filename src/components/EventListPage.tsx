@@ -13,6 +13,7 @@ import {
   relativeDayLabel,
 } from '../utils/dateUtils';
 import CostSummary from './CostSummary';
+import EventListSkeleton from './EventListSkeleton';
 import { EVENT_TYPE_ICONS } from './eventTypeIcons';
 import Tooltip from './Tooltip';
 import Chip, { ChipRow } from './Chip';
@@ -281,7 +282,7 @@ export default function EventListPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-muted text-center py-8">Cargando fechas...</p>;
+    return <EventListSkeleton />;
   }
 
   if (error) {

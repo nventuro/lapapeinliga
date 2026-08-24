@@ -7,6 +7,7 @@ import { formatDateTime } from '../utils/dateUtils';
 import TiebreakerDialog from './TiebreakerDialog';
 import FeedbackInput from './FeedbackInput';
 import SectionLabel from './SectionLabel';
+import Skeleton from './Skeleton';
 
 interface AwardsSectionProps {
   eventType: EventType;
@@ -33,6 +34,27 @@ function formatTimeRemaining(iso: string, now: Date): string {
   if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
+}
+
+/** The results rows with the winners blank, for while the votes are counted. */
+function ResultsSkeleton() {
+  return (
+    <div aria-busy="true" className="space-y-2 text-sm">
+      <span className="sr-only">Cargando…</span>
+      {AWARD_TYPES.map((award) => {
+        const Icon = AWARD_ICONS[award];
+        return (
+          <div key={award} className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-muted">
+              {AWARD_LABELS[award]}
+              <Icon className="w-4 h-4 text-muted" />
+            </span>
+            <Skeleton className="h-4 w-24 rounded" />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function AwardsSection({
@@ -63,7 +85,21 @@ export default function AwardsSection({
   }, [voteWindow?.state]);
 
   if (!hasAwards(eventType)) return null;
-  if (!voteWindow || voteWindow.state === 'n/a') return null;
+  if (voteWindow?.state === 'n/a') return null;
+
+  // No window yet means it is still on its way (or failed): hold the card's
+  // place so the page does not grow by a section when it lands.
+  if (!voteWindow) {
+    if (!loading) return null;
+    return (
+      <div className="mt-4">
+        <SectionLabel dim>PREMIOS</SectionLabel>
+        <div className="bg-surface border border-border rounded-lg p-4">
+          <ResultsSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   function findResult(award: AwardType): AwardResult | undefined {
     return results.find((r) => r.award_type === award);
@@ -199,7 +235,7 @@ export default function AwardsSection({
         </div>
         <div className="bg-surface border border-border rounded-lg p-4">
           {loading && results.length === 0 ? (
-            <p className="text-sm text-muted">Cargando...</p>
+            <ResultsSkeleton />
           ) : (
             <div className="space-y-2 text-sm">
               {AWARD_TYPES.map((award) => {

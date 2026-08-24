@@ -106,10 +106,10 @@ export default function PlayerPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <StatTile value={String(played)} label="partidos" />
-        <StatTile value={String(won)} label="ganados" />
+        <StatTile value={statsLoading ? null : String(played)} label="partidos" />
+        <StatTile value={statsLoading ? null : String(won)} label="ganados" />
         <StatTile
-          value={effectiveness != null ? `${effectiveness}%` : '—'}
+          value={statsLoading ? null : effectiveness != null ? `${effectiveness}%` : '—'}
           label="efectividad"
           accent
         />
