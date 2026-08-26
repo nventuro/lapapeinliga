@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getFontEmbedCSS, toBlob } from 'html-to-image';
 import type { EventWithDetails } from '../types';
-import { buildEventShareMessage, openWhatsAppShare } from '../utils/shareMessage';
+import { buildEventShareCaption, buildEventShareMessage, openWhatsAppShare, openWhatsAppWebDraft } from '../utils/shareMessage';
 import { POSTER_PIXEL_RATIO } from '../components/EventSharePoster';
 
 export type ImageSharePhase = 'idle' | 'capturing' | 'preview' | 'copied';
@@ -105,7 +105,13 @@ export async function capturePosterImage(poster: HTMLElement): Promise<Blob | nu
  * device. `start()` kicks off a capture; while `renderPoster` is true the
  * caller must render the poster inside `posterMountRef`, and while `phase`
  * is anything but 'idle' it must show the preview dialog, wired to
- * `shareImage`, `shareText`, `retry` and `close`.
+ * `shareImage`, `shareText`, `openWhatsApp`, `retry` and `close`.
+ *
+ * The image travels with a caption carrying what a picture cannot make
+ * tappable or copyable (the maps link, the alias/CBU). On phones it rides
+ * along in the share sheet; on desktop, where the clipboard can only carry
+ * the image, `openWhatsApp` drafts it in WhatsApp Web for the image to be
+ * pasted onto.
  *
  * The share sheet (phones) and the clipboard (desktop) both have to be
  * reached from a user gesture, so `shareImage` does its privileged call
@@ -163,16 +169,24 @@ export function useEventImageShare(event: EventWithDetails | null, eventNumber: 
     close();
   };
 
+  const caption = event ? buildEventShareCaption(event) : '';
+
+  const openWhatsApp = () => {
+    openWhatsAppWebDraft(caption);
+    close();
+  };
+
   const shareImage = () => {
     if (!image) {
       shareText();
       return;
     }
     const file = new File([image.blob], `fecha-${eventNumber}.png`, { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] })) {
+    const shareData: ShareData = { files: [file], text: caption || undefined };
+    if (navigator.canShare?.(shareData)) {
       // A rejection is the user closing the share sheet; the preview stays up
       // so they can try again or send the text instead.
-      navigator.share({ files: [file] }).then(close, () => {});
+      navigator.share(shareData).then(close, () => {});
       return;
     }
     if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
@@ -199,6 +213,7 @@ export function useEventImageShare(event: EventWithDetails | null, eventNumber: 
     },
     shareImage,
     shareText,
+    openWhatsApp,
     retry: capture,
     close,
   };

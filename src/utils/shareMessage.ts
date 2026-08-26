@@ -22,27 +22,34 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   lines.push(`📅 ${formatDateForShare(event.played_at)}`);
 
   lines.push(`🕐 ${formatTime(event.played_at_time)}`);
-  if (event.location) {
-    lines.push(`📍 ${event.location.name} (${event.location.maps_url})`);
-  }
+  const location = locationLine(event);
+  if (location) lines.push(location);
 
   return lines;
 }
 
-function buildCostFooter(event: EventWithDetails): string[] {
-  const lines: string[] = [];
+/** Where it is, with the maps link so the place is one tap away in the chat. */
+function locationLine(event: EventWithDetails): string | null {
+  return event.location ? `📍 ${event.location.name} (${event.location.maps_url})` : null;
+}
+
+/** The per-person share and who to send it to; empty when there is no cost to split. */
+function paymentLines(event: EventWithDetails): string[] {
   const cost = event.finances?.cost;
-  if (cost != null) {
-    const perPlayer = perPlayerCost(cost, allParticipants(event).length);
-    if (perPlayer != null) {
-      lines.push('');
-      lines.push(`*💰 ${formatPesos(perPlayer)} por persona*`);
-      // A cost can be recorded without a payee; never print "Enviar a null".
-      if (event.finances?.payee_alias_cbu) {
-        lines.push(`Enviar a ${event.finances.payee_alias_cbu}`);
-      }
-    }
+  if (cost == null) return [];
+  const perPlayer = perPlayerCost(cost, allParticipants(event).length);
+  if (perPlayer == null) return [];
+  const lines = [`*💰 ${formatPesos(perPlayer)} por persona*`];
+  // A cost can be recorded without a payee; never print "Enviar a null".
+  if (event.finances?.payee_alias_cbu) {
+    lines.push(`Enviar a ${event.finances.payee_alias_cbu}`);
   }
+  return lines;
+}
+
+function buildCostFooter(event: EventWithDetails): string[] {
+  const payment = paymentLines(event);
+  const lines: string[] = payment.length > 0 ? ['', ...payment] : [];
 
   lines.push('');
   lines.push(event.type === 'social' ? '¡Nos vemos! ✨🩵' : '¡Nos vemos en la cancha! ✨🩵');
@@ -164,7 +171,25 @@ export function buildEventShareMessage(event: EventWithDetails, eventNumber: str
   return buildTrainingShareMessage(event, eventNumber);
 }
 
+/**
+ * What the poster image cannot make tappable or copyable: the maps link and
+ * the alias/CBU. Goes out as the image's caption; empty when the event has
+ * neither.
+ */
+export function buildEventShareCaption(event: EventWithDetails): string {
+  return [locationLine(event), ...paymentLines(event)].filter(Boolean).join('\n');
+}
+
 export function openWhatsAppShare(text: string): void {
   const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank');
+}
+
+/**
+ * Opens WhatsApp Web with `text` drafted in the composer, for an image to be
+ * pasted onto: WhatsApp turns the draft into the image's caption.
+ */
+export function openWhatsAppWebDraft(text: string): void {
+  const url = text ? `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}` : 'https://web.whatsapp.com';
+  window.open(url, '_blank', 'noopener');
 }

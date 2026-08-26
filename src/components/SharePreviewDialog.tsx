@@ -7,6 +7,8 @@ interface SharePreviewDialogProps {
   imageUrl: string | null;
   onShare: () => void;
   onShareText: () => void;
+  /** Hands off to WhatsApp Web once the image is on the clipboard. */
+  onOpenWhatsApp: () => void;
   onRetry: () => void;
   onClose: () => void;
 }
@@ -20,16 +22,11 @@ const primaryButton = 'px-4 py-2 text-sm rounded-lg bg-primary text-on-primary f
  * dialog then confirms the copy and hands off to WhatsApp: opening it steals
  * focus, so the confirmation has to be on screen before the user navigates.
  */
-export default function SharePreviewDialog({ phase, imageUrl, onShare, onShareText, onRetry, onClose }: SharePreviewDialogProps) {
+export default function SharePreviewDialog({ phase, imageUrl, onShare, onShareText, onOpenWhatsApp, onRetry, onClose }: SharePreviewDialogProps) {
   const { dialogRef, backdropClick } = useModalDialog(onClose);
 
   const capturing = phase === 'capturing';
   const failed = !capturing && imageUrl == null;
-
-  function openWhatsApp() {
-    window.open('https://web.whatsapp.com', '_blank', 'noopener');
-    onClose();
-  }
 
   return (
     <dialog
@@ -56,7 +53,7 @@ export default function SharePreviewDialog({ phase, imageUrl, onShare, onShareTe
           {capturing && 'Armando la imagen…'}
           {failed && 'No pude armar la imagen. Podés mandar la fecha como texto.'}
           {phase === 'preview' && imageUrl && 'Así se va a ver en el chat.'}
-          {phase === 'copied' && 'Imagen copiada: abrí WhatsApp y pegala en el chat.'}
+          {phase === 'copied' && 'Imagen copiada: abrí WhatsApp, elegí el chat y pegala.'}
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -70,7 +67,7 @@ export default function SharePreviewDialog({ phase, imageUrl, onShare, onShareTe
               Cerrar
             </button>
             {phase === 'copied' ? (
-              <button type="button" onClick={openWhatsApp} className={primaryButton}>
+              <button type="button" onClick={onOpenWhatsApp} className={primaryButton}>
                 Abrir WhatsApp
               </button>
             ) : (

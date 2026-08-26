@@ -69,6 +69,7 @@ export default function EventDetailPage() {
     start: startImageShare,
     shareImage: shareAsImage,
     shareText: shareAsText,
+    openWhatsApp: openWhatsAppForPaste,
     retry: retryImageShare,
     close: closeShareDialog,
   } = useEventImageShare(event, eventNumber);
@@ -323,6 +324,7 @@ export default function EventDetailPage() {
           imageUrl={shareImageUrl}
           onShare={shareAsImage}
           onShareText={shareAsText}
+          onOpenWhatsApp={openWhatsAppForPaste}
           onRetry={retryImageShare}
           onClose={closeShareDialog}
         />
