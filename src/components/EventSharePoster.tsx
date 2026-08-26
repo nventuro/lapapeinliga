@@ -18,6 +18,26 @@ export const POSTER_WIDTH = 400;
 export const POSTER_HEIGHT = 500;
 export const POSTER_PIXEL_RATIO = 2.7;
 
+/** Overflow below this fraction of the frame is sub-pixel and not worth a
+    re-layout; it also keeps a rounding remainder from re-scaling forever. */
+const FIT_TOLERANCE = 0.001;
+
+/**
+ * The scale at which the poster content, currently laid out and transformed
+ * inside its frame, would fit the frame in both directions — or null when it
+ * already fits. Fitting the width means widening the content until nothing
+ * overflows its box horizontally.
+ */
+function fittedScale(content: HTMLElement): number | null {
+  const rect = content.getBoundingClientRect();
+  const current = rect.height / content.offsetHeight;
+  let fit = POSTER_HEIGHT / rect.height;
+  for (const el of content.querySelectorAll<HTMLElement>('*')) {
+    if (el.clientWidth > 0) fit = Math.min(fit, el.clientWidth / el.scrollWidth);
+  }
+  return fit < 1 - FIT_TOLERANCE ? current * fit : null;
+}
+
 interface EventSharePosterProps {
   event: EventWithDetails;
   eventNumber: string;
@@ -63,21 +83,24 @@ function CostFooter({ event }: { event: EventWithDetails }) {
   const perPlayer = cost != null ? perPlayerCost(cost, allParticipants(event).length) : null;
   if (perPlayer == null) return null;
   return (
-    <div className="bg-lime text-on-lime flex items-center justify-between gap-3 px-8 py-3.5">
+    <div className="bg-lime text-on-lime flex items-center justify-between gap-4 px-8 py-3">
       <p className="font-display text-[15px] uppercase whitespace-nowrap">{formatPesos(perPlayer)} por persona</p>
       {event.finances?.payee_alias_cbu && (
-        <p className="text-[11px] font-semibold text-right">
-          Enviar a <span className="font-extrabold">{event.finances.payee_alias_cbu}</span>
-        </p>
+        <div className="text-right">
+          <p className="font-display text-[9px] tracking-[0.22em] uppercase">Enviar a</p>
+          <p className="text-[12px] font-extrabold leading-tight whitespace-nowrap mt-0.5">{event.finances.payee_alias_cbu}</p>
+        </div>
       )}
     </div>
   );
 }
 
-/** One "player per line" list, ordered like the on-screen team cards. */
+/** One "player per line" list, ordered like the on-screen team cards. A
+    name never wraps: a name that outgrows its column overflows it instead,
+    and the poster widens to fit. */
 function TeamPlayerList({ players, className }: { players: Player[]; className?: string }) {
   return (
-    <ul className={`text-[14px] font-semibold leading-[1.9] ${className ?? ''}`}>
+    <ul className={`text-[14px] font-semibold leading-[1.9] whitespace-nowrap ${className ?? ''}`}>
       {[...players].sort(comparePlayersByGenderThenName).map((p) => (
         <li key={p.id}>{p.name}</li>
       ))}
@@ -163,7 +186,7 @@ function TrainingPanels({ attendees, coaches }: { attendees: Player[]; coaches: 
     <>
       <div className="flex-1 bg-shirt-light text-on-surface py-6 px-8 text-center">
         <ShirtTag className="bg-surface text-muted border border-neutral">Jugadores</ShirtTag>
-        <ul className="grid grid-cols-2 gap-x-8 gap-y-2 w-fit mx-auto mt-4 text-[14px] font-semibold">
+        <ul className="grid grid-cols-2 gap-x-8 gap-y-2 w-fit mx-auto mt-4 text-[14px] font-semibold whitespace-nowrap">
           {[...attendees].sort(compareByName).map((p, i) => (
             <li key={p.id} className={i % 2 === 0 ? 'text-right' : 'text-left'}>{p.name}</li>
           ))}
@@ -247,14 +270,20 @@ function SocialInvite({ event, eventNumber }: EventSharePosterProps) {
 export default function EventSharePoster({ event, eventNumber }: EventSharePosterProps) {
   // A long enough roster outgrows the fixed 4:5 frame, and anything past the
   // frame edge would be cut out of the shared image. The content is laid out
-  // at its natural height and, when that overflows, uniformly scaled down
+  // at its natural size and, when that overflows, uniformly scaled down
   // (gaining proportional width) until the whole poster fits the frame.
+  //
+  // Width counts as well as height: names are set to never wrap, because the
+  // rasterizer's text metrics differ from the screen's by a hair, and a name
+  // wrapping on one side but not the other leaves a blank line (or a clipped
+  // one) in the image. A name wider than its column overflows the column
+  // instead, and the poster widens until the widest one fits.
   const contentRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   useLayoutEffect(() => {
-    const height = Math.ceil(contentRef.current!.getBoundingClientRect().height);
-    if (height > POSTER_HEIGHT) setScale(POSTER_HEIGHT / height);
-  }, []);
+    const fitted = fittedScale(contentRef.current!);
+    if (fitted != null) setScale(fitted);
+  }, [scale]);
   return (
     <div className="bg-primary overflow-hidden" style={{ width: POSTER_WIDTH, height: POSTER_HEIGHT }}>
       <div
