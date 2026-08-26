@@ -107,10 +107,9 @@ export async function capturePosterImage(poster: HTMLElement): Promise<Blob | nu
  * is anything but 'idle' it must show the preview dialog, wired to
  * `shareImage`, `shareText`, `openWhatsApp`, `retry` and `close`.
  *
- * The image travels with the maps link as its caption, since a picture
- * cannot make it tappable. On phones it rides along in the share sheet; on
- * desktop, where the clipboard can only carry the image, `openWhatsApp`
- * drafts it in WhatsApp Web for the image to be pasted onto.
+ * The maps link goes along as the image's caption: in the share sheet on
+ * phones, and drafted in WhatsApp Web by `openWhatsApp` on desktop, where
+ * the clipboard can only carry the image.
  *
  * The share sheet (phones) and the clipboard (desktop) both have to be
  * reached from a user gesture, so `shareImage` does its privileged call
