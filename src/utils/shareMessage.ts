@@ -22,34 +22,27 @@ function buildHeader(event: EventWithDetails, eventNumber: string): string[] {
   lines.push(`📅 ${formatDateForShare(event.played_at)}`);
 
   lines.push(`🕐 ${formatTime(event.played_at_time)}`);
-  const location = locationLine(event);
-  if (location) lines.push(location);
-
-  return lines;
-}
-
-/** Where it is, with the maps link so the place is one tap away in the chat. */
-function locationLine(event: EventWithDetails): string | null {
-  return event.location ? `📍 ${event.location.name} (${event.location.maps_url})` : null;
-}
-
-/** The per-person share and who to send it to; empty when there is no cost to split. */
-function paymentLines(event: EventWithDetails): string[] {
-  const cost = event.finances?.cost;
-  if (cost == null) return [];
-  const perPlayer = perPlayerCost(cost, allParticipants(event).length);
-  if (perPlayer == null) return [];
-  const lines = [`*💰 ${formatPesos(perPlayer)} por persona*`];
-  // A cost can be recorded without a payee; never print "Enviar a null".
-  if (event.finances?.payee_alias_cbu) {
-    lines.push(`Enviar a ${event.finances.payee_alias_cbu}`);
+  if (event.location) {
+    lines.push(`📍 ${event.location.name} (${event.location.maps_url})`);
   }
+
   return lines;
 }
 
 function buildCostFooter(event: EventWithDetails): string[] {
-  const payment = paymentLines(event);
-  const lines: string[] = payment.length > 0 ? ['', ...payment] : [];
+  const lines: string[] = [];
+  const cost = event.finances?.cost;
+  if (cost != null) {
+    const perPlayer = perPlayerCost(cost, allParticipants(event).length);
+    if (perPlayer != null) {
+      lines.push('');
+      lines.push(`*💰 ${formatPesos(perPlayer)} por persona*`);
+      // A cost can be recorded without a payee; never print "Enviar a null".
+      if (event.finances?.payee_alias_cbu) {
+        lines.push(`Enviar a ${event.finances.payee_alias_cbu}`);
+      }
+    }
+  }
 
   lines.push('');
   lines.push(event.type === 'social' ? '¡Nos vemos! ✨🩵' : '¡Nos vemos en la cancha! ✨🩵');
@@ -172,12 +165,11 @@ export function buildEventShareMessage(event: EventWithDetails, eventNumber: str
 }
 
 /**
- * What the poster image cannot make tappable or copyable: the maps link and
- * the alias/CBU. Goes out as the image's caption; empty when the event has
- * neither.
+ * The one thing the poster image cannot make tappable: the maps link. Goes
+ * out as the image's caption; empty when the event has no location.
  */
 export function buildEventShareCaption(event: EventWithDetails): string {
-  return [locationLine(event), ...paymentLines(event)].filter(Boolean).join('\n');
+  return event.location ? `📍 ${event.location.maps_url}` : '';
 }
 
 export function openWhatsAppShare(text: string): void {
